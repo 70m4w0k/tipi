@@ -1,4 +1,4 @@
-export type MessageType = "text" | "image" | "poll";
+﻿export type MessageType = "text" | "image" | "poll";
 
 export type ChatMessage = {
   id: string;
@@ -39,10 +39,25 @@ export type Expense = {
 
 export type Chore = {
   id: string;
+  taskName: string;
+  week: number;
+  year: number;
+  user: string;
+  intensity: 0 | 1 | 2 | 3;
+  performedAt: string;
+};
+
+export type ChoreTask = {
+  id: string;
+  name: string;
+  createdAt: string;
+};
+
+export type ChoreReminder = {
+  id: string;
   title: string;
-  dueAt: string;
-  assignee: string;
-  done: boolean;
+  recurrence: string;
+  lastDoneDate: string;
 };
 
 export type HouseEvent = {
@@ -64,6 +79,8 @@ export type AppData = {
   messages: ChatMessage[];
   expenses: Expense[];
   chores: Chore[];
+  choreTasks: ChoreTask[];
+  choreReminder: ChoreReminder;
   events: HouseEvent[];
   files: SharedFile[];
 };

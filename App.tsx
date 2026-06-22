@@ -1,4 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+﻿import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { StatusBar } from "expo-status-bar";
@@ -18,14 +18,29 @@ import {
 } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { ChatScreen } from "./ChatScreen";
+import { ChoresScreen } from "./ChoresScreen";
 import { ExpensesScreen } from "./ExpensesScreen";
-import { Expense, Chore, HouseEvent, SharedFile, AppData } from "./types";
+import {
+  AppData,
+  Chore,
+  ChoreReminder,
+  ChoreTask,
+  Expense,
+  HouseEvent,
+  SharedFile,
+} from "./types";
 
 type MainTab = "chat" | "expenses" | "chores" | "other";
 type OtherTab = "events" | "files";
 
 const STORAGE_KEY = "coloc-app-v1";
 const ROOMMATES = ["Thomas", "Camille", "Youssef"];
+const DEFAULT_CHORE_REMINDER: ChoreReminder = {
+  id: "trash-default",
+  title: "Sortir les poubelles",
+  recurrence: "Tous les lundis, mercredis et vendredis",
+  lastDoneDate: "",
+};
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -35,12 +50,11 @@ export default function App() {
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [chores, setChores] = useState<Chore[]>([]);
+  const [choreTasks, setChoreTasks] = useState<ChoreTask[]>([]);
+  const [choreReminder, setChoreReminder] = useState<ChoreReminder>(DEFAULT_CHORE_REMINDER);
   const [events, setEvents] = useState<HouseEvent[]>([]);
   const [files, setFiles] = useState<SharedFile[]>([]);
 
-  const [choreTitle, setChoreTitle] = useState("");
-  const [choreDueAt, setChoreDueAt] = useState("");
-  const [choreAssignee, setChoreAssignee] = useState(ROOMMATES[0]);
   const [eventTitle, setEventTitle] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [eventNote, setEventNote] = useState("");
@@ -50,9 +64,11 @@ export default function App() {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw) {
-          const data = JSON.parse(raw) as AppData;
+          const data = JSON.parse(raw) as Partial<AppData>;
           setExpenses(data.expenses ?? []);
           setChores(data.chores ?? []);
+          setChoreTasks(data.choreTasks ?? []);
+          setChoreReminder(data.choreReminder ?? DEFAULT_CHORE_REMINDER);
           setEvents(data.events ?? []);
           setFiles(data.files ?? []);
         }
@@ -68,32 +84,16 @@ export default function App() {
       return;
     }
     const data: AppData = {
-      messages: [], // Messages gérés par le serveur
+      messages: [],
       expenses,
       chores,
+      choreTasks,
+      choreReminder,
       events,
       files,
     };
     void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }, [ready, expenses, chores, events, files]);
-
-
-  const addChore = () => {
-    if (!choreTitle.trim() || !choreDueAt.trim()) {
-      Alert.alert("Tache invalide", "Ajoute un titre et une date.");
-      return;
-    }
-    const item: Chore = {
-      id: `${Date.now()}`,
-      title: choreTitle.trim(),
-      dueAt: choreDueAt.trim(),
-      assignee: choreAssignee,
-      done: false,
-    };
-    setChores((prev) => [item, ...prev]);
-    setChoreTitle("");
-    setChoreDueAt("");
-  };
+  }, [ready, expenses, chores, choreTasks, choreReminder, events, files]);
 
   const addEvent = () => {
     if (!eventTitle.trim() || !eventDate.trim()) {
@@ -167,18 +167,10 @@ export default function App() {
               {ROOMMATES.map((member) => (
                 <Pressable
                   key={member}
-                  style={[
-                    styles.chip,
-                    currentUser === member && styles.chipActive,
-                  ]}
+                  style={[styles.chip, currentUser === member && styles.chipActive]}
                   onPress={() => setCurrentUser(member)}
                 >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      currentUser === member && styles.chipTextActive,
-                    ]}
-                  >
+                  <Text style={[styles.chipText, currentUser === member && styles.chipTextActive]}>
                     {member}
                   </Text>
                 </Pressable>
@@ -186,13 +178,8 @@ export default function App() {
             </ScrollView>
           </View>
 
-          <ScrollView
-            style={styles.content}
-            contentContainerStyle={styles.contentInner}
-          >
-            {activeMainTab === "chat" && (
-              <ChatScreen currentUser={currentUser} />
-            )}
+          <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
+            {activeMainTab === "chat" && <ChatScreen currentUser={currentUser} />}
 
             {activeMainTab === "expenses" && (
               <ExpensesScreen
@@ -204,67 +191,16 @@ export default function App() {
             )}
 
             {activeMainTab === "chores" && (
-              <View style={styles.panel}>
-                <Text style={styles.panelTitle}>Taches menageres</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ex: Salle de bain"
-                  value={choreTitle}
-                  onChangeText={setChoreTitle}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Date/heure (ex: 2026-06-23 18:00)"
-                  value={choreDueAt}
-                  onChangeText={setChoreDueAt}
-                />
-                <View style={styles.wrapRow}>
-                  {ROOMMATES.map((member) => (
-                    <Pressable
-                      key={member}
-                      style={[
-                        styles.chip,
-                        choreAssignee === member && styles.chipActive,
-                      ]}
-                      onPress={() => setChoreAssignee(member)}
-                    >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          choreAssignee === member && styles.chipTextActive,
-                        ]}
-                      >
-                        {member}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <Pressable style={styles.fullButton} onPress={addChore}>
-                  <Text style={styles.actionButtonText}>Ajouter la tache</Text>
-                </Pressable>
-                {chores.map((chore) => (
-                  <Pressable
-                    key={chore.id}
-                    style={styles.card}
-                    onPress={() =>
-                      setChores((prev) =>
-                        prev.map((item) =>
-                          item.id === chore.id
-                            ? { ...item, done: !item.done }
-                            : item,
-                        ),
-                      )
-                    }
-                  >
-                    <Text style={styles.cardTitle}>
-                      {chore.done ? "✓ Terminee" : "⏱ A faire"} - {chore.title}
-                    </Text>
-                    <Text>
-                      {chore.assignee} - {chore.dueAt}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
+              <ChoresScreen
+                chores={chores}
+                setChores={setChores}
+                choreTasks={choreTasks}
+                setChoreTasks={setChoreTasks}
+                choreReminder={choreReminder}
+                setChoreReminder={setChoreReminder}
+                currentUser={currentUser}
+                roommates={ROOMMATES}
+              />
             )}
 
             {activeMainTab === "other" && activeOtherTab === "events" && (
@@ -290,9 +226,7 @@ export default function App() {
                   multiline
                 />
                 <Pressable style={styles.fullButton} onPress={addEvent}>
-                  <Text style={styles.actionButtonText}>
-                    Ajouter l'evenement
-                  </Text>
+                  <Text style={styles.actionButtonText}>Ajouter l'evenement</Text>
                 </Pressable>
                 {events.map((event) => (
                   <View key={event.id} style={styles.card}>
@@ -307,13 +241,8 @@ export default function App() {
             {activeMainTab === "other" && activeOtherTab === "files" && (
               <View style={styles.panel}>
                 <Text style={styles.panelTitle}>Documents partages</Text>
-                <Pressable
-                  style={styles.fullButton}
-                  onPress={() => void addSharedFile()}
-                >
-                  <Text style={styles.actionButtonText}>
-                    Importer un document
-                  </Text>
+                <Pressable style={styles.fullButton} onPress={() => void addSharedFile()}>
+                  <Text style={styles.actionButtonText}>Importer un document</Text>
                 </Pressable>
                 {files.length === 0 ? (
                   <Text style={styles.empty}>Aucun document partage.</Text>
@@ -326,8 +255,7 @@ export default function App() {
                     >
                       <Text style={styles.cardTitle}>{file.name}</Text>
                       <Text>
-                        Ajoute par {file.uploadedBy} -{" "}
-                        {formatDate(file.uploadedAt)}
+                        Ajoute par {file.uploadedBy} - {formatDate(file.uploadedAt)}
                       </Text>
                     </Pressable>
                   ))
@@ -339,34 +267,18 @@ export default function App() {
           {activeMainTab === "other" && (
             <View style={styles.subTabRow}>
               <Pressable
-                style={[
-                  styles.subTab,
-                  activeOtherTab === "events" && styles.subTabActive,
-                ]}
+                style={[styles.subTab, activeOtherTab === "events" && styles.subTabActive]}
                 onPress={() => setActiveOtherTab("events")}
               >
-                <Text
-                  style={[
-                    styles.subTabText,
-                    activeOtherTab === "events" && styles.subTabTextActive,
-                  ]}
-                >
+                <Text style={[styles.subTabText, activeOtherTab === "events" && styles.subTabTextActive]}>
                   Evenements
                 </Text>
               </Pressable>
               <Pressable
-                style={[
-                  styles.subTab,
-                  activeOtherTab === "files" && styles.subTabActive,
-                ]}
+                style={[styles.subTab, activeOtherTab === "files" && styles.subTabActive]}
                 onPress={() => setActiveOtherTab("files")}
               >
-                <Text
-                  style={[
-                    styles.subTabText,
-                    activeOtherTab === "files" && styles.subTabTextActive,
-                  ]}
-                >
+                <Text style={[styles.subTabText, activeOtherTab === "files" && styles.subTabTextActive]}>
                   Documents
                 </Text>
               </Pressable>
@@ -374,26 +286,10 @@ export default function App() {
           )}
 
           <View style={styles.bottomTabBar}>
-            <BottomTabButton
-              label="Discussions"
-              active={activeMainTab === "chat"}
-              onPress={() => setActiveMainTab("chat")}
-            />
-            <BottomTabButton
-              label="Depenses"
-              active={activeMainTab === "expenses"}
-              onPress={() => setActiveMainTab("expenses")}
-            />
-            <BottomTabButton
-              label="Menage"
-              active={activeMainTab === "chores"}
-              onPress={() => setActiveMainTab("chores")}
-            />
-            <BottomTabButton
-              label="Autres"
-              active={activeMainTab === "other"}
-              onPress={() => setActiveMainTab("other")}
-            />
+            <BottomTabButton label="Discussions" active={activeMainTab === "chat"} onPress={() => setActiveMainTab("chat")} />
+            <BottomTabButton label="Depenses" active={activeMainTab === "expenses"} onPress={() => setActiveMainTab("expenses")} />
+            <BottomTabButton label="Menage" active={activeMainTab === "chores"} onPress={() => setActiveMainTab("chores")} />
+            <BottomTabButton label="Autres" active={activeMainTab === "other"} onPress={() => setActiveMainTab("other")} />
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -411,15 +307,8 @@ function BottomTabButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable
-      style={[styles.bottomTab, active && styles.bottomTabActive]}
-      onPress={onPress}
-    >
-      <Text
-        style={[styles.bottomTabText, active && styles.bottomTabTextActive]}
-      >
-        {label}
-      </Text>
+    <Pressable style={[styles.bottomTab, active && styles.bottomTabActive]} onPress={onPress}>
+      <Text style={[styles.bottomTabText, active && styles.bottomTabTextActive]}>{label}</Text>
     </Pressable>
   );
 }
@@ -453,8 +342,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   multilineInput: { minHeight: 80, textAlignVertical: "top" },
-  row: { flexDirection: "row", alignItems: "center", gap: 8 },
-  wrapRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     borderWidth: 1,
     borderColor: "#9CA3AF",
@@ -465,12 +352,6 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: "#111827", borderColor: "#111827" },
   chipText: { color: "#374151", fontWeight: "600" },
   chipTextActive: { color: "#FFFFFF" },
-  actionButton: {
-    backgroundColor: "#1D4ED8",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
   fullButton: {
     backgroundColor: "#1D4ED8",
     borderRadius: 8,
@@ -488,7 +369,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#FAFAFA",
   },
   cardTitle: { fontWeight: "700", color: "#111827" },
-  label: { marginTop: 6, fontWeight: "600", color: "#374151" },
   empty: { color: "#6B7280" },
   subTabRow: {
     flexDirection: "row",
