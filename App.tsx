@@ -16,60 +16,12 @@ import {
   TextInput,
   View,
 } from "react-native";
-import {
-  SafeAreaView,
-  SafeAreaProvider,
-} from "react-native-safe-area-context";
+import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
+import { ChatScreen } from "./ChatScreen";
+import { Expense, Chore, HouseEvent, SharedFile, AppData } from "./types";
 
 type MainTab = "chat" | "expenses" | "chores" | "other";
 type OtherTab = "events" | "files";
-
-type Message = {
-  id: string;
-  author: string;
-  text: string;
-  createdAt: string;
-};
-
-type Expense = {
-  id: string;
-  title: string;
-  amount: number;
-  payer: string;
-  participants: string[];
-  createdAt: string;
-};
-
-type Chore = {
-  id: string;
-  title: string;
-  dueAt: string;
-  assignee: string;
-  done: boolean;
-};
-
-type HouseEvent = {
-  id: string;
-  title: string;
-  date: string;
-  note: string;
-};
-
-type SharedFile = {
-  id: string;
-  name: string;
-  uri: string;
-  uploadedBy: string;
-  uploadedAt: string;
-};
-
-type AppData = {
-  messages: Message[];
-  expenses: Expense[];
-  chores: Chore[];
-  events: HouseEvent[];
-  files: SharedFile[];
-};
 
 const STORAGE_KEY = "coloc-app-v1";
 const ROOMMATES = ["Thomas", "Camille", "Youssef"];
@@ -80,13 +32,11 @@ export default function App() {
   const [activeOtherTab, setActiveOtherTab] = useState<OtherTab>("events");
   const [currentUser, setCurrentUser] = useState(ROOMMATES[0]);
 
-  const [messages, setMessages] = useState<Message[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [chores, setChores] = useState<Chore[]>([]);
   const [events, setEvents] = useState<HouseEvent[]>([]);
   const [files, setFiles] = useState<SharedFile[]>([]);
 
-  const [newMessage, setNewMessage] = useState("");
   const [expenseTitle, setExpenseTitle] = useState("");
   const [expenseAmount, setExpenseAmount] = useState("");
   const [expensePayer, setExpensePayer] = useState(ROOMMATES[0]);
@@ -106,7 +56,6 @@ export default function App() {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw) {
           const data = JSON.parse(raw) as AppData;
-          setMessages(data.messages ?? []);
           setExpenses(data.expenses ?? []);
           setChores(data.chores ?? []);
           setEvents(data.events ?? []);
@@ -123,13 +72,19 @@ export default function App() {
     if (!ready) {
       return;
     }
-    const data: AppData = { messages, expenses, chores, events, files };
+    const data: AppData = {
+      messages: [], // Messages gérés par le serveur
+      expenses,
+      chores,
+      events,
+      files,
+    };
     void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }, [ready, messages, expenses, chores, events, files]);
+  }, [ready, expenses, chores, events, files]);
 
   const balances = useMemo(() => {
     const result = Object.fromEntries(
-      ROOMMATES.map((name) => [name, 0])
+      ROOMMATES.map((name) => [name, 0]),
     ) as Record<string, number>;
     for (const expense of expenses) {
       if (expense.participants.length === 0) {
@@ -144,21 +99,6 @@ export default function App() {
     return result;
   }, [expenses]);
 
-  const sendMessage = () => {
-    const text = newMessage.trim();
-    if (!text) {
-      return;
-    }
-    const item: Message = {
-      id: `${Date.now()}`,
-      author: currentUser,
-      text,
-      createdAt: new Date().toISOString(),
-    };
-    setMessages((prev) => [item, ...prev]);
-    setNewMessage("");
-  };
-
   const addExpense = () => {
     const amount = Number(expenseAmount.replace(",", "."));
     if (
@@ -169,7 +109,7 @@ export default function App() {
     ) {
       Alert.alert(
         "Depense invalide",
-        "Remplis le titre, le montant et au moins un participant."
+        "Remplis le titre, le montant et au moins un participant.",
       );
       return;
     }
@@ -300,32 +240,7 @@ export default function App() {
             contentContainerStyle={styles.contentInner}
           >
             {activeMainTab === "chat" && (
-              <View style={styles.panel}>
-                <Text style={styles.panelTitle}>Discussions</Text>
-                <View style={styles.row}>
-                  <TextInput
-                    style={[styles.input, styles.flex]}
-                    placeholder="Message..."
-                    value={newMessage}
-                    onChangeText={setNewMessage}
-                  />
-                  <Pressable style={styles.actionButton} onPress={sendMessage}>
-                    <Text style={styles.actionButtonText}>Envoyer</Text>
-                  </Pressable>
-                </View>
-                {messages.length === 0 ? (
-                  <Text style={styles.empty}>Aucun message.</Text>
-                ) : (
-                  messages.map((message) => (
-                    <View key={message.id} style={styles.card}>
-                      <Text style={styles.cardTitle}>
-                        {message.author} - {formatDate(message.createdAt)}
-                      </Text>
-                      <Text>{message.text}</Text>
-                    </View>
-                  ))
-                )}
-              </View>
+              <ChatScreen currentUser={currentUser} />
             )}
 
             {activeMainTab === "expenses" && (
@@ -378,7 +293,7 @@ export default function App() {
                           setExpenseParticipants((prev) =>
                             prev.includes(member)
                               ? prev.filter((item) => item !== member)
-                              : [...prev, member]
+                              : [...prev, member],
                           )
                         }
                       >
@@ -413,7 +328,8 @@ export default function App() {
                       {expense.title} - {expense.amount.toFixed(2)} EUR
                     </Text>
                     <Text>
-                      Paye par {expense.payer} - {expense.participants.join(", ")}
+                      Paye par {expense.payer} -{" "}
+                      {expense.participants.join(", ")}
                     </Text>
                   </View>
                 ))}
@@ -468,8 +384,8 @@ export default function App() {
                         prev.map((item) =>
                           item.id === chore.id
                             ? { ...item, done: !item.done }
-                            : item
-                        )
+                            : item,
+                        ),
                       )
                     }
                   >
@@ -633,10 +549,7 @@ function BottomTabButton({
       onPress={onPress}
     >
       <Text
-        style={[
-          styles.bottomTabText,
-          active && styles.bottomTabTextActive,
-        ]}
+        style={[styles.bottomTabText, active && styles.bottomTabTextActive]}
       >
         {label}
       </Text>

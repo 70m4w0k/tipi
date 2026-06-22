@@ -1,0 +1,32 @@
+[
+  {
+    "id": "1782150703117",
+    "author": "Thomas",
+    "type": "text",
+    "content": "hello",
+    "poll": null,
+    "reactions": {},
+    "sentAt": "2026-06-22T17:51:43.117Z",
+    "readBy": [
+      "Thomas",
+      "Camille"
+    ]
+  },
+  {
+    "id": "1782150709576",
+    "author": "Camille",
+    "type": "text",
+    "content": "bonjour",
+    "poll": null,
+    "reactions": {
+      "❤️": [
+        "Thomas"
+      ]
+    },
+    "sentAt": "2026-06-22T17:51:49.576Z",
+    "readBy": [
+      "Camille",
+      "Thomas"
+    ]
+  }
+]
