@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { ChatScreen } from "./ChatScreen";
+import { ExpensesScreen } from "./ExpensesScreen";
 import { Expense, Chore, HouseEvent, SharedFile, AppData } from "./types";
 
 type MainTab = "chat" | "expenses" | "chores" | "other";
@@ -37,12 +38,6 @@ export default function App() {
   const [events, setEvents] = useState<HouseEvent[]>([]);
   const [files, setFiles] = useState<SharedFile[]>([]);
 
-  const [expenseTitle, setExpenseTitle] = useState("");
-  const [expenseAmount, setExpenseAmount] = useState("");
-  const [expensePayer, setExpensePayer] = useState(ROOMMATES[0]);
-  const [expenseParticipants, setExpenseParticipants] = useState<string[]>([
-    ...ROOMMATES,
-  ]);
   const [choreTitle, setChoreTitle] = useState("");
   const [choreDueAt, setChoreDueAt] = useState("");
   const [choreAssignee, setChoreAssignee] = useState(ROOMMATES[0]);
@@ -82,50 +77,6 @@ export default function App() {
     void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   }, [ready, expenses, chores, events, files]);
 
-  const balances = useMemo(() => {
-    const result = Object.fromEntries(
-      ROOMMATES.map((name) => [name, 0]),
-    ) as Record<string, number>;
-    for (const expense of expenses) {
-      if (expense.participants.length === 0) {
-        continue;
-      }
-      const share = expense.amount / expense.participants.length;
-      result[expense.payer] += expense.amount;
-      for (const participant of expense.participants) {
-        result[participant] -= share;
-      }
-    }
-    return result;
-  }, [expenses]);
-
-  const addExpense = () => {
-    const amount = Number(expenseAmount.replace(",", "."));
-    if (
-      !expenseTitle.trim() ||
-      Number.isNaN(amount) ||
-      amount <= 0 ||
-      expenseParticipants.length === 0
-    ) {
-      Alert.alert(
-        "Depense invalide",
-        "Remplis le titre, le montant et au moins un participant.",
-      );
-      return;
-    }
-    const item: Expense = {
-      id: `${Date.now()}`,
-      title: expenseTitle.trim(),
-      amount,
-      payer: expensePayer,
-      participants: expenseParticipants,
-      createdAt: new Date().toISOString(),
-    };
-    setExpenses((prev) => [item, ...prev]);
-    setExpenseTitle("");
-    setExpenseAmount("");
-    setExpenseParticipants([...ROOMMATES]);
-  };
 
   const addChore = () => {
     if (!choreTitle.trim() || !choreDueAt.trim()) {
@@ -244,96 +195,12 @@ export default function App() {
             )}
 
             {activeMainTab === "expenses" && (
-              <View style={styles.panel}>
-                <Text style={styles.panelTitle}>Depenses partagees</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ex: Courses"
-                  value={expenseTitle}
-                  onChangeText={setExpenseTitle}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Montant (EUR)"
-                  keyboardType="decimal-pad"
-                  value={expenseAmount}
-                  onChangeText={setExpenseAmount}
-                />
-                <Text style={styles.label}>Payeur</Text>
-                <View style={styles.wrapRow}>
-                  {ROOMMATES.map((member) => (
-                    <Pressable
-                      key={member}
-                      style={[
-                        styles.chip,
-                        expensePayer === member && styles.chipActive,
-                      ]}
-                      onPress={() => setExpensePayer(member)}
-                    >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          expensePayer === member && styles.chipTextActive,
-                        ]}
-                      >
-                        {member}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <Text style={styles.label}>Participants</Text>
-                <View style={styles.wrapRow}>
-                  {ROOMMATES.map((member) => {
-                    const selected = expenseParticipants.includes(member);
-                    return (
-                      <Pressable
-                        key={member}
-                        style={[styles.chip, selected && styles.chipActive]}
-                        onPress={() =>
-                          setExpenseParticipants((prev) =>
-                            prev.includes(member)
-                              ? prev.filter((item) => item !== member)
-                              : [...prev, member],
-                          )
-                        }
-                      >
-                        <Text
-                          style={[
-                            styles.chipText,
-                            selected && styles.chipTextActive,
-                          ]}
-                        >
-                          {member}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                <Pressable style={styles.fullButton} onPress={addExpense}>
-                  <Text style={styles.actionButtonText}>
-                    Ajouter la depense
-                  </Text>
-                </Pressable>
-                <Text style={styles.label}>
-                  Balances (positif = doit recevoir)
-                </Text>
-                {ROOMMATES.map((member) => (
-                  <Text key={member}>
-                    {member}: {balances[member].toFixed(2)} EUR
-                  </Text>
-                ))}
-                {expenses.map((expense) => (
-                  <View key={expense.id} style={styles.card}>
-                    <Text style={styles.cardTitle}>
-                      {expense.title} - {expense.amount.toFixed(2)} EUR
-                    </Text>
-                    <Text>
-                      Paye par {expense.payer} -{" "}
-                      {expense.participants.join(", ")}
-                    </Text>
-                  </View>
-                ))}
-              </View>
+              <ExpensesScreen
+                expenses={expenses}
+                setExpenses={setExpenses}
+                currentUser={currentUser}
+                roommates={ROOMMATES}
+              />
             )}
 
             {activeMainTab === "chores" && (

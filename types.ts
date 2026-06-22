@@ -18,12 +18,22 @@ export type ChatMessage = {
   readBy: string[];
 };
 
+export type ExpenseCategory =
+  | "courses"
+  | "loyer"
+  | "restaurant"
+  | "transport"
+  | "loisirs"
+  | "autre";
+
 export type Expense = {
   id: string;
   title: string;
   amount: number;
   payer: string;
   participants: string[];
+  category: ExpenseCategory;
+  note: string;
   createdAt: string;
 };
 

@@ -33,7 +33,7 @@ export function ChatScreen({
   const [showReactionPicker, setShowReactionPicker] = useState<string | null>(
     null,
   );
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Fetch messages toutes les 2s
   useEffect(() => {
