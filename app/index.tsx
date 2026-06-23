@@ -1,9 +1,10 @@
-import { Text, View } from "react-native";
+import { Redirect } from "expo-router";
+import { useAuth } from "../lib/hooks/useAuth";
 
 export default function Index() {
-  return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text>Tipi — loading...</Text>
-    </View>
-  );
+  const { session, profile } = useAuth();
+
+  if (!session) return <Redirect href="/(auth)/login" />;
+  if (!profile?.household_id) return <Redirect href="/(auth)/join" />;
+  return <Redirect href="/(app)/chat" />;
 }
