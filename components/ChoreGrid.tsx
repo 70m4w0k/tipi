@@ -88,6 +88,7 @@ export default function ChoreGrid({
   const scrollRef = useRef<ScrollView>(null);
   const weeks = useMemo(() => buildWeeksFromFirstEntry(chores), [chores]);
   const currentWeek = useMemo(() => getISOWeekYear(new Date()), []);
+  const visibleTasks = useMemo(() => tasks.filter((t) => t.show_in_grid), [tasks]);
 
   const cellMap = useMemo(() => {
     const map: Record<string, Array<{ userId: string; intensity: number; color: string }>> = {};
@@ -119,7 +120,7 @@ export default function ChoreGrid({
         <View style={styles.taskHeader}>
           <Text style={styles.taskHeaderText}>Tâche</Text>
         </View>
-        {tasks.map((task) => (
+        {visibleTasks.map((task) => (
           <TouchableOpacity
             key={task.id}
             style={styles.taskCell}
@@ -151,7 +152,7 @@ export default function ChoreGrid({
             })}
           </View>
           {/* Data rows */}
-          {tasks.map((task) => (
+          {visibleTasks.map((task) => (
             <View key={task.id} style={styles.row}>
               {weeks.map((w) => {
                 const key = `${task.name}|${w.week}|${w.year}`;

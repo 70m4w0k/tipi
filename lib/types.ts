@@ -84,6 +84,7 @@ export type ChoreTask = {
   id: string;
   household_id: string;
   name: string;
+  show_in_grid: boolean;
   created_at: string;
 };
 
@@ -102,6 +103,45 @@ export type HouseEvent = {
   date: string;
   note: string;
   created_by: string | null;
+  created_at: string;
+};
+
+export type ShoppingItem = {
+  id: string;
+  household_id: string;
+  title: string;
+  category: string;
+  checked: boolean;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type RecipeStep = {
+  title: string;
+  description: string;
+  duration_hint: string;
+};
+
+export type Recipe = {
+  id: string;
+  household_id: string;
+  title: string;
+  description: string;
+  ingredients: string[];
+  steps: RecipeStep[];
+  created_by: string | null;
+  created_at: string;
+};
+
+export type RecipeInstance = {
+  id: string;
+  household_id: string;
+  recipe_id: string;
+  label: string;
+  current_step: number;
+  notes: string;
+  started_at: string;
+  step_started_at: string;
   created_at: string;
 };
 

@@ -73,6 +73,7 @@ CREATE TABLE chore_tasks (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   household_id uuid NOT NULL REFERENCES households(id),
   name text NOT NULL,
+  show_in_grid boolean NOT NULL DEFAULT true,
   created_at timestamptz DEFAULT now(),
   UNIQUE (household_id, name)
 );
@@ -102,6 +103,39 @@ CREATE TABLE shared_files (
   storage_path text NOT NULL,
   uploaded_by uuid REFERENCES profiles(id),
   uploaded_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE shopping_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  household_id uuid NOT NULL REFERENCES households(id),
+  title text NOT NULL,
+  category text DEFAULT '',
+  checked boolean NOT NULL DEFAULT false,
+  created_by uuid REFERENCES profiles(id),
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE recipes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  household_id uuid NOT NULL REFERENCES households(id),
+  title text NOT NULL,
+  description text DEFAULT '',
+  ingredients jsonb NOT NULL DEFAULT '[]'::jsonb,
+  steps jsonb NOT NULL DEFAULT '[]'::jsonb,
+  created_by uuid REFERENCES profiles(id),
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE recipe_instances (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  household_id uuid NOT NULL REFERENCES households(id),
+  recipe_id uuid NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+  label text NOT NULL,
+  current_step int NOT NULL DEFAULT 0,
+  notes text DEFAULT '',
+  started_at timestamptz DEFAULT now(),
+  step_started_at timestamptz DEFAULT now(),
+  created_at timestamptz DEFAULT now()
 );
 
 -- ============================================================
@@ -152,6 +186,9 @@ ALTER TABLE chore_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chore_reminders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shared_files ENABLE ROW LEVEL SECURITY;
+ALTER TABLE shopping_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recipe_instances ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================
 -- RLS POLICIES
@@ -229,6 +266,24 @@ CREATE POLICY "insert" ON shared_files FOR INSERT WITH CHECK (household_id = my_
 CREATE POLICY "update" ON shared_files FOR UPDATE USING (household_id = my_household_id());
 CREATE POLICY "delete" ON shared_files FOR DELETE USING (household_id = my_household_id());
 
+-- shopping_items
+CREATE POLICY "select" ON shopping_items FOR SELECT USING (household_id = my_household_id());
+CREATE POLICY "insert" ON shopping_items FOR INSERT WITH CHECK (household_id = my_household_id());
+CREATE POLICY "update" ON shopping_items FOR UPDATE USING (household_id = my_household_id());
+CREATE POLICY "delete" ON shopping_items FOR DELETE USING (household_id = my_household_id());
+
+-- recipes
+CREATE POLICY "select" ON recipes FOR SELECT USING (household_id = my_household_id());
+CREATE POLICY "insert" ON recipes FOR INSERT WITH CHECK (household_id = my_household_id());
+CREATE POLICY "update" ON recipes FOR UPDATE USING (household_id = my_household_id());
+CREATE POLICY "delete" ON recipes FOR DELETE USING (household_id = my_household_id());
+
+-- recipe_instances
+CREATE POLICY "select" ON recipe_instances FOR SELECT USING (household_id = my_household_id());
+CREATE POLICY "insert" ON recipe_instances FOR INSERT WITH CHECK (household_id = my_household_id());
+CREATE POLICY "update" ON recipe_instances FOR UPDATE USING (household_id = my_household_id());
+CREATE POLICY "delete" ON recipe_instances FOR DELETE USING (household_id = my_household_id());
+
 -- ============================================================
 -- STORAGE BUCKETS
 -- ============================================================
@@ -253,4 +308,4 @@ CREATE POLICY "household_delete" ON storage.objects FOR DELETE USING (
 -- REALTIME
 -- ============================================================
 
-ALTER PUBLICATION supabase_realtime ADD TABLE messages, expenses, chores, chore_tasks, chore_reminders, events, shared_files;
+ALTER PUBLICATION supabase_realtime ADD TABLE messages, expenses, chores, chore_tasks, chore_reminders, events, shared_files, shopping_items, recipes, recipe_instances;

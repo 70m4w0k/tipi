@@ -1,7 +1,14 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavPreferences, ALL_TABS } from "../../lib/hooks/useNavPreferences";
 
 export default function AppLayout() {
+  const { enabledTabs, loaded } = useNavPreferences();
+
+  if (!loaded) return null;
+
+  const isTabEnabled = (key: string) => enabledTabs.includes(key as any);
+
   return (
     <Tabs
       screenOptions={{
@@ -17,33 +24,19 @@ export default function AppLayout() {
         tabBarLabelStyle: { fontWeight: "600", fontSize: 11 },
       }}
     >
-      <Tabs.Screen
-        name="chat"
-        options={{
-          title: "Chat",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubbles-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="expenses"
-        options={{
-          title: "Dépenses",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="wallet-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="chores"
-        options={{
-          title: "Ménage",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="sparkles-outline" size={size} color={color} />
-          ),
-        }}
-      />
+      {ALL_TABS.map((tab) => (
+        <Tabs.Screen
+          key={tab.key}
+          name={tab.key}
+          options={{
+            title: tab.label,
+            href: isTabEnabled(tab.key) ? undefined : null,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name={tab.icon as any} size={size} color={color} />
+            ),
+          }}
+        />
+      ))}
       <Tabs.Screen
         name="other"
         options={{

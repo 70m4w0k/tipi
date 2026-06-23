@@ -138,15 +138,27 @@ export function useChores(householdId: string | null | undefined) {
   );
 
   const addTask = useCallback(
-    async (name: string) => {
+    async (name: string, showInGrid = true) => {
       if (!householdId || !name.trim()) return;
       await supabase.from("chore_tasks").insert({
         household_id: householdId,
         name: name.trim(),
+        show_in_grid: showInGrid,
       });
       void fetchAll();
     },
     [householdId, fetchAll]
+  );
+
+  const toggleTaskVisibility = useCallback(
+    async (id: string, showInGrid: boolean) => {
+      await supabase
+        .from("chore_tasks")
+        .update({ show_in_grid: showInGrid })
+        .eq("id", id);
+      void fetchAll();
+    },
+    [fetchAll]
   );
 
   const editTask = useCallback(
@@ -244,5 +256,6 @@ export function useChores(householdId: string | null | undefined) {
     toggleReminderDone,
     updateReminder,
     addReminder,
+    toggleTaskVisibility,
   };
 }

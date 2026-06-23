@@ -26,7 +26,7 @@ export default function ChoresScreen() {
   const {
     chores, tasks, reminders, loading,
     setCellIntensity, addTask, editTask, removeTask,
-    toggleReminderDone, updateReminder, addReminder,
+    toggleReminderDone, updateReminder, addReminder, toggleTaskVisibility,
   } = useChores(profile?.household_id);
 
   const [filterMode, setFilterMode] = useState<"me" | "all">("all");
@@ -36,6 +36,7 @@ export default function ChoresScreen() {
   const [newTaskName, setNewTaskName] = useState("");
   const [isRecurrent, setIsRecurrent] = useState(false);
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [showInGrid, setShowInGrid] = useState(true);
 
   // Task action modal
   const [actionTask, setActionTask] = useState<{ id: string; name: string } | null>(null);
@@ -52,7 +53,7 @@ export default function ChoresScreen() {
 
   const handleAddTask = async () => {
     if (!newTaskName.trim()) return;
-    await addTask(newTaskName.trim());
+    await addTask(newTaskName.trim(), showInGrid);
     if (isRecurrent && selectedDays.length > 0) {
       const recurrence = selectedDays.join(", ");
       await addReminder(newTaskName.trim(), recurrence);
@@ -60,6 +61,7 @@ export default function ChoresScreen() {
     setNewTaskName("");
     setIsRecurrent(false);
     setSelectedDays([]);
+    setShowInGrid(true);
     setShowAddTask(false);
   };
 
@@ -114,7 +116,6 @@ export default function ChoresScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {loading && <ActivityIndicator size="small" color="#1D4ED8" style={{ marginBottom: 12 }} />}
 
         {/* Reminders */}
         {reminders.map((r) => (
@@ -171,6 +172,18 @@ export default function ChoresScreen() {
 
             <Pressable
               style={styles.checkRow}
+              onPress={() => setShowInGrid(!showInGrid)}
+            >
+              <Ionicons
+                name={showInGrid ? "checkbox" : "square-outline"}
+                size={22}
+                color={showInGrid ? "#1D4ED8" : "#9CA3AF"}
+              />
+              <Text style={styles.checkLabel}>Afficher dans le tableau</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.checkRow}
               onPress={() => setIsRecurrent(!isRecurrent)}
             >
               <Ionicons
@@ -198,7 +211,7 @@ export default function ChoresScreen() {
             )}
 
             <View style={styles.modalBtnRow}>
-              <Pressable style={styles.modalCancelBtn} onPress={() => { setShowAddTask(false); setNewTaskName(""); setIsRecurrent(false); setSelectedDays([]); }}>
+              <Pressable style={styles.modalCancelBtn} onPress={() => { setShowAddTask(false); setNewTaskName(""); setIsRecurrent(false); setSelectedDays([]); setShowInGrid(true); }}>
                 <Text style={styles.modalCancelText}>Annuler</Text>
               </Pressable>
               <Pressable
@@ -242,6 +255,28 @@ export default function ChoresScreen() {
                   <Ionicons name="pencil-outline" size={20} color="#1D4ED8" />
                   <Text style={styles.actionText}>Renommer</Text>
                 </Pressable>
+                <Pressable
+                  style={styles.actionItem}
+                  onPress={() => {
+                    if (!actionTask) return;
+                    const task = tasks.find((t) => t.id === actionTask.id);
+                    if (task) {
+                      void toggleTaskVisibility(task.id, !task.show_in_grid);
+                      setActionTask(null);
+                    }
+                  }}
+                >
+                  <Ionicons
+                    name={tasks.find((t) => t.id === actionTask?.id)?.show_in_grid ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color="#1D4ED8"
+                  />
+                  <Text style={styles.actionText}>
+                    {tasks.find((t) => t.id === actionTask?.id)?.show_in_grid
+                      ? "Masquer du tableau"
+                      : "Afficher dans le tableau"}
+                  </Text>
+                </Pressable>
                 <Pressable style={styles.actionItem} onPress={handleDeleteTask}>
                   <Ionicons name="trash-outline" size={20} color="#EF4444" />
                   <Text style={[styles.actionText, { color: "#EF4444" }]}>Supprimer</Text>
@@ -251,6 +286,12 @@ export default function ChoresScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="small" color="#1D4ED8" />
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -325,4 +366,17 @@ const styles = StyleSheet.create({
     paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
   },
   actionText: { fontSize: 15, fontWeight: "500", color: "#1D4ED8" },
+  loadingOverlay: {
+    position: "absolute",
+    top: 70,
+    alignSelf: "center",
+    backgroundColor: "rgba(255,255,255,0.9)",
+    borderRadius: 20,
+    padding: 10,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
 });
