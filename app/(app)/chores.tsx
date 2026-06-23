@@ -3,497 +3,326 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   Alert,
+  Modal,
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useHousehold } from "../../lib/hooks/useHousehold";
 import { useChores } from "../../lib/hooks/useChores";
 import ChoreGrid from "../../components/ChoreGrid";
 import ChoreReminderCard from "../../components/ChoreReminder";
 
+const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+
 export default function ChoresScreen() {
   const { profile } = useAuth();
   const { household, members } = useHousehold(profile);
   const {
-    chores,
-    tasks,
-    reminders,
-    loading,
-    setCellIntensity,
-    addTask,
-    editTask,
-    removeTask,
-    toggleReminderDone,
-    updateReminder,
+    chores, tasks, reminders, loading,
+    setCellIntensity, addTask, editTask, removeTask,
+    toggleReminderDone, updateReminder, addReminder,
   } = useChores(profile?.household_id);
 
-  const [newTaskName, setNewTaskName] = useState("");
   const [filterMode, setFilterMode] = useState<"me" | "all">("all");
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [editingTaskName, setEditingTaskName] = useState("");
+
+  // Add task modal
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [newTaskName, setNewTaskName] = useState("");
+  const [isRecurrent, setIsRecurrent] = useState(false);
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+
+  // Task action modal
+  const [actionTask, setActionTask] = useState<{ id: string; name: string } | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [showEditInput, setShowEditInput] = useState(false);
 
   if (!profile || !household) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.emptyText}>
-          Rejoignez un foyer pour acceder au menage.
-        </Text>
-      </View>
+      <SafeAreaView style={styles.centered}>
+        <Text style={styles.emptyText}>Rejoins une coloc pour accéder au ménage.</Text>
+      </SafeAreaView>
     );
   }
 
   const handleAddTask = async () => {
     if (!newTaskName.trim()) return;
-    await addTask(newTaskName);
+    await addTask(newTaskName.trim());
+    if (isRecurrent && selectedDays.length > 0) {
+      const recurrence = selectedDays.join(", ");
+      await addReminder(newTaskName.trim(), recurrence);
+    }
     setNewTaskName("");
+    setIsRecurrent(false);
+    setSelectedDays([]);
+    setShowAddTask(false);
+  };
+
+  const toggleDay = (day: string) => {
+    setSelectedDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
   };
 
   const handleCellPress = (taskName: string, week: number, year: number) => {
     setCellIntensity(taskName, week, year, profile.id);
   };
 
-  const handleStartEdit = (taskId: string, currentName: string) => {
-    setEditingTaskId(taskId);
-    setEditingTaskName(currentName);
+  const handleTaskPress = (taskId: string, taskName: string) => {
+    setActionTask({ id: taskId, name: taskName });
+    setEditingName(taskName);
+    setShowEditInput(false);
   };
 
-  const handleSaveEdit = async (taskId: string, oldName: string) => {
-    if (!editingTaskName.trim()) return;
-    await editTask(taskId, oldName, editingTaskName);
-    setEditingTaskId(null);
-    setEditingTaskName("");
+  const handleSaveEdit = async () => {
+    if (!actionTask || !editingName.trim()) return;
+    await editTask(actionTask.id, actionTask.name, editingName.trim());
+    setActionTask(null);
   };
 
-  const handleDeleteTask = (taskId: string, taskName: string) => {
+  const handleDeleteTask = () => {
+    if (!actionTask) return;
     Alert.alert(
-      "Supprimer la tache",
-      `Supprimer "${taskName}" et toutes ses contributions ?`,
+      "Supprimer",
+      `Supprimer "${actionTask.name}" et ses contributions ?`,
       [
         { text: "Annuler", style: "cancel" },
         {
           text: "Supprimer",
           style: "destructive",
-          onPress: () => removeTask(taskId, taskName),
+          onPress: () => {
+            removeTask(actionTask.id, actionTask.name);
+            setActionTask(null);
+          },
         },
       ]
     );
   };
 
-  const firstReminder = reminders.length > 0 ? reminders[0] : null;
-
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Ménage</Text>
-      </View>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-
-      {loading && (
-        <ActivityIndicator
-          size="small"
-          color="#1D4ED8"
-          style={{ marginBottom: 12 }}
-        />
-      )}
-
-      {/* Reminder card */}
-      <ChoreReminderCard
-        reminder={firstReminder}
-        onToggleDone={toggleReminderDone}
-        onUpdateReminder={updateReminder}
-      />
-
-      {/* Add task */}
-      <View style={styles.addRow}>
-        <TextInput
-          style={styles.addInput}
-          value={newTaskName}
-          onChangeText={setNewTaskName}
-          placeholder="Nouvelle tache menage"
-          placeholderTextColor="#9CA3AF"
-          onSubmitEditing={handleAddTask}
-          returnKeyType="done"
-        />
-        <TouchableOpacity
-          style={[
-            styles.addBtn,
-            !newTaskName.trim() && styles.addBtnDisabled,
-          ]}
-          onPress={handleAddTask}
-          activeOpacity={0.7}
-          disabled={!newTaskName.trim()}
-        >
-          <Text style={styles.addBtnText}>Ajouter tache</Text>
-        </TouchableOpacity>
+        <Pressable style={styles.headerBtn} onPress={() => setShowAddTask(true)}>
+          <Ionicons name="add" size={24} color="#1D4ED8" />
+        </Pressable>
       </View>
 
-      {/* Filter toggle */}
-      <View style={styles.filterRow}>
-        <TouchableOpacity
-          style={[
-            styles.filterBtn,
-            filterMode === "me" && styles.filterBtnActive,
-          ]}
-          onPress={() => setFilterMode("me")}
-          activeOpacity={0.7}
-        >
-          <Text
-            style={[
-              styles.filterBtnText,
-              filterMode === "me" && styles.filterBtnTextActive,
-            ]}
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {loading && <ActivityIndicator size="small" color="#1D4ED8" style={{ marginBottom: 12 }} />}
+
+        {/* Reminders */}
+        {reminders.map((r) => (
+          <ChoreReminderCard
+            key={r.id}
+            reminder={r}
+            onToggleDone={toggleReminderDone}
+            onUpdateReminder={updateReminder}
+          />
+        ))}
+
+        {/* Filter */}
+        <View style={styles.filterRow}>
+          <Pressable
+            style={[styles.filterBtn, filterMode === "me" && styles.filterBtnActive]}
+            onPress={() => setFilterMode("me")}
           >
-            Moi
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.filterBtn,
-            filterMode === "all" && styles.filterBtnActive,
-          ]}
-          onPress={() => setFilterMode("all")}
-          activeOpacity={0.7}
-        >
-          <Text
-            style={[
-              styles.filterBtnText,
-              filterMode === "all" && styles.filterBtnTextActive,
-            ]}
+            <Text style={[styles.filterBtnText, filterMode === "me" && styles.filterBtnTextActive]}>Moi</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.filterBtn, filterMode === "all" && styles.filterBtnActive]}
+            onPress={() => setFilterMode("all")}
           >
-            Tous
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Chore grid */}
-      <ChoreGrid
-        chores={chores}
-        tasks={tasks}
-        currentUserId={profile.id}
-        members={members}
-        filterMode={filterMode}
-        onCellPress={handleCellPress}
-      />
-
-      {/* Task list (edit/delete) */}
-      {tasks.length > 0 && (
-        <View style={styles.taskListSection}>
-          <Text style={styles.sectionTitle}>Gerer les taches</Text>
-          {tasks.map((task) => (
-            <View key={task.id} style={styles.taskListRow}>
-              {editingTaskId === task.id ? (
-                <View style={styles.taskEditRow}>
-                  <TextInput
-                    style={styles.taskEditInput}
-                    value={editingTaskName}
-                    onChangeText={setEditingTaskName}
-                    autoFocus
-                    onSubmitEditing={() => handleSaveEdit(task.id, task.name)}
-                    returnKeyType="done"
-                  />
-                  <TouchableOpacity
-                    style={styles.taskEditSaveBtn}
-                    onPress={() => handleSaveEdit(task.id, task.name)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.taskEditSaveBtnText}>OK</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setEditingTaskId(null)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.taskCancelText}>Annuler</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <>
-                  <Text style={styles.taskListName} numberOfLines={1}>
-                    {task.name}
-                  </Text>
-                  <View style={styles.taskActions}>
-                    <TouchableOpacity
-                      onPress={() => handleStartEdit(task.id, task.name)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.taskEditText}>Modifier</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleDeleteTask(task.id, task.name)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.taskDeleteText}>Supprimer</Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )}
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Legend */}
-      <View style={styles.legendSection}>
-        <Text style={styles.sectionTitle}>Legende</Text>
-
-        {/* User colors */}
-        <View style={styles.legendRow}>
-          {members.map((m) => (
-            <View key={m.id} style={styles.legendItem}>
-              <View
-                style={[styles.legendSwatch, { backgroundColor: m.color }]}
-              />
-              <Text style={styles.legendLabel} numberOfLines={1}>
-                {m.display_name}
-              </Text>
-            </View>
-          ))}
+            <Text style={[styles.filterBtnText, filterMode === "all" && styles.filterBtnTextActive]}>Tous</Text>
+          </Pressable>
         </View>
 
-        {/* Intensity levels */}
-        <View style={styles.legendRow}>
-          <View style={styles.legendItem}>
-            <View
-              style={[
-                styles.legendSwatch,
-                { backgroundColor: "#1D4ED8", opacity: 0.35 },
-              ]}
-            />
-            <Text style={styles.legendLabel}>Leger</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View
-              style={[
-                styles.legendSwatch,
-                { backgroundColor: "#1D4ED8", opacity: 0.65 },
-              ]}
-            />
-            <Text style={styles.legendLabel}>Moyen</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View
-              style={[
-                styles.legendSwatch,
-                { backgroundColor: "#1D4ED8", opacity: 1.0 },
-              ]}
-            />
-            <Text style={styles.legendLabel}>Intense</Text>
-          </View>
-        </View>
-      </View>
+        <ChoreGrid
+          chores={chores}
+          tasks={tasks}
+          currentUserId={profile.id}
+          members={members}
+          filterMode={filterMode}
+          onCellPress={handleCellPress}
+          onTaskPress={handleTaskPress}
+        />
 
-      <View style={{ height: 40 }} />
+        <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Add task modal */}
+      <Modal visible={showAddTask} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Nouvelle tâche</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Nom de la tâche"
+              placeholderTextColor="#9CA3AF"
+              value={newTaskName}
+              onChangeText={setNewTaskName}
+              autoFocus
+            />
+
+            <Pressable
+              style={styles.checkRow}
+              onPress={() => setIsRecurrent(!isRecurrent)}
+            >
+              <Ionicons
+                name={isRecurrent ? "checkbox" : "square-outline"}
+                size={22}
+                color={isRecurrent ? "#1D4ED8" : "#9CA3AF"}
+              />
+              <Text style={styles.checkLabel}>Tâche récurrente (rappel)</Text>
+            </Pressable>
+
+            {isRecurrent && (
+              <View style={styles.daysRow}>
+                {DAYS.map((day) => (
+                  <Pressable
+                    key={day}
+                    style={[styles.dayChip, selectedDays.includes(day) && styles.dayChipActive]}
+                    onPress={() => toggleDay(day)}
+                  >
+                    <Text style={[styles.dayChipText, selectedDays.includes(day) && styles.dayChipTextActive]}>
+                      {day.slice(0, 3)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
+            <View style={styles.modalBtnRow}>
+              <Pressable style={styles.modalCancelBtn} onPress={() => { setShowAddTask(false); setNewTaskName(""); setIsRecurrent(false); setSelectedDays([]); }}>
+                <Text style={styles.modalCancelText}>Annuler</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalSubmitBtn, !newTaskName.trim() && { opacity: 0.5 }]}
+                onPress={() => void handleAddTask()}
+                disabled={!newTaskName.trim()}
+              >
+                <Text style={styles.modalSubmitText}>Ajouter</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Task action modal */}
+      <Modal visible={!!actionTask} transparent animationType="fade">
+        <Pressable style={styles.modalOverlay} onPress={() => setActionTask(null)}>
+          <Pressable style={styles.modalContent} onPress={() => {}}>
+            <Text style={styles.modalTitle}>{actionTask?.name}</Text>
+
+            {showEditInput ? (
+              <>
+                <TextInput
+                  style={styles.modalInput}
+                  value={editingName}
+                  onChangeText={setEditingName}
+                  autoFocus
+                />
+                <View style={styles.modalBtnRow}>
+                  <Pressable style={styles.modalCancelBtn} onPress={() => setShowEditInput(false)}>
+                    <Text style={styles.modalCancelText}>Annuler</Text>
+                  </Pressable>
+                  <Pressable style={styles.modalSubmitBtn} onPress={() => void handleSaveEdit()}>
+                    <Text style={styles.modalSubmitText}>Enregistrer</Text>
+                  </Pressable>
+                </View>
+              </>
+            ) : (
+              <View style={styles.actionList}>
+                <Pressable style={styles.actionItem} onPress={() => setShowEditInput(true)}>
+                  <Ionicons name="pencil-outline" size={20} color="#1D4ED8" />
+                  <Text style={styles.actionText}>Renommer</Text>
+                </Pressable>
+                <Pressable style={styles.actionItem} onPress={handleDeleteTask}>
+                  <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                  <Text style={[styles.actionText, { color: "#EF4444" }]}>Supprimer</Text>
+                </Pressable>
+              </View>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#F4F6FA",
-  },
+  screen: { flex: 1, backgroundColor: "#F4F6FA" },
   header: {
     backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
     paddingHorizontal: 20,
     paddingVertical: 12,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#111827",
-  },
-  content: {
-    padding: 16,
-  },
-  centered: {
-    flex: 1,
-    backgroundColor: "#F4F6FA",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  emptyText: {
-    fontSize: 15,
-    color: "#6B7280",
-    textAlign: "center",
-  },
-
-  // Add task
-  addRow: {
     flexDirection: "row",
-    marginBottom: 14,
-    gap: 8,
-  },
-  addInput: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-    borderColor: "#E5E7EB",
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: "#1F2937",
-  },
-  addBtn: {
-    backgroundColor: "#1D4ED8",
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  addBtnDisabled: {
-    opacity: 0.5,
-  },
-  addBtnText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 13,
-  },
-
-  // Filter
-  filterRow: {
-    flexDirection: "row",
-    marginBottom: 14,
-    gap: 8,
-  },
-  filterBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    alignItems: "center",
-  },
-  filterBtnActive: {
-    backgroundColor: "#1D4ED8",
-    borderColor: "#1D4ED8",
-  },
-  filterBtnText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#374151",
-  },
-  filterBtnTextActive: {
-    color: "#FFFFFF",
-  },
-
-  // Task list management
-  taskListSection: {
-    marginTop: 20,
-    backgroundColor: "#FFFFFF",
-    borderColor: "#E5E7EB",
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#374151",
-    marginBottom: 10,
-  },
-  taskListRow: {
-    flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-  },
-  taskListName: {
-    flex: 1,
-    fontSize: 14,
-    color: "#1F2937",
-    fontWeight: "500",
-  },
-  taskActions: {
-    flexDirection: "row",
-    gap: 14,
-  },
-  taskEditText: {
-    fontSize: 13,
-    color: "#1D4ED8",
-    fontWeight: "500",
-  },
-  taskDeleteText: {
-    fontSize: 13,
-    color: "#DC2626",
-    fontWeight: "500",
-  },
-  taskEditRow: {
-    flex: 1,
-    flexDirection: "row",
     alignItems: "center",
-    gap: 8,
   },
-  taskEditInput: {
-    flex: 1,
-    backgroundColor: "#F9FAFB",
-    borderColor: "#E5E7EB",
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 14,
-    color: "#1F2937",
-  },
-  taskEditSaveBtn: {
-    backgroundColor: "#1D4ED8",
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  taskEditSaveBtnText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 13,
-  },
-  taskCancelText: {
-    fontSize: 13,
-    color: "#6B7280",
-    fontWeight: "500",
-  },
+  headerTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
+  headerBtn: { padding: 4 },
+  content: { padding: 16 },
+  centered: { flex: 1, backgroundColor: "#F4F6FA", justifyContent: "center", alignItems: "center", padding: 24 },
+  emptyText: { fontSize: 15, color: "#6B7280", textAlign: "center" },
 
-  // Legend
-  legendSection: {
-    marginTop: 20,
-    backgroundColor: "#FFFFFF",
-    borderColor: "#E5E7EB",
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
+  filterRow: { flexDirection: "row", marginBottom: 12, gap: 8 },
+  filterBtn: {
+    flex: 1, paddingVertical: 8, borderRadius: 8,
+    backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E5E7EB", alignItems: "center",
   },
-  legendRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-    marginBottom: 10,
+  filterBtnActive: { backgroundColor: "#1D4ED8", borderColor: "#1D4ED8" },
+  filterBtnText: { fontSize: 13, fontWeight: "600", color: "#374151" },
+  filterBtnTextActive: { color: "#FFFFFF" },
+
+  // Modals
+  modalOverlay: {
+    flex: 1, backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
   },
-  legendItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
+  modalContent: {
+    backgroundColor: "#FFFFFF", borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: 20, paddingBottom: 32,
   },
-  legendSwatch: {
-    width: 16,
-    height: 16,
-    borderRadius: 4,
+  modalTitle: { fontSize: 17, fontWeight: "700", color: "#111827", marginBottom: 16 },
+  modalInput: {
+    borderWidth: 1, borderColor: "#D1D5DB", borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#111827",
+    marginBottom: 12,
   },
-  legendLabel: {
-    fontSize: 12,
-    color: "#6B7280",
-    fontWeight: "500",
+  checkRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
+  checkLabel: { fontSize: 14, color: "#374151" },
+  daysRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 16 },
+  dayChip: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
+    backgroundColor: "#F3F4F6", borderWidth: 1, borderColor: "#E5E7EB",
   },
+  dayChipActive: { backgroundColor: "#1D4ED8", borderColor: "#1D4ED8" },
+  dayChipText: { fontSize: 13, fontWeight: "500", color: "#374151" },
+  dayChipTextActive: { color: "#FFFFFF" },
+  modalBtnRow: { flexDirection: "row", gap: 10, marginTop: 4 },
+  modalCancelBtn: {
+    flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: "center",
+    backgroundColor: "#F3F4F6", borderWidth: 1, borderColor: "#E5E7EB",
+  },
+  modalCancelText: { fontWeight: "600", color: "#6B7280", fontSize: 15 },
+  modalSubmitBtn: {
+    flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: "center",
+    backgroundColor: "#1D4ED8",
+  },
+  modalSubmitText: { fontWeight: "600", color: "#FFFFFF", fontSize: 15 },
+
+  actionList: { gap: 4 },
+  actionItem: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
+  },
+  actionText: { fontSize: 15, fontWeight: "500", color: "#1D4ED8" },
 });

@@ -10,8 +10,6 @@ export default function AppLayout() {
           backgroundColor: "#FFFFFF",
           borderTopColor: "#E5E7EB",
           borderTopWidth: 1,
-          height: 56,
-          paddingBottom: 6,
           paddingTop: 4,
         },
         tabBarActiveTintColor: "#1D4ED8",

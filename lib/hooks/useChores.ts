@@ -221,6 +221,17 @@ export function useChores(householdId: string | null | undefined) {
     [fetchAll]
   );
 
+  const addReminder = useCallback(
+    async (title: string, recurrence: string) => {
+      if (!householdId) return;
+      await supabase
+        .from("chore_reminders")
+        .insert({ household_id: householdId, title, recurrence });
+      void fetchAll();
+    },
+    [householdId, fetchAll]
+  );
+
   return {
     chores,
     tasks,
@@ -232,5 +243,6 @@ export function useChores(householdId: string | null | undefined) {
     removeTask,
     toggleReminderDone,
     updateReminder,
+    addReminder,
   };
 }
