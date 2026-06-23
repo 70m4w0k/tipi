@@ -111,15 +111,18 @@ CREATE TABLE shared_files (
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO profiles (id, email, display_name)
+  INSERT INTO public.profiles (id, email, display_name)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'display_name', split_part(NEW.email, '@', 1))
   );
   RETURN NEW;
+EXCEPTION WHEN others THEN
+  RAISE LOG 'handle_new_user failed for %: %', NEW.id, SQLERRM;
+  RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
@@ -155,7 +158,7 @@ ALTER TABLE shared_files ENABLE ROW LEVEL SECURITY;
 -- ============================================================
 
 -- households
-CREATE POLICY "select_own" ON households FOR SELECT USING (id = my_household_id());
+CREATE POLICY "select_own" ON households FOR SELECT USING (true);
 CREATE POLICY "insert_any" ON households FOR INSERT WITH CHECK (true);
 
 -- profiles

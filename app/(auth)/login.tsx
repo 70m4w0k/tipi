@@ -12,10 +12,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { useAuth } from "../../lib/hooks/useAuth";
 
 export default function LoginScreen() {
   const { signUp, signIn, signInWithMagicLink } = useAuth();
+  const router = useRouter();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,23 +31,30 @@ export default function LoginScreen() {
       return;
     }
     setLoading(true);
-    if (mode === "register") {
-      if (!displayName.trim()) {
-        Alert.alert("Champ requis", "Choisis un nom d'affichage.");
-        setLoading(false);
-        return;
-      }
-      const { error } = await signUp(email.trim(), password, displayName.trim());
-      if (error) {
-        Alert.alert("Erreur", error.message);
+    try {
+      if (mode === "register") {
+        if (!displayName.trim()) {
+          Alert.alert("Champ requis", "Choisis un nom d'affichage.");
+          setLoading(false);
+          return;
+        }
+        const { error } = await signUp(email.trim(), password, displayName.trim());
+        if (error) {
+          Alert.alert("Erreur", error.message);
+        } else {
+          router.replace("/");
+        }
       } else {
-        Alert.alert("Compte créé", "Vérifie ton email pour confirmer ton compte.");
+        const { error } = await signIn(email.trim(), password);
+        if (error) {
+          Alert.alert("Erreur d'authentification", error.message);
+        } else {
+          router.replace("/");
+        }
       }
-    } else {
-      const { error } = await signIn(email.trim(), password);
-      if (error) {
-        Alert.alert("Erreur", error.message);
-      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Erreur inconnue";
+      Alert.alert("Erreur inattendue", msg);
     }
     setLoading(false);
   };

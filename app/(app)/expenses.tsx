@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useHousehold } from "../../lib/hooks/useHousehold";
 import { useExpenses, computeBalances } from "../../lib/hooks/useExpenses";
@@ -67,6 +68,10 @@ export default function ExpensesScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Dépenses</Text>
+      </View>
+
       {/* Header résumé */}
       <View style={styles.summaryRow}>
         <View style={styles.summaryCard}>
@@ -97,10 +102,10 @@ export default function ExpensesScreen() {
           >
             <Text style={[styles.tabText, view === v && styles.tabTextActive]}>
               {v === "list"
-                ? "📋 Dépenses"
+                ? "Liste"
                 : v === "add"
-                  ? "➕ Ajouter"
-                  : "⚖️ Bilans"}
+                  ? "Ajouter"
+                  : "Bilans"}
             </Text>
           </Pressable>
         ))}
@@ -112,7 +117,7 @@ export default function ExpensesScreen() {
           <View style={styles.section}>
             {expenses.length === 0 ? (
               <Text style={styles.empty}>
-                Aucune dépense. Appuie sur ➕ Ajouter.
+                Aucune dépense pour le moment.
               </Text>
             ) : (
               expenses.map((expense) => (
@@ -153,6 +158,18 @@ export default function ExpensesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F4F6FA" },
+  header: {
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+  },
   loadingContainer: {
     flex: 1,
     backgroundColor: "#F4F6FA",

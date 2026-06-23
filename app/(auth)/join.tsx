@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,16 +12,24 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useHousehold } from "../../lib/hooks/useHousehold";
 
 export default function JoinScreen() {
   const { profile, signOut, refreshProfile } = useAuth();
   const { createHousehold, joinHousehold } = useHousehold(profile);
+  const router = useRouter();
   const [houseName, setHouseName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [createdCode, setCreatedCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (profile?.household_id) {
+      router.replace("/(app)/chat");
+    }
+  }, [profile?.household_id, router]);
 
   const handleCreate = async () => {
     if (!houseName.trim()) {

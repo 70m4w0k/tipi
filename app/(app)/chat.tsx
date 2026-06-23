@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useHousehold } from "../../lib/hooks/useHousehold";
@@ -23,7 +24,7 @@ import PollCreator from "../../components/PollCreator";
 
 export default function ChatScreen() {
   const { session, profile } = useAuth();
-  const { members } = useHousehold(profile);
+  const { household, members } = useHousehold(profile);
   const { messages, loading, sendMessage, addReaction, vote } = useMessages(
     profile?.household_id
   );
@@ -31,6 +32,7 @@ export default function ChatScreen() {
   const [text, setText] = useState("");
   const [showPollCreator, setShowPollCreator] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<TextInput>(null);
 
   const currentUserId = session?.user?.id ?? "";
 
@@ -46,7 +48,7 @@ export default function ChatScreen() {
 
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Permission requise", "Autorise l'acces aux photos pour envoyer une image.");
+      Alert.alert("Permission requise", "Autorise l'accès aux photos pour envoyer une image.");
       return;
     }
 
@@ -139,9 +141,9 @@ export default function ChatScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>💬</Text>
+          <Ionicons name="chatbubbles-outline" size={48} color="#9CA3AF" />
           <Text style={styles.emptyText}>
-            Rejoins ou cree une coloc pour acceder au chat.
+            Rejoins ou crée une coloc pour accéder au chat.
           </Text>
         </View>
       </SafeAreaView>
@@ -149,15 +151,18 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Discussions</Text>
+        <Text style={styles.headerTitle}>{household?.name ?? "Chat"}</Text>
+        <Text style={styles.headerSubtitle}>
+          {members.length} membre{members.length > 1 ? "s" : ""}
+        </Text>
       </View>
 
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
         {loading && messages.length === 0 ? (
           <View style={styles.loadingContainer}>
@@ -165,9 +170,9 @@ export default function ChatScreen() {
           </View>
         ) : messages.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>🏠</Text>
+            <Ionicons name="chatbubbles-outline" size={48} color="#D1D5DB" />
             <Text style={styles.emptyText}>
-              Pas encore de messages. Envoie le premier !
+              Pas encore de messages.{"\n"}Envoie le premier !
             </Text>
           </View>
         ) : (
@@ -178,44 +183,53 @@ export default function ChatScreen() {
             inverted
             contentContainerStyle={styles.listContent}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
           />
         )}
 
         <View style={styles.inputBar}>
-          <Pressable
-            style={styles.iconButton}
-            onPress={() => void handlePickImage()}
-            disabled={uploading}
-          >
-            <Text style={styles.iconText}>{uploading ? "..." : "\u{1F4F7}"}</Text>
-          </Pressable>
+          <View style={styles.inputRow}>
+            <Pressable
+              style={styles.iconButton}
+              onPress={() => void handlePickImage()}
+              disabled={uploading}
+            >
+              {uploading ? (
+                <ActivityIndicator size={18} color="#6B7280" />
+              ) : (
+                <Ionicons name="camera-outline" size={22} color="#6B7280" />
+              )}
+            </Pressable>
 
-          <Pressable
-            style={styles.iconButton}
-            onPress={() => setShowPollCreator(true)}
-          >
-            <Text style={styles.iconText}>{"\u{1F4CA}"}</Text>
-          </Pressable>
+            <Pressable
+              style={styles.iconButton}
+              onPress={() => setShowPollCreator(true)}
+            >
+              <Ionicons name="stats-chart-outline" size={20} color="#6B7280" />
+            </Pressable>
 
-          <TextInput
-            style={styles.textInput}
-            placeholder="Message..."
-            value={text}
-            onChangeText={setText}
-            multiline
-            maxLength={2000}
-          />
+            <TextInput
+              ref={inputRef}
+              style={styles.textInput}
+              placeholder="Message..."
+              placeholderTextColor="#9CA3AF"
+              value={text}
+              onChangeText={setText}
+              multiline
+              maxLength={2000}
+            />
 
-          <Pressable
-            style={[
-              styles.sendButton,
-              !text.trim() && styles.sendButtonDisabled,
-            ]}
-            onPress={() => void handleSend()}
-            disabled={!text.trim()}
-          >
-            <Text style={styles.sendIcon}>{"\u{2191}"}</Text>
-          </Pressable>
+            <Pressable
+              style={[
+                styles.sendButton,
+                !text.trim() && styles.sendButtonDisabled,
+              ]}
+              onPress={() => void handleSend()}
+              disabled={!text.trim()}
+            >
+              <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
+            </Pressable>
+          </View>
         </View>
       </KeyboardAvoidingView>
 
@@ -242,12 +256,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingVertical: 12,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
     color: "#111827",
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: "#6B7280",
+    marginTop: 1,
   },
   loadingContainer: {
     flex: 1,
@@ -259,40 +278,37 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 32,
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 12,
+    gap: 12,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 15,
     color: "#6B7280",
     textAlign: "center",
     lineHeight: 22,
   },
   listContent: {
-    paddingVertical: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
   },
   inputBar: {
-    flexDirection: "row",
-    alignItems: "flex-end",
     backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
     borderTopColor: "#E5E7EB",
     paddingHorizontal: 8,
-    paddingVertical: 8,
-    gap: 6,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === "ios" ? 20 : 8,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 4,
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#F3F4F6",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: "center",
     justifyContent: "center",
-  },
-  iconText: {
-    fontSize: 20,
   },
   textInput: {
     flex: 1,
@@ -300,26 +316,22 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
     borderRadius: 20,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingTop: 10,
+    paddingBottom: 10,
     fontSize: 15,
     maxHeight: 100,
     backgroundColor: "#F9FAFB",
     color: "#111827",
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: "#1D4ED8",
     alignItems: "center",
     justifyContent: "center",
   },
   sendButtonDisabled: {
-    backgroundColor: "#93C5FD",
-  },
-  sendIcon: {
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "700",
+    backgroundColor: "#CBD5E1",
   },
 });

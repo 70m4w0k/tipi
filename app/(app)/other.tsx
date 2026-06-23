@@ -147,12 +147,14 @@ export default function OtherScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Plus</Text>
+      </View>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <Text style={styles.screenTitle}>Autres</Text>
 
         {/* Tab toggle */}
         <View style={styles.tabRow}>
@@ -276,13 +278,17 @@ export default function OtherScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F4F6FA" },
   flex: { flex: 1 },
-  screenTitle: {
-    fontSize: 28,
+  header: {
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  headerTitle: {
+    fontSize: 18,
     fontWeight: "700",
     color: "#111827",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 8,
   },
   tabRow: {
     flexDirection: "row",

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useHousehold } from "../../lib/hooks/useHousehold";
 import { useChores } from "../../lib/hooks/useChores";
@@ -86,12 +87,14 @@ export default function ChoresScreen() {
   const firstReminder = reminders.length > 0 ? reminders[0] : null;
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text style={styles.title}>Menage</Text>
+    <SafeAreaView style={styles.screen} edges={["top"]}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Ménage</Text>
+      </View>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
 
       {loading && (
         <ActivityIndicator
@@ -287,7 +290,8 @@ export default function ChoresScreen() {
       </View>
 
       <View style={{ height: 40 }} />
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -296,9 +300,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F4F6FA",
   },
+  header: {
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+  },
   content: {
     padding: 16,
-    paddingTop: 60,
   },
   centered: {
     flex: 1,
@@ -306,12 +321,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#111827",
-    marginBottom: 20,
   },
   emptyText: {
     fontSize: 15,
