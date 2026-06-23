@@ -3,48 +3,86 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 function buildApiBase() {
+  // Priority 1: Check environment variable
   const fromEnv = process.env.EXPO_PUBLIC_CHAT_API_URL?.trim();
   if (fromEnv) {
-    return fromEnv.replace(/\/+$/, "");
+    const url = fromEnv.replace(/\/+$/, "");
+    console.log("[API] Using EXPO_PUBLIC_CHAT_API_URL:", url);
+    return url;
   }
 
+  // Priority 2: Web - use same origin
   if (Platform.OS === "web" && typeof window !== "undefined") {
-    return `${window.location.origin}/api/chat`;
+    const url = `${window.location.origin}/api/chat`;
+    console.log("[API] Using web origin:", url);
+    return url;
   }
 
-  const anyConstants = Constants as unknown as {
-    expoConfig?: { hostUri?: string };
-    manifest?: { debuggerHost?: string };
-    manifest2?: { extra?: { expoGo?: { debuggerHost?: string } } };
-  };
-
-  const hostUri =
-    anyConstants.expoConfig?.hostUri ??
-    anyConstants.manifest2?.extra?.expoGo?.debuggerHost ??
-    anyConstants.manifest?.debuggerHost;
-
-  const host = hostUri?.split(":")[0];
-  if (host) {
-    return `http://${host}:3000/api/chat`;
+  // Priority 3: Android emulator special handling
+  if (Platform.OS === "android") {
+    const emuUrl = "http://10.0.2.2:3000/api/chat";
+    console.log("[API] Trying Android emulator address:", emuUrl);
+    return emuUrl;
   }
 
-  return "http://127.0.0.1:3000/api/chat";
+  // Priority 4: Try to extract host from Expo Constants
+  try {
+    const anyConstants = Constants as unknown as {
+      expoConfig?: { hostUri?: string };
+      manifest?: { debuggerHost?: string };
+      manifest2?: { extra?: { expoGo?: { debuggerHost?: string } } };
+    };
+
+    const hostUri =
+      anyConstants.expoConfig?.hostUri ??
+      anyConstants.manifest2?.extra?.expoGo?.debuggerHost ??
+      anyConstants.manifest?.debuggerHost;
+
+    if (hostUri) {
+      const host = hostUri.split(":")[0];
+      const url = `http://${host}:3000/api/chat`;
+      console.log("[API] Using Expo hostUri:", url);
+      return url;
+    }
+  } catch (e) {
+    console.warn("[API] Error reading Constants:", e);
+  }
+
+  // Fallback: localhost
+  const fallback = "http://127.0.0.1:3000/api/chat";
+  console.log("[API] Using fallback localhost:", fallback);
+  return fallback;
 }
 
 const API_BASE = buildApiBase();
+console.log("[API] Final API_BASE:", API_BASE);
 
 export const chatApi = {
   async getMessages(): Promise<ChatMessage[]> {
     try {
-      const res = await fetch(`${API_BASE}/messages`, {
+      const url = `${API_BASE}/messages`;
+      console.log("[getMessages] Fetching from:", url);
+      const res = await fetch(url, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const text = await res.text();
+        console.error(
+          `[getMessages] HTTP ${res.status}:`,
+          text.substring(0, 200),
+        );
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data = await res.json();
+      console.log(
+        "[getMessages] Success, received",
+        data.messages?.length ?? 0,
+        "messages",
+      );
       return data.messages || [];
     } catch (err) {
-      console.error("Erreur getMessages:", err);
+      console.error("[getMessages] Error:", err);
       return [];
     }
   },
@@ -59,7 +97,9 @@ export const chatApi = {
     },
   ): Promise<ChatMessage | null> {
     try {
-      const res = await fetch(`${API_BASE}/send`, {
+      const url = `${API_BASE}/send`;
+      console.log("[sendMessage] POSTing to:", url);
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -71,11 +111,19 @@ export const chatApi = {
           sentAt: new Date().toISOString(),
         }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const text = await res.text();
+        console.error(
+          `[sendMessage] HTTP ${res.status}:`,
+          text.substring(0, 200),
+        );
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data = await res.json();
+      console.log("[sendMessage] Success");
       return data.message;
     } catch (err) {
-      console.error("Erreur sendMessage:", err);
+      console.error("[sendMessage] Error:", err);
       return null;
     }
   },
