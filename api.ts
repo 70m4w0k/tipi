@@ -1,6 +1,37 @@
 import { ChatMessage } from "./types";
+import Constants from "expo-constants";
+import { Platform } from "react-native";
 
-const API_BASE = "http://192.168.1.171:3000/api/chat";
+function buildApiBase() {
+  const fromEnv = process.env.EXPO_PUBLIC_CHAT_API_URL?.trim();
+  if (fromEnv) {
+    return fromEnv.replace(/\/+$/, "");
+  }
+
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    return `${window.location.origin}/api/chat`;
+  }
+
+  const anyConstants = Constants as unknown as {
+    expoConfig?: { hostUri?: string };
+    manifest?: { debuggerHost?: string };
+    manifest2?: { extra?: { expoGo?: { debuggerHost?: string } } };
+  };
+
+  const hostUri =
+    anyConstants.expoConfig?.hostUri ??
+    anyConstants.manifest2?.extra?.expoGo?.debuggerHost ??
+    anyConstants.manifest?.debuggerHost;
+
+  const host = hostUri?.split(":")[0];
+  if (host) {
+    return `http://${host}:3000/api/chat`;
+  }
+
+  return "http://127.0.0.1:3000/api/chat";
+}
+
+const API_BASE = buildApiBase();
 
 export const chatApi = {
   async getMessages(): Promise<ChatMessage[]> {

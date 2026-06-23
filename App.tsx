@@ -51,7 +51,9 @@ export default function App() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [chores, setChores] = useState<Chore[]>([]);
   const [choreTasks, setChoreTasks] = useState<ChoreTask[]>([]);
-  const [choreReminder, setChoreReminder] = useState<ChoreReminder>(DEFAULT_CHORE_REMINDER);
+  const [choreReminder, setChoreReminder] = useState<ChoreReminder>(
+    DEFAULT_CHORE_REMINDER,
+  );
   const [events, setEvents] = useState<HouseEvent[]>([]);
   const [files, setFiles] = useState<SharedFile[]>([]);
 
@@ -167,10 +169,18 @@ export default function App() {
               {ROOMMATES.map((member) => (
                 <Pressable
                   key={member}
-                  style={[styles.chip, currentUser === member && styles.chipActive]}
+                  style={[
+                    styles.chip,
+                    currentUser === member && styles.chipActive,
+                  ]}
                   onPress={() => setCurrentUser(member)}
                 >
-                  <Text style={[styles.chipText, currentUser === member && styles.chipTextActive]}>
+                  <Text
+                    style={[
+                      styles.chipText,
+                      currentUser === member && styles.chipTextActive,
+                    ]}
+                  >
                     {member}
                   </Text>
                 </Pressable>
@@ -178,8 +188,10 @@ export default function App() {
             </ScrollView>
           </View>
 
-          <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
-            {activeMainTab === "chat" && <ChatScreen currentUser={currentUser} />}
+          <View style={styles.content}>
+            {activeMainTab === "chat" && (
+              <ChatScreen currentUser={currentUser} />
+            )}
 
             {activeMainTab === "expenses" && (
               <ExpensesScreen
@@ -203,82 +215,115 @@ export default function App() {
               />
             )}
 
-            {activeMainTab === "other" && activeOtherTab === "events" && (
-              <View style={styles.panel}>
-                <Text style={styles.panelTitle}>Calendrier d'evenements</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ex: Sortir les poubelles"
-                  value={eventTitle}
-                  onChangeText={setEventTitle}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Date/heure (ex: 2026-06-24 20:00)"
-                  value={eventDate}
-                  onChangeText={setEventDate}
-                />
-                <TextInput
-                  style={[styles.input, styles.multilineInput]}
-                  placeholder="Note optionnelle"
-                  value={eventNote}
-                  onChangeText={setEventNote}
-                  multiline
-                />
-                <Pressable style={styles.fullButton} onPress={addEvent}>
-                  <Text style={styles.actionButtonText}>Ajouter l'evenement</Text>
-                </Pressable>
-                {events.map((event) => (
-                  <View key={event.id} style={styles.card}>
-                    <Text style={styles.cardTitle}>{event.title}</Text>
-                    <Text>{event.date}</Text>
-                    {event.note ? <Text>{event.note}</Text> : null}
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {activeMainTab === "other" && activeOtherTab === "files" && (
-              <View style={styles.panel}>
-                <Text style={styles.panelTitle}>Documents partages</Text>
-                <Pressable style={styles.fullButton} onPress={() => void addSharedFile()}>
-                  <Text style={styles.actionButtonText}>Importer un document</Text>
-                </Pressable>
-                {files.length === 0 ? (
-                  <Text style={styles.empty}>Aucun document partage.</Text>
-                ) : (
-                  files.map((file) => (
-                    <Pressable
-                      key={file.id}
-                      style={styles.card}
-                      onPress={() => void Linking.openURL(file.uri)}
-                    >
-                      <Text style={styles.cardTitle}>{file.name}</Text>
-                      <Text>
-                        Ajoute par {file.uploadedBy} - {formatDate(file.uploadedAt)}
+            {activeMainTab === "other" && (
+              <ScrollView
+                style={styles.content}
+                contentContainerStyle={styles.contentInner}
+              >
+                {activeOtherTab === "events" && (
+                  <View style={styles.panel}>
+                    <Text style={styles.panelTitle}>
+                      Calendrier d'evenements
+                    </Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Ex: Sortir les poubelles"
+                      value={eventTitle}
+                      onChangeText={setEventTitle}
+                    />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Date/heure (ex: 2026-06-24 20:00)"
+                      value={eventDate}
+                      onChangeText={setEventDate}
+                    />
+                    <TextInput
+                      style={[styles.input, styles.multilineInput]}
+                      placeholder="Note optionnelle"
+                      value={eventNote}
+                      onChangeText={setEventNote}
+                      multiline
+                    />
+                    <Pressable style={styles.fullButton} onPress={addEvent}>
+                      <Text style={styles.actionButtonText}>
+                        Ajouter l'evenement
                       </Text>
                     </Pressable>
-                  ))
+                    {events.map((event) => (
+                      <View key={event.id} style={styles.card}>
+                        <Text style={styles.cardTitle}>{event.title}</Text>
+                        <Text>{event.date}</Text>
+                        {event.note ? <Text>{event.note}</Text> : null}
+                      </View>
+                    ))}
+                  </View>
                 )}
-              </View>
+
+                {activeOtherTab === "files" && (
+                  <View style={styles.panel}>
+                    <Text style={styles.panelTitle}>Documents partages</Text>
+                    <Pressable
+                      style={styles.fullButton}
+                      onPress={() => void addSharedFile()}
+                    >
+                      <Text style={styles.actionButtonText}>
+                        Importer un document
+                      </Text>
+                    </Pressable>
+                    {files.length === 0 ? (
+                      <Text style={styles.empty}>Aucun document partage.</Text>
+                    ) : (
+                      files.map((file) => (
+                        <Pressable
+                          key={file.id}
+                          style={styles.card}
+                          onPress={() => void Linking.openURL(file.uri)}
+                        >
+                          <Text style={styles.cardTitle}>{file.name}</Text>
+                          <Text>
+                            Ajoute par {file.uploadedBy} -{" "}
+                            {formatDate(file.uploadedAt)}
+                          </Text>
+                        </Pressable>
+                      ))
+                    )}
+                  </View>
+                )}
+              </ScrollView>
             )}
-          </ScrollView>
+          </View>
 
           {activeMainTab === "other" && (
             <View style={styles.subTabRow}>
               <Pressable
-                style={[styles.subTab, activeOtherTab === "events" && styles.subTabActive]}
+                style={[
+                  styles.subTab,
+                  activeOtherTab === "events" && styles.subTabActive,
+                ]}
                 onPress={() => setActiveOtherTab("events")}
               >
-                <Text style={[styles.subTabText, activeOtherTab === "events" && styles.subTabTextActive]}>
+                <Text
+                  style={[
+                    styles.subTabText,
+                    activeOtherTab === "events" && styles.subTabTextActive,
+                  ]}
+                >
                   Evenements
                 </Text>
               </Pressable>
               <Pressable
-                style={[styles.subTab, activeOtherTab === "files" && styles.subTabActive]}
+                style={[
+                  styles.subTab,
+                  activeOtherTab === "files" && styles.subTabActive,
+                ]}
                 onPress={() => setActiveOtherTab("files")}
               >
-                <Text style={[styles.subTabText, activeOtherTab === "files" && styles.subTabTextActive]}>
+                <Text
+                  style={[
+                    styles.subTabText,
+                    activeOtherTab === "files" && styles.subTabTextActive,
+                  ]}
+                >
                   Documents
                 </Text>
               </Pressable>
@@ -286,10 +331,26 @@ export default function App() {
           )}
 
           <View style={styles.bottomTabBar}>
-            <BottomTabButton label="Discussions" active={activeMainTab === "chat"} onPress={() => setActiveMainTab("chat")} />
-            <BottomTabButton label="Depenses" active={activeMainTab === "expenses"} onPress={() => setActiveMainTab("expenses")} />
-            <BottomTabButton label="Menage" active={activeMainTab === "chores"} onPress={() => setActiveMainTab("chores")} />
-            <BottomTabButton label="Autres" active={activeMainTab === "other"} onPress={() => setActiveMainTab("other")} />
+            <BottomTabButton
+              label="Discussions"
+              active={activeMainTab === "chat"}
+              onPress={() => setActiveMainTab("chat")}
+            />
+            <BottomTabButton
+              label="Depenses"
+              active={activeMainTab === "expenses"}
+              onPress={() => setActiveMainTab("expenses")}
+            />
+            <BottomTabButton
+              label="Menage"
+              active={activeMainTab === "chores"}
+              onPress={() => setActiveMainTab("chores")}
+            />
+            <BottomTabButton
+              label="Autres"
+              active={activeMainTab === "other"}
+              onPress={() => setActiveMainTab("other")}
+            />
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -307,8 +368,15 @@ function BottomTabButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable style={[styles.bottomTab, active && styles.bottomTabActive]} onPress={onPress}>
-      <Text style={[styles.bottomTabText, active && styles.bottomTabTextActive]}>{label}</Text>
+    <Pressable
+      style={[styles.bottomTab, active && styles.bottomTabActive]}
+      onPress={onPress}
+    >
+      <Text
+        style={[styles.bottomTabText, active && styles.bottomTabTextActive]}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
