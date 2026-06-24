@@ -13,8 +13,6 @@ export default function AppLayout() {
 
   const isTabEnabled = (key: string) => enabledTabs.includes(key as any);
 
-  const bottomPadding = Platform.OS === "android" ? Math.max(insets.bottom, 6) : insets.bottom;
-
   return (
     <Tabs
       screenOptions={{
@@ -23,8 +21,7 @@ export default function AppLayout() {
           backgroundColor: "#FFFFFF",
           borderTopColor: "#E5E7EB",
           borderTopWidth: 1,
-          paddingTop: 4,
-          paddingBottom: bottomPadding,
+          paddingBottom: Platform.OS === "android" ? Math.max(insets.bottom, 10) : undefined,
         },
         tabBarActiveTintColor: "#1D4ED8",
         tabBarInactiveTintColor: "#9CA3AF",
@@ -48,7 +45,6 @@ export default function AppLayout() {
           }}
         />
       ))}
-      {/* Profile page — not in tab bar, accessible from home */}
       <Tabs.Screen
         name="other"
         options={{
