@@ -14,7 +14,7 @@ import { useRouter } from "expo-router";
 import { supabase } from "../lib/supabase";
 import { Profile, Household } from "../lib/types";
 import { useNavPreferences, ALL_TABS, NavTab } from "../lib/hooks/useNavPreferences";
-import { useTheme } from "../lib/theme";
+import { useTheme, useThemeMode, ThemeMode } from "../lib/theme";
 
 const COLOR_PRESETS = [
   "#2563EB",
@@ -59,6 +59,7 @@ export function ProfileSettings({
   const router = useRouter();
   const { enabledTabs, setTabs } = useNavPreferences();
   const t = useTheme();
+  const { mode: themeMode, setMode: setThemeMode } = useThemeMode();
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [selectedColor, setSelectedColor] = useState(profile.color);
   const [saving, setSaving] = useState(false);
@@ -378,6 +379,32 @@ export function ProfileSettings({
           )}
         </>
       )}
+
+      <Text style={[styles.sectionTitle, { color: t.text }]}>Apparence</Text>
+      <View style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+        {(["system", "light", "dark"] as ThemeMode[]).map((m) => {
+          const selected = themeMode === m;
+          const label = m === "system" ? "Automatique" : m === "light" ? "Clair" : "Sombre";
+          const icon = m === "system" ? "phone-portrait-outline" : m === "light" ? "sunny-outline" : "moon-outline";
+          return (
+            <Pressable
+              key={m}
+              style={[styles.navConfigItem, { borderBottomColor: t.separator }]}
+              onPress={() => setThemeMode(m)}
+            >
+              <Ionicons name={icon as any} size={20} color={selected ? t.accent : t.textMuted} />
+              <Text style={[styles.navConfigLabel, { color: t.textSecondary }, selected && { color: t.text, fontWeight: "600" }]}>
+                {label}
+              </Text>
+              <Ionicons
+                name={selected ? "checkbox" : "square-outline"}
+                size={22}
+                color={selected ? t.accent : t.textMuted}
+              />
+            </Pressable>
+          );
+        })}
+      </View>
 
       <Text style={[styles.sectionTitle, { color: t.text }]}>Barre de navigation</Text>
       <View style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>

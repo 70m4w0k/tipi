@@ -8,7 +8,9 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { ExpenseCategory, Profile } from "../lib/types";
+import { useTheme } from "../lib/theme";
 
 const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   courses: "🛒 Courses",
@@ -44,6 +46,7 @@ type Props = {
 };
 
 export function ExpenseForm({ members, currentUserId, onSubmit }: Props) {
+  const t = useTheme();
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [payer, setPayer] = useState(currentUserId);
@@ -97,24 +100,26 @@ export function ExpenseForm({ members, currentUserId, onSubmit }: Props) {
 
   return (
     <View style={styles.section}>
-      <Text style={styles.formLabel}>Titre *</Text>
+      <Text style={[styles.formLabel, { color: t.text }]}>Titre *</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
         placeholder="Ex : Courses Lidl, Loyer juillet..."
+        placeholderTextColor={t.textMuted}
         value={title}
         onChangeText={setTitle}
       />
 
-      <Text style={styles.formLabel}>Montant (€) *</Text>
+      <Text style={[styles.formLabel, { color: t.text }]}>Montant (€) *</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
         placeholder="0.00"
+        placeholderTextColor={t.textMuted}
         keyboardType="decimal-pad"
         value={amount}
         onChangeText={setAmount}
       />
 
-      <Text style={styles.formLabel}>Catégorie</Text>
+      <Text style={[styles.formLabel, { color: t.text }]}>Catégorie</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -145,7 +150,7 @@ export function ExpenseForm({ members, currentUserId, onSubmit }: Props) {
         ))}
       </ScrollView>
 
-      <Text style={styles.formLabel}>Payé par *</Text>
+      <Text style={[styles.formLabel, { color: t.text }]}>Payé par *</Text>
       <View style={styles.chipRow}>
         {members.map((member) => (
           <Pressable
@@ -166,13 +171,13 @@ export function ExpenseForm({ members, currentUserId, onSubmit }: Props) {
       </View>
 
       <View style={styles.labelRow}>
-        <Text style={styles.formLabel}>Participants *</Text>
+        <Text style={[styles.formLabel, { color: t.text }]}>Participants *</Text>
         <View style={styles.selectButtons}>
           <Pressable onPress={selectAll}>
-            <Text style={styles.selectBtn}>Tous</Text>
+            <Text style={[styles.selectBtn, { color: t.accent }]}>Tous</Text>
           </Pressable>
           <Pressable onPress={selectNone}>
-            <Text style={styles.selectBtn}>Aucun</Text>
+            <Text style={[styles.selectBtn, { color: t.accent }]}>Aucun</Text>
           </Pressable>
         </View>
       </View>
@@ -182,12 +187,16 @@ export function ExpenseForm({ members, currentUserId, onSubmit }: Props) {
           return (
             <Pressable
               key={member.id}
-              style={[styles.checkChip, selected && styles.checkChipActive]}
+              style={[styles.checkChip, { backgroundColor: t.card, borderColor: t.inputBorder }, selected && { backgroundColor: t.accentLight, borderColor: t.accent }]}
               onPress={() => toggleParticipant(member.id)}
             >
-              <Text style={styles.checkIcon}>{selected ? "☑" : "☐"}</Text>
+              <Ionicons
+                name={selected ? "checkbox" : "square-outline"}
+                size={20}
+                color={selected ? t.accent : t.textMuted}
+              />
               <Text
-                style={[styles.chipText, selected && styles.checkChipTextActive]}
+                style={[styles.chipText, { color: t.text }, selected && { color: t.accent, fontWeight: "700" }]}
               >
                 {member.display_name}
               </Text>
@@ -196,22 +205,23 @@ export function ExpenseForm({ members, currentUserId, onSubmit }: Props) {
         })}
       </View>
       {participants.length > 0 && parsedAmount > 0 && (
-        <Text style={styles.sharePreview}>
+        <Text style={[styles.sharePreview, { color: t.accent }]}>
           ≈ {(parsedAmount / participants.length).toFixed(2)} € / pers.
         </Text>
       )}
 
-      <Text style={styles.formLabel}>Note (optionnel)</Text>
+      <Text style={[styles.formLabel, { color: t.text }]}>Note (optionnel)</Text>
       <TextInput
-        style={[styles.input, styles.inputMultiline]}
+        style={[styles.input, styles.inputMultiline, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
         placeholder="Détails, justificatif..."
+        placeholderTextColor={t.textMuted}
         value={note}
         onChangeText={setNote}
         multiline
       />
 
-      <Pressable style={styles.submitButton} onPress={handleSubmit}>
-        <Text style={styles.submitText}>✅ Ajouter la dépense</Text>
+      <Pressable style={[styles.submitButton, { backgroundColor: t.accent }]} onPress={handleSubmit}>
+        <Text style={styles.submitText}>Ajouter la dépense</Text>
       </Pressable>
     </View>
   );
@@ -219,14 +229,12 @@ export function ExpenseForm({ members, currentUserId, onSubmit }: Props) {
 
 const styles = StyleSheet.create({
   section: { gap: 12 },
-  formLabel: { fontWeight: "600", color: "#374151", marginTop: 8 },
+  formLabel: { fontWeight: "600", marginTop: 8 },
   input: {
     borderWidth: 1,
-    borderColor: "#D1D5DB",
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: "#FFFFFF",
   },
   inputMultiline: { minHeight: 70, textAlignVertical: "top" },
   categoryRow: { gap: 8, paddingVertical: 6 },
@@ -245,7 +253,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   selectButtons: { flexDirection: "row", gap: 12 },
-  selectBtn: { color: "#1D4ED8", fontWeight: "600", fontSize: 13 },
+  selectBtn: { fontWeight: "600", fontSize: 13 },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     borderWidth: 1,
@@ -255,36 +263,23 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   chipActive: { backgroundColor: "#111827", borderColor: "#111827" },
-  chipText: { color: "#374151", fontWeight: "600" },
+  chipText: { fontWeight: "600" },
   chipTextActive: { color: "#FFFFFF" },
   checkChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
     borderWidth: 1,
-    borderColor: "#9CA3AF",
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: "#FFFFFF",
+    paddingVertical: 10,
   },
-  checkChipActive: {
-    backgroundColor: "#EEF2FF",
-    borderColor: "#1D4ED8",
-  },
-  checkChipTextActive: {
-    color: "#1D4ED8",
-    fontWeight: "700",
-  },
-  checkIcon: { fontSize: 16 },
   sharePreview: {
-    color: "#1D4ED8",
     fontWeight: "600",
     textAlign: "center",
     fontSize: 13,
   },
   submitButton: {
-    backgroundColor: "#1D4ED8",
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: "center",

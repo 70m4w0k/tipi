@@ -5,15 +5,17 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationBar } from "expo-navigation-bar";
 import "react-native-url-polyfill/auto";
 import { AuthProvider, useAuth } from "../lib/AuthContext";
+import { ThemeProvider, useTheme } from "../lib/theme";
 import { registerPWA } from "../lib/pwa";
 
 function RootGate() {
   const { loading } = useAuth();
+  const t = useTheme();
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: t.background }}>
+        <ActivityIndicator size="large" color={t.accent} />
       </View>
     );
   }
@@ -29,9 +31,11 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       {Platform.OS === "android" && <NavigationBar style="dark" />}
-      <AuthProvider>
-        <RootGate />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <RootGate />
+        </AuthProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

@@ -192,9 +192,9 @@ export default function ChoresScreen() {
               <Ionicons
                 name={showInGrid ? "checkbox" : "square-outline"}
                 size={22}
-                color={showInGrid ? "#1D4ED8" : "#9CA3AF"}
+                color={showInGrid ? t.accent : t.textMuted}
               />
-              <Text style={styles.checkLabel}>Afficher dans le tableau</Text>
+              <Text style={[styles.checkLabel, { color: t.text }]}>Afficher dans le tableau</Text>
             </Pressable>
 
             <Pressable
@@ -204,9 +204,9 @@ export default function ChoresScreen() {
               <Ionicons
                 name={isRecurrent ? "checkbox" : "square-outline"}
                 size={22}
-                color={isRecurrent ? "#1D4ED8" : "#9CA3AF"}
+                color={isRecurrent ? t.accent : t.textMuted}
               />
-              <Text style={styles.checkLabel}>Tâche récurrente (rappel)</Text>
+              <Text style={[styles.checkLabel, { color: t.text }]}>Tâche récurrente (rappel)</Text>
             </Pressable>
 
             {isRecurrent && (
