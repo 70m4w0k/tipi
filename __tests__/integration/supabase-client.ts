@@ -17,19 +17,29 @@ export const testSupabase = createClient(url, key, {
   },
 });
 
-const testEmail = `test-${Date.now()}@tipi-test.local`;
-const testPassword = "Test1234!";
+const testEmail = process.env.TEST_USER_EMAIL || `test-${Date.now()}@tipi-test.local`;
+const testPassword = process.env.TEST_USER_PASSWORD || "Test1234!";
+const useExistingUser = !!(process.env.TEST_USER_EMAIL && process.env.TEST_USER_PASSWORD);
 
 let testUserId: string | null = null;
 let testHouseholdId: string | null = null;
 
 export async function setupTestUser() {
-  const { data, error } = await testSupabase.auth.signUp({
-    email: testEmail,
-    password: testPassword,
-  });
-  if (error) throw new Error(`Failed to create test user: ${error.message}`);
-  testUserId = data.user?.id ?? null;
+  if (useExistingUser) {
+    const { data, error } = await testSupabase.auth.signInWithPassword({
+      email: testEmail,
+      password: testPassword,
+    });
+    if (error) throw new Error(`Failed to sign in test user: ${error.message}`);
+    testUserId = data.user?.id ?? null;
+  } else {
+    const { data, error } = await testSupabase.auth.signUp({
+      email: testEmail,
+      password: testPassword,
+    });
+    if (error) throw new Error(`Failed to create test user: ${error.message}`);
+    testUserId = data.user?.id ?? null;
+  }
   if (!testUserId) throw new Error("No user ID returned");
 
   await testSupabase
