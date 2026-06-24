@@ -75,11 +75,13 @@ export function useFiles(householdId: string | null | undefined) {
     const storagePath = `${householdId}/${Date.now()}-${safeName}`;
 
     const response = await fetch(asset.uri);
-    const blob = await response.blob();
+    const arrayBuffer = await response.arrayBuffer();
 
     const { error: uploadError } = await supabase.storage
       .from("shared-files")
-      .upload(storagePath, blob);
+      .upload(storagePath, arrayBuffer, {
+        contentType: asset.mimeType ?? "application/octet-stream",
+      });
 
     if (uploadError) throw uploadError;
 

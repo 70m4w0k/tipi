@@ -1,14 +1,19 @@
-import { Image } from "react-native";
+import { Platform } from "react-native";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavPreferences, ALL_TABS } from "../../lib/hooks/useNavPreferences";
+import { TipiIcon } from "../../components/TipiIcon";
 
 export default function AppLayout() {
   const { enabledTabs, loaded } = useNavPreferences();
+  const insets = useSafeAreaInsets();
 
   if (!loaded) return null;
 
   const isTabEnabled = (key: string) => enabledTabs.includes(key as any);
+
+  const bottomPadding = Platform.OS === "android" ? Math.max(insets.bottom, 6) : insets.bottom;
 
   return (
     <Tabs
@@ -19,7 +24,7 @@ export default function AppLayout() {
           borderTopColor: "#E5E7EB",
           borderTopWidth: 1,
           paddingTop: 4,
-          paddingBottom: 8,
+          paddingBottom: bottomPadding,
         },
         tabBarActiveTintColor: "#1D4ED8",
         tabBarInactiveTintColor: "#9CA3AF",
@@ -34,11 +39,8 @@ export default function AppLayout() {
             title: tab.label,
             href: isTabEnabled(tab.key) ? undefined : null,
             tabBarIcon: tab.key === "home"
-              ? ({ size }) => (
-                  <Image
-                    source={require("../../assets/tipi_icon.jpg")}
-                    style={{ width: size, height: size, borderRadius: 4 }}
-                  />
+              ? ({ color, size }) => (
+                  <TipiIcon size={size} color={color as string} />
                 )
               : ({ color, size }) => (
                   <Ionicons name={tab.icon as any} size={size} color={color} />

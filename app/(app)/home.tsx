@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
 import {
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -87,16 +86,11 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
         {/* Header */}
-        <View style={styles.logoSection}>
-          <Image
-            source={require("../../assets/tipi_icon.jpg")}
-            style={styles.logo}
-          />
+        <View style={styles.headerRow}>
           <View>
             <Text style={styles.appName}>Tipi</Text>
             <Text style={styles.houseName}>{household?.name ?? ""}</Text>
           </View>
-          <View style={{ flex: 1 }} />
           <Pressable
             style={styles.profileButton}
             onPress={() => router.push("/(app)/other" as any)}
@@ -139,7 +133,6 @@ export default function HomeScreen() {
         {/* Quick access */}
         {allNonNavPages.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Accès rapide</Text>
             <View style={styles.tileGrid}>
               {allNonNavPages.map((t) => (
                 <Pressable
@@ -162,14 +155,13 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F4F6FA" },
   content: { padding: 16, paddingBottom: 40 },
-  logoSection: {
+  headerRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    justifyContent: "space-between",
     marginBottom: 20,
     paddingVertical: 8,
   },
-  logo: { width: 44, height: 44, borderRadius: 10 },
   appName: { fontSize: 22, fontWeight: "800", color: "#1D4ED8" },
   houseName: { fontSize: 13, color: "#6B7280" },
   profileButton: { padding: 4 },

@@ -11,7 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "../../lib/hooks/useAuth";
@@ -66,18 +66,15 @@ export default function ChatScreen() {
       const ext = asset.uri.split(".").pop() ?? "jpg";
       const fileName = `${Date.now()}.${ext}`;
       const filePath = `${profile.household_id}/${fileName}`;
+      const contentType = asset.mimeType ?? `image/${ext}`;
 
-      const formData = new FormData();
-      formData.append("file", {
-        uri: asset.uri,
-        name: fileName,
-        type: asset.mimeType ?? `image/${ext}`,
-      } as unknown as Blob);
+      const response = await fetch(asset.uri);
+      const arrayBuffer = await response.arrayBuffer();
 
       const { error: uploadError } = await supabase.storage
         .from("chat-images")
-        .upload(filePath, formData, {
-          contentType: "multipart/form-data",
+        .upload(filePath, arrayBuffer, {
+          contentType,
           upsert: false,
         });
 
@@ -299,7 +296,7 @@ const styles = StyleSheet.create({
     borderTopColor: "#E5E7EB",
     paddingHorizontal: 8,
     paddingTop: 8,
-    paddingBottom: Platform.OS === "ios" ? 20 : 12,
+    paddingBottom: Platform.OS === "ios" ? 20 : 8,
   },
   inputRow: {
     flexDirection: "row",
