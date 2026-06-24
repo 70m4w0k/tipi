@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { parseStoredTabs, DEFAULT_TABS, type NavTab } from "../nav-preferences-logic";
+
+export type { NavTab } from "../nav-preferences-logic";
 
 const STORAGE_KEY = "tipi_nav_tabs";
-const DEFAULT_TABS = ["home", "chat", "expenses", "chores"];
-
-export type NavTab = "home" | "chat" | "expenses" | "chores" | "shopping" | "recipes" | "documents";
 
 export const ALL_TABS: { key: NavTab; label: string; icon: string }[] = [
   { key: "home", label: "Accueil", icon: "home-outline" },
@@ -17,22 +17,12 @@ export const ALL_TABS: { key: NavTab; label: string; icon: string }[] = [
 ];
 
 export function useNavPreferences() {
-  const [enabledTabs, setEnabledTabs] = useState<NavTab[]>(DEFAULT_TABS as NavTab[]);
+  const [enabledTabs, setEnabledTabs] = useState<NavTab[]>(DEFAULT_TABS);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((val) => {
-      if (val) {
-        try {
-          const parsed = JSON.parse(val) as NavTab[];
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const withHome: NavTab[] = parsed.includes("home") ? parsed : ["home" as NavTab, ...parsed];
-            setEnabledTabs(withHome);
-          }
-        } catch {
-          // ignore
-        }
-      }
+      setEnabledTabs(parseStoredTabs(val));
       setLoaded(true);
     });
   }, []);
