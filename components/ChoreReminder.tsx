@@ -2,24 +2,9 @@ import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ChoreReminder as ChoreReminderType } from "../lib/types";
+import { recurrenceMatchesToday } from "../lib/recurrence";
 
-const FRENCH_DAYS: Record<number, string[]> = {
-  0: ["dimanche", "dim"],
-  1: ["lundi", "lun"],
-  2: ["mardi", "mar"],
-  3: ["mercredi", "mer"],
-  4: ["jeudi", "jeu"],
-  5: ["vendredi", "ven"],
-  6: ["samedi", "sam"],
-};
-
-export function recurrenceMatchesToday(recurrence: string): boolean {
-  if (!recurrence) return false;
-  const today = new Date().getDay();
-  const dayNames = FRENCH_DAYS[today];
-  const lower = recurrence.toLowerCase();
-  return dayNames.some((name) => lower.includes(name));
-}
+export { recurrenceMatchesToday };
 
 type Props = {
   reminder: ChoreReminderType;

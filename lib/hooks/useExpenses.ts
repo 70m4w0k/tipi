@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../supabase";
 import { Expense, ExpenseCategory, ExpenseParticipant, Profile } from "../types";
 
-type ExpenseWithParticipants = Expense & { participants: string[] };
+export type ExpenseWithParticipants = Expense & { participants: string[] };
 
 export function useExpenses(householdId: string | null | undefined) {
   const [expenses, setExpenses] = useState<ExpenseWithParticipants[]>([]);
