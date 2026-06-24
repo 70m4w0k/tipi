@@ -13,9 +13,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useHousehold } from "../../lib/hooks/useHousehold";
 import { useExpenses, computeBalances } from "../../lib/hooks/useExpenses";
+import { useTheme } from "../../lib/theme";
 import { ExpenseCard } from "../../components/ExpenseCard";
 import { ExpenseForm, ExpenseFormData } from "../../components/ExpenseForm";
 import { BalancesView } from "../../components/BalancesView";
+import { EmptyState } from "../../components/EmptyState";
 
 type ActiveTab = "list" | "add" | "balances";
 
@@ -25,6 +27,7 @@ export default function ExpensesScreen() {
   const { expenses, loading, addExpense, deleteExpense } = useExpenses(
     profile?.household_id
   );
+  const t = useTheme();
 
   const [view, setView] = useState<ActiveTab>("list");
 
@@ -60,32 +63,34 @@ export default function ExpensesScreen() {
 
   if (loading && expenses.length === 0) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#1D4ED8" />
+      <SafeAreaView style={[styles.loadingContainer, { backgroundColor: t.background }]}>
+        <ActivityIndicator size="large" color={t.accent} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Dépenses</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: t.background }]} edges={["top"]}>
+      <View style={[styles.header, { backgroundColor: t.card, borderBottomColor: t.cardBorder }]}>
+        <Text style={[styles.headerTitle, { color: t.text }]}>Dépenses</Text>
       </View>
 
       {/* Header résumé */}
       <View style={styles.summaryRow}>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>Total dépenses</Text>
-          <Text style={styles.summaryValue}>{totalSpent.toFixed(2)} €</Text>
+        <View style={[styles.summaryCard, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+          <Text style={[styles.summaryLabel, { color: t.textSecondary }]}>Total dépenses</Text>
+          <Text style={[styles.summaryValue, { color: t.text }]}>{totalSpent.toFixed(2)} €</Text>
         </View>
         <View
           style={[
             styles.summaryCard,
-            myBalance >= 0 ? styles.summaryGreen : styles.summaryRed,
+            myBalance >= 0
+              ? { backgroundColor: t.successLight, borderColor: t.success }
+              : { backgroundColor: t.dangerLight, borderColor: t.danger },
           ]}
         >
-          <Text style={styles.summaryLabel}>Mon solde</Text>
-          <Text style={styles.summaryValueBig}>
+          <Text style={[styles.summaryLabel, { color: t.textSecondary }]}>Mon solde</Text>
+          <Text style={[styles.summaryValueBig, { color: t.text }]}>
             {myBalance >= 0 ? "+" : ""}
             {myBalance.toFixed(2)} €
           </Text>
@@ -94,18 +99,14 @@ export default function ExpensesScreen() {
 
       {/* Onglets internes */}
       <View style={styles.tabRow}>
-        {(["list", "add", "balances"] as ActiveTab[]).map((v) => (
+        {(["list", "balances"] as ActiveTab[]).map((v) => (
           <Pressable
             key={v}
-            style={[styles.tab, view === v && styles.tabActive]}
+            style={[styles.tab, { backgroundColor: t.tabBg }, view === v && { backgroundColor: t.accent }]}
             onPress={() => setView(v)}
           >
-            <Text style={[styles.tabText, view === v && styles.tabTextActive]}>
-              {v === "list"
-                ? "Liste"
-                : v === "add"
-                  ? "Ajouter"
-                  : "Bilans"}
+            <Text style={[styles.tabText, { color: t.text }, view === v && styles.tabTextActive]}>
+              {v === "list" ? "Liste" : "Bilans"}
             </Text>
           </Pressable>
         ))}
@@ -116,9 +117,13 @@ export default function ExpensesScreen() {
         {view === "list" && (
           <View style={styles.section}>
             {expenses.length === 0 ? (
-              <Text style={styles.empty}>
-                Aucune dépense pour le moment.
-              </Text>
+              <EmptyState
+                icon="wallet-outline"
+                title="Aucune dépense"
+                subtitle="Ajoute ta première dépense partagée pour suivre qui doit quoi."
+                actionLabel="Ajouter une dépense"
+                onAction={() => setView("add")}
+              />
             ) : (
               expenses.map((expense) => (
                 <ExpenseCard
@@ -152,27 +157,33 @@ export default function ExpensesScreen() {
           />
         )}
       </ScrollView>
+
+      {/* FAB — Ajouter une dépense */}
+      {view === "list" && expenses.length > 0 && (
+        <Pressable
+          style={[styles.fab, { backgroundColor: t.accent }]}
+          onPress={() => setView("add")}
+        >
+          <Ionicons name="add" size={28} color="#FFFFFF" />
+        </Pressable>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F4F6FA" },
+  container: { flex: 1 },
   header: {
-    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#111827",
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#F4F6FA",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -184,17 +195,13 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
   },
-  summaryGreen: { backgroundColor: "#ECFDF5", borderColor: "#10B981" },
-  summaryRed: { backgroundColor: "#FEF2F2", borderColor: "#EF4444" },
-  summaryLabel: { fontSize: 11, color: "#6B7280", marginBottom: 4 },
-  summaryValue: { fontSize: 18, fontWeight: "700", color: "#111827" },
-  summaryValueBig: { fontSize: 20, fontWeight: "700", color: "#111827" },
+  summaryLabel: { fontSize: 11, marginBottom: 4 },
+  summaryValue: { fontSize: 18, fontWeight: "700" },
+  summaryValueBig: { fontSize: 20, fontWeight: "700" },
   tabRow: {
     flexDirection: "row",
     gap: 8,
@@ -203,15 +210,27 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    backgroundColor: "#E5E7EB",
     borderRadius: 8,
     paddingVertical: 8,
     alignItems: "center",
   },
-  tabActive: { backgroundColor: "#1D4ED8" },
-  tabText: { fontWeight: "600", color: "#374151", fontSize: 12 },
+  tabText: { fontWeight: "600", fontSize: 12 },
   tabTextActive: { color: "#FFFFFF" },
-  scroll: { padding: 16, paddingBottom: 40 },
+  scroll: { padding: 16, paddingBottom: 80 },
   section: { gap: 12 },
-  empty: { color: "#6B7280", textAlign: "center", paddingVertical: 24 },
+  fab: {
+    position: "absolute",
+    right: 20,
+    bottom: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+  },
 });

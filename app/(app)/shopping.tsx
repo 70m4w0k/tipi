@@ -12,12 +12,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useShoppingList } from "../../lib/hooks/useShoppingList";
+import { useTheme } from "../../lib/theme";
 import { ShoppingItem } from "../../lib/types";
 
 export default function ShoppingScreen() {
   const { profile } = useAuth();
   const { items, loading, addItem, toggleItem, deleteItem, clearChecked } =
     useShoppingList(profile?.household_id);
+  const t = useTheme();
   const [newItem, setNewItem] = useState("");
 
   const checkedCount = items.filter((i) => i.checked).length;
@@ -44,44 +46,44 @@ export default function ShoppingScreen() {
 
   const renderItem = ({ item }: { item: ShoppingItem }) => (
     <Pressable
-      style={[styles.itemRow, item.checked && styles.itemRowChecked]}
+      style={[styles.itemRow, { backgroundColor: t.card, borderColor: t.cardBorder }, item.checked && { backgroundColor: t.separator }]}
       onPress={() => void toggleItem(item.id)}
       onLongPress={() => handleDelete(item.id, item.title)}
     >
       <Ionicons
         name={item.checked ? "checkbox" : "square-outline"}
         size={22}
-        color={item.checked ? "#10B981" : "#9CA3AF"}
+        color={item.checked ? t.success : t.textMuted}
       />
-      <Text style={[styles.itemText, item.checked && styles.itemTextChecked]}>
+      <Text style={[styles.itemText, { color: t.text }, item.checked && { color: t.textMuted, textDecorationLine: "line-through" }]}>
         {item.title}
       </Text>
     </Pressable>
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Liste de courses</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: t.background }]} edges={["top"]}>
+      <View style={[styles.header, { backgroundColor: t.card, borderBottomColor: t.cardBorder }]}>
+        <Text style={[styles.headerTitle, { color: t.text }]}>Liste de courses</Text>
         {checkedCount > 0 && (
           <Pressable onPress={handleClearChecked} hitSlop={8}>
-            <Ionicons name="trash-outline" size={20} color="#EF4444" />
+            <Ionicons name="trash-outline" size={20} color={t.danger} />
           </Pressable>
         )}
       </View>
 
       <View style={styles.addRow}>
         <TextInput
-          style={styles.addInput}
+          style={[styles.addInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
           placeholder="Ajouter un article..."
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={t.textMuted}
           value={newItem}
           onChangeText={setNewItem}
           onSubmitEditing={() => void handleAdd()}
           returnKeyType="done"
         />
         <Pressable
-          style={[styles.addButton, !newItem.trim() && styles.addButtonDisabled]}
+          style={[styles.addButton, { backgroundColor: t.accent }, !newItem.trim() && styles.addButtonDisabled]}
           onPress={() => void handleAdd()}
           disabled={!newItem.trim()}
         >
@@ -97,8 +99,13 @@ export default function ShoppingScreen() {
         ListEmptyComponent={
           loading ? null : (
             <View style={styles.emptyContainer}>
-              <Ionicons name="cart-outline" size={48} color="#D1D5DB" />
-              <Text style={styles.emptyText}>Liste vide</Text>
+              <View style={[styles.emptyIconCircle, { backgroundColor: t.accentLight }]}>
+                <Ionicons name="cart-outline" size={40} color={t.accent} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: t.text }]}>Liste vide</Text>
+              <Text style={[styles.emptyText, { color: t.textSecondary }]}>
+                Ajoute des articles pour ne rien oublier au supermarché
+              </Text>
             </View>
           )
         }
@@ -108,18 +115,16 @@ export default function ShoppingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F4F6FA" },
+  container: { flex: 1 },
   header: {
-    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
     paddingHorizontal: 20,
     paddingVertical: 12,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
+  headerTitle: { fontSize: 18, fontWeight: "700" },
   addRow: {
     flexDirection: "row",
     paddingHorizontal: 16,
@@ -129,42 +134,44 @@ const styles = StyleSheet.create({
   addInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: "#D1D5DB",
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 15,
-    backgroundColor: "#FFFFFF",
-    color: "#111827",
   },
   addButton: {
     width: 42,
     height: 42,
     borderRadius: 10,
-    backgroundColor: "#1D4ED8",
     alignItems: "center",
     justifyContent: "center",
   },
-  addButtonDisabled: { backgroundColor: "#CBD5E1" },
+  addButtonDisabled: { opacity: 0.5 },
   list: { paddingHorizontal: 16, paddingBottom: 24 },
   itemRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
     borderRadius: 10,
     padding: 14,
     marginBottom: 6,
   },
-  itemRowChecked: { backgroundColor: "#F9FAFB" },
-  itemText: { fontSize: 15, color: "#111827", flex: 1 },
-  itemTextChecked: { color: "#9CA3AF", textDecorationLine: "line-through" },
+  itemText: { fontSize: 15, flex: 1 },
   emptyContainer: {
     alignItems: "center",
-    paddingTop: 60,
-    gap: 12,
+    paddingTop: 48,
+    paddingHorizontal: 32,
+    gap: 10,
   },
-  emptyText: { fontSize: 15, color: "#9CA3AF" },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  emptyTitle: { fontSize: 18, fontWeight: "700" },
+  emptyText: { fontSize: 14, textAlign: "center" },
 });

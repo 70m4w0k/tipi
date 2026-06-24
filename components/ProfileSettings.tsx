@@ -3,6 +3,7 @@ import {
   Alert,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +14,7 @@ import { useRouter } from "expo-router";
 import { supabase } from "../lib/supabase";
 import { Profile, Household } from "../lib/types";
 import { useNavPreferences, ALL_TABS, NavTab } from "../lib/hooks/useNavPreferences";
+import { useTheme } from "../lib/theme";
 
 const COLOR_PRESETS = [
   "#2563EB",
@@ -56,6 +58,7 @@ export function ProfileSettings({
 }) {
   const router = useRouter();
   const { enabledTabs, setTabs } = useNavPreferences();
+  const t = useTheme();
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [selectedColor, setSelectedColor] = useState(profile.color);
   const [saving, setSaving] = useState(false);
@@ -217,20 +220,20 @@ export function ProfileSettings({
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.sectionTitle}>Profil</Text>
+      <Text style={[styles.sectionTitle, { color: t.text }]}>Profil</Text>
 
-      <View style={styles.card}>
-        <Text style={styles.label}>Email</Text>
-        <Text style={styles.value}>{profile.email}</Text>
+      <View style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+        <Text style={[styles.label, { color: t.text }]}>Email</Text>
+        <Text style={[styles.value, { color: t.textSecondary }]}>{profile.email}</Text>
 
-        <Text style={styles.label}>Nom d'affichage</Text>
+        <Text style={[styles.label, { color: t.text }]}>Nom d'affichage</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
           value={displayName}
           onChangeText={setDisplayName}
         />
 
-        <Text style={styles.label}>Couleur</Text>
+        <Text style={[styles.label, { color: t.text }]}>Couleur</Text>
         <View style={styles.colorRow}>
           {COLOR_PRESETS.map((color) => (
             <Pressable
@@ -247,7 +250,7 @@ export function ProfileSettings({
 
         {hasChanges && (
           <Pressable
-            style={[styles.button, saving && styles.buttonDisabled]}
+            style={[styles.button, { backgroundColor: t.accent }, saving && styles.buttonDisabled]}
             onPress={() => void handleSave()}
             disabled={saving}
           >
@@ -258,13 +261,13 @@ export function ProfileSettings({
 
       {household && (
         <>
-          <Text style={styles.sectionTitle}>Coloc</Text>
-          <View style={styles.card}>
-            <Text style={styles.label}>Nom</Text>
+          <Text style={[styles.sectionTitle, { color: t.text }]}>Coloc</Text>
+          <View style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+            <Text style={[styles.label, { color: t.text }]}>Nom</Text>
             {editingHouseName && isAdmin ? (
               <View style={styles.inlineEdit}>
                 <TextInput
-                  style={[styles.input, { flex: 1 }]}
+                  style={[styles.input, { flex: 1, borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
                   value={houseName}
                   onChangeText={setHouseName}
                   autoFocus
@@ -282,23 +285,32 @@ export function ProfileSettings({
                 onPress={() => isAdmin && setEditingHouseName(true)}
                 disabled={!isAdmin}
               >
-                <Text style={styles.value}>{household.name}</Text>
+                <Text style={[styles.value, { color: t.textSecondary }]}>{household.name}</Text>
                 {isAdmin && <Ionicons name="pencil" size={16} color="#9CA3AF" />}
               </Pressable>
             )}
 
-            <Text style={styles.label}>Code d'invitation</Text>
+            <Text style={[styles.label, { color: t.text }]}>Code d'invitation</Text>
             <View style={styles.codeRow}>
-              <Text style={styles.codeDisplay}>{household.invite_code}</Text>
+              <Text style={[styles.codeDisplay, { color: t.accent }]}>{household.invite_code}</Text>
               {isAdmin && (
                 <Pressable style={styles.inlineBtn} onPress={handleRegenerateCode}>
                   <Ionicons name="refresh" size={20} color="#1D4ED8" />
                 </Pressable>
               )}
             </View>
-            <Text style={styles.hint}>
-              Partage ce code pour inviter tes colocataires
-            </Text>
+            <Pressable
+              style={[styles.shareButton, { backgroundColor: t.accent }]}
+              onPress={async () => {
+                if (!household) return;
+                await Share.share({
+                  message: `Rejoins notre coloc "${household.name}" sur Tipi ! Code d'invitation : ${household.invite_code}`,
+                });
+              }}
+            >
+              <Ionicons name="share-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.shareButtonText}>Inviter mes colocs</Text>
+            </Pressable>
 
             <Pressable
               style={[styles.button, styles.buttonDanger]}
@@ -309,21 +321,21 @@ export function ProfileSettings({
           </View>
 
           {/* Members list */}
-          <Text style={styles.sectionTitle}>Membres</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: t.text }]}>Membres</Text>
+          <View style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
             {members.map((m) => (
-              <View key={m.id} style={styles.memberRow}>
+              <View key={m.id} style={[styles.memberRow, { borderBottomColor: t.separator }]}>
                 <View style={[styles.memberAvatar, { backgroundColor: m.color }]}>
                   <Text style={styles.memberAvatarText}>
                     {m.display_name.charAt(0).toUpperCase()}
                   </Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.memberName}>
+                  <Text style={[styles.memberName, { color: t.text }]}>
                     {m.display_name}
                     {m.id === profile.id ? " (toi)" : ""}
                   </Text>
-                  <Text style={styles.memberRole}>
+                  <Text style={[styles.memberRole, { color: t.textMuted }]}>
                     {m.role === "admin" ? "Admin" : "Membre"}
                   </Text>
                 </View>
@@ -350,9 +362,9 @@ export function ProfileSettings({
           {/* Admin danger zone */}
           {isAdmin && (
             <>
-              <Text style={styles.sectionTitle}>Zone dangereuse</Text>
-              <View style={styles.card}>
-                <Text style={styles.hint}>
+              <Text style={[styles.sectionTitle, { color: t.text }]}>Zone dangereuse</Text>
+              <View style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+                <Text style={[styles.hint, { color: t.textSecondary }]}>
                   Supprimer la coloc déconnectera tous les membres. Cette action est irréversible.
                 </Text>
                 <Pressable
@@ -367,27 +379,27 @@ export function ProfileSettings({
         </>
       )}
 
-      <Text style={styles.sectionTitle}>Barre de navigation</Text>
-      <View style={styles.card}>
-        <Text style={styles.hint}>
+      <Text style={[styles.sectionTitle, { color: t.text }]}>Barre de navigation</Text>
+      <View style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+        <Text style={[styles.hint, { color: t.textSecondary }]}>
           Choisis jusqu'à {MAX_NAV_TABS} pages à afficher dans la barre du bas. Redémarre l'app pour appliquer.
         </Text>
-        {ALL_TABS.filter((t) => t.key !== "home").map((t) => {
-          const isEnabled = enabledTabs.includes(t.key);
+        {ALL_TABS.filter((tab) => tab.key !== "home").map((tab) => {
+          const isEnabled = enabledTabs.includes(tab.key);
           return (
             <Pressable
-              key={t.key}
-              style={styles.navConfigItem}
-              onPress={() => void toggleNavTab(t.key)}
+              key={tab.key}
+              style={[styles.navConfigItem, { borderBottomColor: t.separator }]}
+              onPress={() => void toggleNavTab(tab.key)}
             >
-              <Ionicons name={t.icon as any} size={20} color={isEnabled ? "#1D4ED8" : "#9CA3AF"} />
-              <Text style={[styles.navConfigLabel, isEnabled && styles.navConfigLabelActive]}>
-                {t.label}
+              <Ionicons name={tab.icon as any} size={20} color={isEnabled ? t.accent : t.textMuted} />
+              <Text style={[styles.navConfigLabel, { color: t.textSecondary }, isEnabled && { color: t.text, fontWeight: "600" }]}>
+                {tab.label}
               </Text>
               <Ionicons
                 name={isEnabled ? "checkbox" : "square-outline"}
                 size={22}
-                color={isEnabled ? "#1D4ED8" : "#9CA3AF"}
+                color={isEnabled ? t.accent : t.textMuted}
               />
             </Pressable>
           );
@@ -395,7 +407,7 @@ export function ProfileSettings({
       </View>
 
       <Pressable style={styles.logoutButton} onPress={onSignOut}>
-        <Text style={styles.logoutText}>Se déconnecter</Text>
+        <Text style={[styles.logoutText, { color: t.danger }]}>Se déconnecter</Text>
       </Pressable>
     </ScrollView>
   );
@@ -464,7 +476,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-  hint: { color: "#6B7280", fontSize: 12, textAlign: "center" },
+  hint: { fontSize: 12, textAlign: "center" },
+  shareButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 10,
+    paddingVertical: 12,
+    marginTop: 4,
+  },
+  shareButtonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 15 },
   inlineEdit: {
     flexDirection: "row",
     alignItems: "center",

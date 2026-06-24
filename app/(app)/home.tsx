@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import {
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -13,7 +14,10 @@ import { useAuth } from "../../lib/hooks/useAuth";
 import { useHousehold } from "../../lib/hooks/useHousehold";
 import { useChores } from "../../lib/hooks/useChores";
 import { useRecipes } from "../../lib/hooks/useRecipes";
+import { useExpenses, computeBalances } from "../../lib/hooks/useExpenses";
+import { useShoppingList } from "../../lib/hooks/useShoppingList";
 import { useNavPreferences, ALL_TABS } from "../../lib/hooks/useNavPreferences";
+import { useTheme } from "../../lib/theme";
 import { recurrenceMatchesToday } from "../../components/ChoreReminder";
 
 type Notification = {
@@ -28,10 +32,13 @@ type Notification = {
 export default function HomeScreen() {
   const router = useRouter();
   const { profile } = useAuth();
-  const { household } = useHousehold(profile);
+  const { household, members } = useHousehold(profile);
   const { reminders } = useChores(profile?.household_id);
   const { instances, recipes } = useRecipes(profile?.household_id);
+  const { expenses } = useExpenses(profile?.household_id);
+  const { items: shoppingItems } = useShoppingList(profile?.household_id);
   const { enabledTabs } = useNavPreferences();
+  const t = useTheme();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   const todayReminders = useMemo(
@@ -40,8 +47,19 @@ export default function HomeScreen() {
   );
 
   const allNonNavPages = useMemo(
-    () => ALL_TABS.filter((t) => !enabledTabs.includes(t.key) && t.key !== "home"),
+    () => ALL_TABS.filter((tab) => !enabledTabs.includes(tab.key) && tab.key !== "home"),
     [enabledTabs]
+  );
+
+  const myBalance = useMemo(() => {
+    if (!profile?.id) return 0;
+    const balances = computeBalances(expenses, members);
+    return balances[profile.id] ?? 0;
+  }, [expenses, members, profile?.id]);
+
+  const uncheckedShoppingCount = useMemo(
+    () => shoppingItems.filter((i) => !i.checked).length,
+    [shoppingItems]
   );
 
   const notifications = useMemo(() => {
@@ -54,7 +72,7 @@ export default function HomeScreen() {
           id: `reminder-${r.id}`,
           text: r.title,
           icon: "alert-circle-outline",
-          color: "#F59E0B",
+          color: t.warning,
           route: "/(app)/chores",
         });
       }
@@ -68,7 +86,7 @@ export default function HomeScreen() {
           id: `recipe-${inst.id}`,
           text: `${inst.label} — dernière étape !`,
           icon: "restaurant-outline",
-          color: "#10B981",
+          color: t.success,
           route: "/(app)/recipes",
           params: { tab: "active", instanceId: inst.id },
         });
@@ -76,7 +94,7 @@ export default function HomeScreen() {
     }
 
     return notifs;
-  }, [todayReminders, instances, recipes]);
+  }, [todayReminders, instances, recipes, t]);
 
   const visibleNotifs = notifications.filter((n) => !dismissed.has(n.id));
 
@@ -84,41 +102,72 @@ export default function HomeScreen() {
     setDismissed((prev) => new Set(prev).add(id));
   };
 
+  const handleShareInvite = async () => {
+    if (!household) return;
+    await Share.share({
+      message: `Rejoins notre coloc "${household.name}" sur Tipi ! Code d'invitation : ${household.invite_code}`,
+    });
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: t.background }]} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
         {/* Header */}
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.appName}>Tipi</Text>
-            <Text style={styles.houseName}>{household?.name ?? ""}</Text>
+            <Text style={[styles.appName, { color: t.accent }]}>Tipi</Text>
+            <Text style={[styles.houseName, { color: t.textSecondary }]}>{household?.name ?? ""}</Text>
           </View>
           <Pressable
             style={styles.profileButton}
             onPress={() => router.push("/(app)/other" as any)}
           >
-            <Ionicons name="person-circle-outline" size={30} color="#6B7280" />
+            <Ionicons name="person-circle-outline" size={30} color={t.textSecondary} />
+          </Pressable>
+        </View>
+
+        {/* Contexte rapide : solde + courses */}
+        <View style={styles.contextRow}>
+          <Pressable
+            style={[styles.contextCard, { backgroundColor: t.card, borderColor: t.cardBorder }]}
+            onPress={() => router.push("/(app)/expenses" as any)}
+          >
+            <Ionicons name="wallet-outline" size={18} color={myBalance >= 0 ? t.success : t.danger} />
+            <Text style={[styles.contextLabel, { color: t.textSecondary }]}>Mon solde</Text>
+            <Text style={[styles.contextValue, { color: myBalance >= 0 ? t.success : t.danger }]}>
+              {myBalance >= 0 ? "+" : ""}{myBalance.toFixed(2)} €
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.contextCard, { backgroundColor: t.card, borderColor: t.cardBorder }]}
+            onPress={() => router.push("/(app)/shopping" as any)}
+          >
+            <Ionicons name="cart-outline" size={18} color={t.accent} />
+            <Text style={[styles.contextLabel, { color: t.textSecondary }]}>Courses</Text>
+            <Text style={[styles.contextValue, { color: t.text }]}>
+              {uncheckedShoppingCount > 0 ? `${uncheckedShoppingCount} article${uncheckedShoppingCount > 1 ? "s" : ""}` : "Liste vide"}
+            </Text>
           </Pressable>
         </View>
 
         {/* Notifications */}
         {visibleNotifs.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Aujourd'hui</Text>
+            <Text style={[styles.sectionTitle, { color: t.text }]}>Aujourd'hui</Text>
             {visibleNotifs.map((n) => (
               <Pressable
                 key={n.id}
-                style={styles.notifCard}
+                style={[styles.notifCard, { backgroundColor: t.card, borderColor: t.cardBorder }]}
                 onPress={() => router.push({ pathname: n.route as any, params: n.params })}
               >
                 <Ionicons name={n.icon as any} size={20} color={n.color} />
-                <Text style={styles.notifText}>{n.text}</Text>
+                <Text style={[styles.notifText, { color: t.text }]}>{n.text}</Text>
                 <Pressable
                   onPress={(e) => { e.stopPropagation(); dismiss(n.id); }}
                   hitSlop={8}
-                  style={styles.dismissBtn}
+                  style={[styles.dismissBtn, { backgroundColor: t.separator }]}
                 >
-                  <Ionicons name="close" size={16} color="#9CA3AF" />
+                  <Ionicons name="close" size={16} color={t.textMuted} />
                 </Pressable>
               </Pressable>
             ))}
@@ -127,23 +176,42 @@ export default function HomeScreen() {
 
         {visibleNotifs.length === 0 && (
           <View style={styles.emptyNotif}>
-            <Ionicons name="checkmark-circle-outline" size={32} color="#10B981" />
-            <Text style={styles.emptyNotifText}>Rien de prévu pour aujourd'hui</Text>
+            <Ionicons name="checkmark-circle-outline" size={32} color={t.success} />
+            <Text style={[styles.emptyNotifText, { color: t.textSecondary }]}>Rien de prévu pour aujourd'hui</Text>
           </View>
+        )}
+
+        {/* Inviter des colocs */}
+        {household && members.length <= 1 && (
+          <Pressable
+            style={[styles.inviteCard, { backgroundColor: t.accentLight, borderColor: t.accent }]}
+            onPress={handleShareInvite}
+          >
+            <View style={styles.inviteContent}>
+              <Ionicons name="people-outline" size={24} color={t.accent} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.inviteTitle, { color: t.accent }]}>Invite tes colocs !</Text>
+                <Text style={[styles.inviteSubtitle, { color: t.textSecondary }]}>
+                  Partage le code d'invitation pour commencer
+                </Text>
+              </View>
+              <Ionicons name="share-outline" size={20} color={t.accent} />
+            </View>
+          </Pressable>
         )}
 
         {/* Quick access */}
         {allNonNavPages.length > 0 && (
           <View style={styles.section}>
             <View style={styles.tileGrid}>
-              {allNonNavPages.map((t) => (
+              {allNonNavPages.map((tab) => (
                 <Pressable
-                  key={t.key}
-                  style={styles.tile}
-                  onPress={() => router.push(`/(app)/${t.key}` as any)}
+                  key={tab.key}
+                  style={[styles.tile, { backgroundColor: t.card, borderColor: t.cardBorder }]}
+                  onPress={() => router.push(`/(app)/${tab.key}` as any)}
                 >
-                  <Ionicons name={t.icon as any} size={28} color="#1D4ED8" />
-                  <Text style={styles.tileLabel}>{t.label}</Text>
+                  <Ionicons name={tab.icon as any} size={28} color={t.accent} />
+                  <Text style={[styles.tileLabel, { color: t.text }]}>{tab.label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -155,39 +223,50 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F4F6FA" },
+  container: { flex: 1 },
   content: { padding: 16, paddingBottom: 40 },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 20,
+    marginBottom: 16,
     paddingVertical: 8,
   },
-  appName: { fontSize: 22, fontWeight: "800", color: "#1D4ED8" },
-  houseName: { fontSize: 13, color: "#6B7280" },
+  appName: { fontSize: 22, fontWeight: "800" },
+  houseName: { fontSize: 13 },
   profileButton: { padding: 4 },
+  contextRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 16,
+  },
+  contextCard: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    gap: 4,
+  },
+  contextLabel: { fontSize: 11 },
+  contextValue: { fontSize: 17, fontWeight: "700" },
   section: { marginBottom: 20 },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#111827", marginBottom: 10 },
+  sectionTitle: { fontSize: 16, fontWeight: "700", marginBottom: 10 },
   notifCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
     borderRadius: 10,
     padding: 14,
     marginBottom: 6,
   },
-  notifText: { fontSize: 14, color: "#1F2937", flex: 1 },
+  notifText: { fontSize: 14, flex: 1 },
   dismissBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F3F4F6",
   },
   emptyNotif: {
     alignItems: "center",
@@ -195,7 +274,20 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     marginBottom: 16,
   },
-  emptyNotifText: { fontSize: 14, color: "#6B7280" },
+  emptyNotifText: { fontSize: 14 },
+  inviteCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 20,
+  },
+  inviteContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  inviteTitle: { fontSize: 15, fontWeight: "700" },
+  inviteSubtitle: { fontSize: 12, marginTop: 2 },
   tileGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -203,13 +295,11 @@ const styles = StyleSheet.create({
   },
   tile: {
     width: "47%",
-    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
     borderRadius: 14,
     paddingVertical: 24,
     alignItems: "center",
     gap: 8,
   },
-  tileLabel: { fontSize: 14, fontWeight: "600", color: "#374151" },
+  tileLabel: { fontSize: 14, fontWeight: "600" },
 });

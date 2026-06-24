@@ -17,6 +17,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useHousehold } from "../../lib/hooks/useHousehold";
 import { useMessages } from "../../lib/hooks/useMessages";
+import { useTheme } from "../../lib/theme";
 import { supabase } from "../../lib/supabase";
 import { Message, Poll } from "../../lib/types";
 import MessageBubble from "../../components/MessageBubble";
@@ -28,6 +29,7 @@ export default function ChatScreen() {
   const { messages, loading, sendMessage, addReaction, vote } = useMessages(
     profile?.household_id
   );
+  const t = useTheme();
 
   const [text, setText] = useState("");
   const [showPollCreator, setShowPollCreator] = useState(false);
@@ -139,10 +141,10 @@ export default function ChatScreen() {
 
   if (!profile?.household_id) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: t.background }]}>
         <View style={styles.emptyContainer}>
-          <Ionicons name="chatbubbles-outline" size={48} color="#9CA3AF" />
-          <Text style={styles.emptyText}>
+          <Ionicons name="chatbubbles-outline" size={48} color={t.textMuted} />
+          <Text style={[styles.emptyText, { color: t.textSecondary }]}>
             Rejoins ou crée une coloc pour accéder au chat.
           </Text>
         </View>
@@ -151,10 +153,10 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{household?.name ?? "Chat"}</Text>
-        <Text style={styles.headerSubtitle}>
+    <SafeAreaView style={[styles.container, { backgroundColor: t.background }]} edges={["top", "left", "right"]}>
+      <View style={[styles.header, { backgroundColor: t.card, borderBottomColor: t.cardBorder }]}>
+        <Text style={[styles.headerTitle, { color: t.text }]}>{household?.name ?? "Chat"}</Text>
+        <Text style={[styles.headerSubtitle, { color: t.textSecondary }]}>
           {members.length} membre{members.length > 1 ? "s" : ""}
         </Text>
       </View>
@@ -166,13 +168,16 @@ export default function ChatScreen() {
       >
         {loading && messages.length === 0 ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#1D4ED8" />
+            <ActivityIndicator size="large" color={t.accent} />
           </View>
         ) : messages.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="chatbubbles-outline" size={48} color="#D1D5DB" />
-            <Text style={styles.emptyText}>
-              Pas encore de messages.{"\n"}Envoie le premier !
+            <View style={[styles.emptyIconCircle, { backgroundColor: t.accentLight }]}>
+              <Ionicons name="chatbubbles-outline" size={40} color={t.accent} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: t.text }]}>Pas encore de messages</Text>
+            <Text style={[styles.emptyText, { color: t.textSecondary }]}>
+              Envoie le premier message à tes colocs !
             </Text>
           </View>
         ) : (
@@ -187,7 +192,7 @@ export default function ChatScreen() {
           />
         )}
 
-        <View style={[styles.inputBar, Platform.OS === "android" && { paddingBottom: 12 }]}>
+        <View style={[styles.inputBar, { backgroundColor: t.card, borderTopColor: t.cardBorder }, Platform.OS === "android" && { paddingBottom: 12 }]}>
           <View style={styles.inputRow}>
             <Pressable
               style={styles.iconButton}
@@ -195,9 +200,9 @@ export default function ChatScreen() {
               disabled={uploading}
             >
               {uploading ? (
-                <ActivityIndicator size={18} color="#6B7280" />
+                <ActivityIndicator size={18} color={t.textSecondary} />
               ) : (
-                <Ionicons name="camera-outline" size={22} color="#6B7280" />
+                <Ionicons name="camera-outline" size={22} color={t.textSecondary} />
               )}
             </Pressable>
 
@@ -205,14 +210,14 @@ export default function ChatScreen() {
               style={styles.iconButton}
               onPress={() => setShowPollCreator(true)}
             >
-              <Ionicons name="stats-chart-outline" size={20} color="#6B7280" />
+              <Ionicons name="stats-chart-outline" size={20} color={t.textSecondary} />
             </Pressable>
 
             <TextInput
               ref={inputRef}
-              style={styles.textInput}
+              style={[styles.textInput, { borderColor: t.cardBorder, backgroundColor: t.inputBg, color: t.text }]}
               placeholder="Message..."
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={t.textMuted}
               value={text}
               onChangeText={setText}
               multiline
@@ -222,6 +227,7 @@ export default function ChatScreen() {
             <Pressable
               style={[
                 styles.sendButton,
+                { backgroundColor: t.accent },
                 !text.trim() && styles.sendButtonDisabled,
               ]}
               onPress={() => void handleSend()}
@@ -246,26 +252,21 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F4F6FA",
   },
   flex: {
     flex: 1,
   },
   header: {
-    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#111827",
   },
   headerSubtitle: {
     fontSize: 13,
-    color: "#6B7280",
     marginTop: 1,
   },
   loadingContainer: {
@@ -278,22 +279,31 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 32,
-    gap: 12,
+    gap: 10,
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
   },
   emptyText: {
-    fontSize: 15,
-    color: "#6B7280",
+    fontSize: 14,
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: 20,
   },
   listContent: {
     paddingVertical: 8,
     paddingHorizontal: 4,
   },
   inputBar: {
-    backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
     paddingHorizontal: 8,
     paddingTop: 8,
     paddingBottom: 8,
@@ -313,25 +323,21 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingTop: 10,
     paddingBottom: 10,
     fontSize: 15,
     maxHeight: 100,
-    backgroundColor: "#F9FAFB",
-    color: "#111827",
   },
   sendButton: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: "#1D4ED8",
     alignItems: "center",
     justifyContent: "center",
   },
   sendButtonDisabled: {
-    backgroundColor: "#CBD5E1",
+    opacity: 0.5,
   },
 });

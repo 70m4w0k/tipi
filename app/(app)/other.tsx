@@ -1,7 +1,7 @@
 import { SafeAreaView } from "react-native-safe-area-context";
-import { StyleSheet } from "react-native";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useHousehold } from "../../lib/hooks/useHousehold";
+import { useTheme } from "../../lib/theme";
 import { ProfileSettings } from "../../components/ProfileSettings";
 
 export default function ProfileScreen() {
@@ -11,11 +11,12 @@ export default function ProfileScreen() {
     renameHousehold, regenerateInviteCode,
     kickMember, promoteMember, demoteMember, deleteHousehold,
   } = useHousehold(profile);
+  const t = useTheme();
 
   if (!profile) return null;
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: t.background }} edges={["top"]}>
       <ProfileSettings
         profile={profile}
         household={household}
@@ -33,7 +34,3 @@ export default function ProfileScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F4F6FA" },
-});

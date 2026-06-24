@@ -4,12 +4,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../lib/AuthContext";
 import { useNavPreferences, ALL_TABS } from "../../lib/hooks/useNavPreferences";
+import { useTheme } from "../../lib/theme";
 import { TipiIcon } from "../../components/TipiIcon";
 
 export default function AppLayout() {
   const { session, profile } = useAuth();
   const { enabledTabs, loaded } = useNavPreferences();
   const insets = useSafeAreaInsets();
+  const t = useTheme();
 
   if (!session) return <Redirect href="/(auth)/login" />;
   if (!profile?.household_id) return <Redirect href="/(auth)/join" />;
@@ -22,13 +24,13 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: "#FFFFFF",
-          borderTopColor: "#E5E7EB",
+          backgroundColor: t.tabBarBg,
+          borderTopColor: t.tabBarBorder,
           borderTopWidth: 1,
           paddingBottom: Platform.OS === "android" ? Math.max(insets.bottom, 10) : undefined,
         },
-        tabBarActiveTintColor: "#1D4ED8",
-        tabBarInactiveTintColor: "#9CA3AF",
+        tabBarActiveTintColor: t.accent,
+        tabBarInactiveTintColor: t.textMuted,
         tabBarLabelStyle: { fontWeight: "600", fontSize: 11 },
       }}
     >

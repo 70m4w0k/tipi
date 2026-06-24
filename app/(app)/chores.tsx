@@ -15,8 +15,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useHousehold } from "../../lib/hooks/useHousehold";
 import { useChores } from "../../lib/hooks/useChores";
+import { useTheme } from "../../lib/theme";
 import ChoreGrid from "../../components/ChoreGrid";
 import ChoreReminderCard from "../../components/ChoreReminder";
+import { EmptyState } from "../../components/EmptyState";
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 
@@ -28,6 +30,7 @@ export default function ChoresScreen() {
     setCellIntensity, addTask, editTask, removeTask,
     toggleReminderDone, updateReminder, addReminder, toggleTaskVisibility,
   } = useChores(profile?.household_id);
+  const t = useTheme();
 
   const [filterMode, setFilterMode] = useState<"me" | "all">("all");
 
@@ -45,8 +48,8 @@ export default function ChoresScreen() {
 
   if (!profile || !household) {
     return (
-      <SafeAreaView style={styles.centered}>
-        <Text style={styles.emptyText}>Rejoins une coloc pour accéder au ménage.</Text>
+      <SafeAreaView style={[styles.centered, { backgroundColor: t.background }]}>
+        <Text style={[styles.emptyText, { color: t.textSecondary }]}>Rejoins une coloc pour accéder au ménage.</Text>
       </SafeAreaView>
     );
   }
@@ -107,11 +110,11 @@ export default function ChoresScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.screen} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Ménage</Text>
+    <SafeAreaView style={[styles.screen, { backgroundColor: t.background }]} edges={["top"]}>
+      <View style={[styles.header, { backgroundColor: t.card, borderBottomColor: t.cardBorder }]}>
+        <Text style={[styles.headerTitle, { color: t.text }]}>Ménage</Text>
         <Pressable style={styles.headerBtn} onPress={() => setShowAddTask(true)}>
-          <Ionicons name="add" size={24} color="#1D4ED8" />
+          <Ionicons name="add" size={24} color={t.accent} />
         </Pressable>
       </View>
 
@@ -127,19 +130,29 @@ export default function ChoresScreen() {
           />
         ))}
 
+        {tasks.length === 0 && reminders.length === 0 ? (
+          <EmptyState
+            icon="sparkles-outline"
+            title="Aucune tâche"
+            subtitle="Ajoute des tâches ménagères pour suivre les contributions de chacun."
+            actionLabel="Ajouter une tâche"
+            onAction={() => setShowAddTask(true)}
+          />
+        ) : (
+          <>
         {/* Filter */}
         <View style={styles.filterRow}>
           <Pressable
-            style={[styles.filterBtn, filterMode === "me" && styles.filterBtnActive]}
+            style={[styles.filterBtn, { backgroundColor: t.card, borderColor: t.cardBorder }, filterMode === "me" && { backgroundColor: t.accent, borderColor: t.accent }]}
             onPress={() => setFilterMode("me")}
           >
-            <Text style={[styles.filterBtnText, filterMode === "me" && styles.filterBtnTextActive]}>Moi</Text>
+            <Text style={[styles.filterBtnText, { color: t.text }, filterMode === "me" && styles.filterBtnTextActive]}>Moi</Text>
           </Pressable>
           <Pressable
-            style={[styles.filterBtn, filterMode === "all" && styles.filterBtnActive]}
+            style={[styles.filterBtn, { backgroundColor: t.card, borderColor: t.cardBorder }, filterMode === "all" && { backgroundColor: t.accent, borderColor: t.accent }]}
             onPress={() => setFilterMode("all")}
           >
-            <Text style={[styles.filterBtnText, filterMode === "all" && styles.filterBtnTextActive]}>Tous</Text>
+            <Text style={[styles.filterBtnText, { color: t.text }, filterMode === "all" && styles.filterBtnTextActive]}>Tous</Text>
           </Pressable>
         </View>
 
@@ -154,6 +167,8 @@ export default function ChoresScreen() {
         />
 
         <View style={{ height: 40 }} />
+          </>
+        )}
       </ScrollView>
 
       {/* Add task modal */}
@@ -297,30 +312,27 @@ export default function ChoresScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F4F6FA" },
+  screen: { flex: 1 },
   header: {
-    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
     paddingHorizontal: 20,
     paddingVertical: 12,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
+  headerTitle: { fontSize: 18, fontWeight: "700" },
   headerBtn: { padding: 4 },
   content: { padding: 16 },
-  centered: { flex: 1, backgroundColor: "#F4F6FA", justifyContent: "center", alignItems: "center", padding: 24 },
-  emptyText: { fontSize: 15, color: "#6B7280", textAlign: "center" },
+  centered: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 },
+  emptyText: { fontSize: 15, textAlign: "center" },
 
   filterRow: { flexDirection: "row", marginBottom: 12, gap: 8 },
   filterBtn: {
     flex: 1, paddingVertical: 8, borderRadius: 8,
-    backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E5E7EB", alignItems: "center",
+    borderWidth: 1, alignItems: "center",
   },
-  filterBtnActive: { backgroundColor: "#1D4ED8", borderColor: "#1D4ED8" },
-  filterBtnText: { fontSize: 13, fontWeight: "600", color: "#374151" },
+  filterBtnText: { fontSize: 13, fontWeight: "600" },
   filterBtnTextActive: { color: "#FFFFFF" },
 
   // Modals
