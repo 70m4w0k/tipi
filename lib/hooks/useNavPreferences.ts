@@ -2,16 +2,18 @@ import { useCallback, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const STORAGE_KEY = "tipi_nav_tabs";
-const DEFAULT_TABS = ["chat", "expenses", "chores"];
+const DEFAULT_TABS = ["home", "chat", "expenses", "chores"];
 
-export type NavTab = "chat" | "expenses" | "chores" | "shopping" | "recipes";
+export type NavTab = "home" | "chat" | "expenses" | "chores" | "shopping" | "recipes" | "documents";
 
 export const ALL_TABS: { key: NavTab; label: string; icon: string }[] = [
+  { key: "home", label: "Accueil", icon: "home-outline" },
   { key: "chat", label: "Chat", icon: "chatbubbles-outline" },
   { key: "expenses", label: "Dépenses", icon: "wallet-outline" },
   { key: "chores", label: "Ménage", icon: "sparkles-outline" },
   { key: "shopping", label: "Courses", icon: "cart-outline" },
   { key: "recipes", label: "Recettes", icon: "restaurant-outline" },
+  { key: "documents", label: "Documents", icon: "document-text-outline" },
 ];
 
 export function useNavPreferences() {

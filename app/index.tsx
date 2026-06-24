@@ -7,5 +7,5 @@ export default function Index() {
   if (loading) return null;
   if (!session) return <Redirect href="/(auth)/login" />;
   if (!profile?.household_id) return <Redirect href="/(auth)/join" />;
-  return <Redirect href="/(app)/chat" />;
+  return <Redirect href="/(app)/home" />;
 }

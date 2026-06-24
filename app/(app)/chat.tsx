@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
     borderTopColor: "#E5E7EB",
     paddingHorizontal: 8,
     paddingTop: 8,
-    paddingBottom: Platform.OS === "ios" ? 20 : 8,
+    paddingBottom: Platform.OS === "ios" ? 20 : 12,
   },
   inputRow: {
     flexDirection: "row",

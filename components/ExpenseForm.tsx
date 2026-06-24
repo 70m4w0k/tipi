@@ -187,7 +187,7 @@ export function ExpenseForm({ members, currentUserId, onSubmit }: Props) {
             >
               <Text style={styles.checkIcon}>{selected ? "☑" : "☐"}</Text>
               <Text
-                style={[styles.chipText, selected && styles.chipTextActive]}
+                style={[styles.chipText, selected && styles.checkChipTextActive]}
               >
                 {member.display_name}
               </Text>
@@ -271,6 +271,10 @@ const styles = StyleSheet.create({
   checkChipActive: {
     backgroundColor: "#EEF2FF",
     borderColor: "#1D4ED8",
+  },
+  checkChipTextActive: {
+    color: "#1D4ED8",
+    fontWeight: "700",
   },
   checkIcon: { fontSize: 16 },
   sharePreview: {

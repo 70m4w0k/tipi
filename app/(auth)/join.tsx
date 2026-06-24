@@ -27,7 +27,7 @@ export default function JoinScreen() {
 
   useEffect(() => {
     if (profile?.household_id) {
-      router.replace("/(app)/chat");
+      router.replace("/(app)/home");
     }
   }, [profile?.household_id, router]);
 
@@ -66,9 +66,12 @@ export default function JoinScreen() {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <ScrollView contentContainerStyle={styles.scroll}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.title}>Bienvenue, {profile?.display_name} !</Text>
           <Text style={styles.subtitle}>
             Crée une coloc ou rejoins-en une avec un code d'invitation.

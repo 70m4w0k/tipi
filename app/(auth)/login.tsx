@@ -78,9 +78,12 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <ScrollView contentContainerStyle={styles.scroll}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.logo}>🏠</Text>
           <Text style={styles.title}>Tipi</Text>
           <Text style={styles.subtitle}>Gérez votre coloc ensemble</Text>

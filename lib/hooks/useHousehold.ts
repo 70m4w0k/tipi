@@ -55,9 +55,10 @@ export function useHousehold(profile: Profile | null) {
     const { data, error } = await supabase
       .from("households")
       .select("*")
-      .eq("invite_code", inviteCode.trim().toUpperCase())
-      .single();
-    if (error || !data) return { error: error ?? new Error("Code invalide") };
+      .eq("invite_code", inviteCode.trim().toLowerCase())
+      .maybeSingle();
+    if (error) return { error };
+    if (!data) return { error: new Error("Code invalide") };
 
     const { error: updateError } = await supabase
       .from("profiles")

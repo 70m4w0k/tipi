@@ -8,8 +8,10 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { supabase } from "../lib/supabase";
 import { Profile, Household } from "../lib/types";
+import { useNavPreferences, ALL_TABS, NavTab } from "../lib/hooks/useNavPreferences";
 
 const COLOR_PRESETS = [
   "#2563EB",
@@ -35,9 +37,25 @@ export function ProfileSettings({
   onSignOut: () => void;
   onProfileUpdated: () => void;
 }) {
+  const router = useRouter();
+  const { enabledTabs, setTabs } = useNavPreferences();
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [selectedColor, setSelectedColor] = useState(profile.color);
   const [saving, setSaving] = useState(false);
+
+  const MAX_NAV_TABS = 4;
+  const toggleNavTab = async (key: NavTab) => {
+    if (enabledTabs.includes(key)) {
+      if (enabledTabs.length <= 1) return;
+      await setTabs(enabledTabs.filter((k) => k !== key));
+    } else {
+      if (enabledTabs.length >= MAX_NAV_TABS) {
+        Alert.alert("Maximum atteint", `Tu peux afficher ${MAX_NAV_TABS} pages maximum dans la barre de navigation.`);
+        return;
+      }
+      await setTabs([...enabledTabs, key]);
+    }
+  };
 
   const hasChanges =
     displayName !== profile.display_name || selectedColor !== profile.color;
@@ -75,6 +93,7 @@ export function ProfileSettings({
               .update({ household_id: null })
               .eq("id", profile.id);
             onProfileUpdated();
+            router.replace("/");
           },
         },
       ],
@@ -145,6 +164,30 @@ export function ProfileSettings({
         </>
       )}
 
+      <Text style={styles.sectionTitle}>Barre de navigation</Text>
+      <View style={styles.card}>
+        <Text style={styles.hint}>
+          Choisis jusqu'à {MAX_NAV_TABS} pages à afficher dans la barre du bas. Redémarre l'app pour appliquer.
+        </Text>
+        {ALL_TABS.filter((t) => t.key !== "home").map((t) => {
+          const isEnabled = enabledTabs.includes(t.key);
+          return (
+            <Pressable
+              key={t.key}
+              style={styles.navConfigItem}
+              onPress={() => void toggleNavTab(t.key)}
+            >
+              <Text style={[styles.navConfigLabel, isEnabled && styles.navConfigLabelActive]}>
+                {t.label}
+              </Text>
+              <Text style={{ color: isEnabled ? "#1D4ED8" : "#D1D5DB", fontSize: 18 }}>
+                {isEnabled ? "☑" : "☐"}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       <Pressable style={styles.logoutButton} onPress={onSignOut}>
         <Text style={styles.logoutText}>Se déconnecter</Text>
       </Pressable>
@@ -210,6 +253,16 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   hint: { color: "#6B7280", fontSize: 12, textAlign: "center" },
+  navConfigItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  navConfigLabel: { fontSize: 15, color: "#6B7280" },
+  navConfigLabelActive: { color: "#111827", fontWeight: "600" },
   logoutButton: {
     alignItems: "center",
     paddingVertical: 16,

@@ -18,6 +18,7 @@ export default function AppLayout() {
           borderTopColor: "#E5E7EB",
           borderTopWidth: 1,
           paddingTop: 4,
+          paddingBottom: 8,
         },
         tabBarActiveTintColor: "#1D4ED8",
         tabBarInactiveTintColor: "#9CA3AF",
@@ -37,12 +38,14 @@ export default function AppLayout() {
           }}
         />
       ))}
+      {/* Profile page — not in tab bar, accessible from home */}
       <Tabs.Screen
         name="other"
         options={{
-          title: "Plus",
+          title: "Profil",
+          href: null,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="ellipsis-horizontal-circle-outline" size={size} color={color} />
+            <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}
       />
