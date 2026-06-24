@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams } from "expo-router";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useRecipes } from "../../lib/hooks/useRecipes";
 import { Recipe, RecipeInstance, RecipeStep } from "../../lib/types";
@@ -33,13 +34,25 @@ function formatDuration(startDate: string): string {
 
 export default function RecipesScreen() {
   const { profile } = useAuth();
+  const searchParams = useLocalSearchParams<{ tab?: string; instanceId?: string }>();
   const {
     recipes, instances, loading,
     addRecipe, updateRecipe, deleteRecipe,
     startInstance, advanceStep, updateInstanceNotes, deleteInstance, completeInstance,
   } = useRecipes(profile?.household_id);
 
-  const [tab, setTab] = useState<Tab>("recipes");
+  const [tab, setTab] = useState<Tab>(searchParams.tab === "active" ? "active" : "recipes");
+  const [deepLinkHandled, setDeepLinkHandled] = useState(false);
+
+  useEffect(() => {
+    if (deepLinkHandled || !searchParams.instanceId || instances.length === 0) return;
+    const inst = instances.find((i) => i.id === searchParams.instanceId);
+    if (inst) {
+      setSelectedInstance(inst.id);
+      setEditingNotes(inst.notes);
+      setDeepLinkHandled(true);
+    }
+  }, [searchParams.instanceId, instances, deepLinkHandled]);
 
   // Recipe form
   const [showForm, setShowForm] = useState(false);

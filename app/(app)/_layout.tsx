@@ -1,14 +1,18 @@
 import { Platform } from "react-native";
-import { Tabs } from "expo-router";
+import { Tabs, Redirect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuth } from "../../lib/AuthContext";
 import { useNavPreferences, ALL_TABS } from "../../lib/hooks/useNavPreferences";
 import { TipiIcon } from "../../components/TipiIcon";
 
 export default function AppLayout() {
+  const { session, profile } = useAuth();
   const { enabledTabs, loaded } = useNavPreferences();
   const insets = useSafeAreaInsets();
 
+  if (!session) return <Redirect href="/(auth)/login" />;
+  if (!profile?.household_id) return <Redirect href="/(auth)/join" />;
   if (!loaded) return null;
 
   const isTabEnabled = (key: string) => enabledTabs.includes(key as any);

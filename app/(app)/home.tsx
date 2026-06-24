@@ -22,6 +22,7 @@ type Notification = {
   icon: string;
   color: string;
   route: string;
+  params?: Record<string, string>;
 };
 
 export default function HomeScreen() {
@@ -69,6 +70,7 @@ export default function HomeScreen() {
           icon: "restaurant-outline",
           color: "#10B981",
           route: "/(app)/recipes",
+          params: { tab: "active", instanceId: inst.id },
         });
       }
     }
@@ -107,7 +109,7 @@ export default function HomeScreen() {
               <Pressable
                 key={n.id}
                 style={styles.notifCard}
-                onPress={() => router.push(n.route as any)}
+                onPress={() => router.push({ pathname: n.route as any, params: n.params })}
               >
                 <Ionicons name={n.icon as any} size={20} color={n.color} />
                 <Text style={styles.notifText}>{n.text}</Text>
