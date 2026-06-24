@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabase";
 import { ShoppingItem } from "../types";
+
+let channelCounter = 0;
 
 export function useShoppingList(householdId: string | null | undefined) {
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const channelId = useRef(++channelCounter);
 
   const fetchItems = useCallback(async () => {
     if (!householdId) {
@@ -29,7 +32,7 @@ export function useShoppingList(householdId: string | null | undefined) {
   useEffect(() => {
     if (!householdId) return;
     const channel = supabase
-      .channel(`shopping:${householdId}`)
+      .channel(`shopping:${householdId}:${channelId.current}`)
       .on(
         "postgres_changes",
         {

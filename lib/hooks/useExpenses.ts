@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabase";
 import { Expense, ExpenseCategory, ExpenseParticipant, Profile } from "../types";
 
 export type ExpenseWithParticipants = Expense & { participants: string[] };
 
+let channelCounter = 0;
+
 export function useExpenses(householdId: string | null | undefined) {
   const [expenses, setExpenses] = useState<ExpenseWithParticipants[]>([]);
   const [loading, setLoading] = useState(false);
+  const channelId = useRef(++channelCounter);
 
   const fetchExpenses = useCallback(async () => {
     if (!householdId) {
@@ -60,7 +63,7 @@ export function useExpenses(householdId: string | null | undefined) {
     if (!householdId) return;
 
     const channel = supabase
-      .channel(`expenses:${householdId}`)
+      .channel(`expenses:${householdId}:${channelId.current}`)
       .on(
         "postgres_changes",
         {
