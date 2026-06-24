@@ -61,9 +61,10 @@ lib/                        # Logique métier
 ├── chores-logic.ts         # Logique pure : cycle d'intensité, filtrage tâches
 ├── recipes-logic.ts        # Logique pure : avancement étapes, progression
 ├── nav-preferences-logic.ts # Logique pure : parsing préférences navbar
+├── household-logic.ts      # Logique pure : permissions admin, gestion membres
 └── hooks/                  # Hooks React
     ├── useAuth.ts          # Session + profil utilisateur
-    ├── useHousehold.ts     # Gestion colocation + membres
+    ├── useHousehold.ts     # Gestion colocation + membres + admin (rename, kick, promote)
     ├── useMessages.ts      # Chat temps réel
     ├── useExpenses.ts      # Dépenses + calcul soldes
     ├── useChores.ts        # Ménage + tâches + rappels
@@ -79,6 +80,7 @@ __tests__/                  # Tests automatisés
 ├── chores-logic.test.ts    # Tests cycle intensité et filtrage
 ├── recipes-logic.test.ts   # Tests avancement recettes et progression
 ├── useNavPreferences.test.ts # Tests parsing préférences navbar
+├── household-logic.test.ts # Tests permissions admin, kick, promote, demote
 └── integration/            # Tests d'intégration (Supabase réel)
     ├── setup.ts            # Chargement .env via dotenv
     ├── supabase-client.ts  # Infrastructure : user/household de test
@@ -116,12 +118,21 @@ supabase/
 | `events` | Événements du calendrier |
 | `shared_files` | Métadonnées des documents partagés |
 
+### Rôles
+
+Chaque profil a un champ `role` (`admin` | `member`) :
+- Le créateur d'un household est automatiquement admin (trigger `set_admin_on_create`)
+- Un admin peut : renommer la coloc, régénérer le code d'invitation, exclure un membre, promouvoir/rétrograder, supprimer la coloc
+- Un membre exclu conserve son historique (dépenses, contributions) mais perd l'accès
+- Le rôle est réinitialisé à `member` quand on quitte un household
+
 ### Sécurité (RLS)
 
 Chaque table avec `household_id` a des policies qui restreignent l'accès aux données du household de l'utilisateur connecté. La fonction helper `my_household_id()` est utilisée dans toutes les policies.
 
 Cas spéciaux :
-- `profiles` : UPDATE limité à son propre profil
+- `profiles` : UPDATE limité à son propre profil + les admins peuvent modifier les membres de leur household
+- `households` : UPDATE et DELETE réservés aux admins
 - `chores` : DELETE limité à ses propres contributions
 - Tables de jointure (`message_reads`, `expense_participants`) : policies basées sur JOIN avec la table parente
 
@@ -157,6 +168,7 @@ Pour la testabilité, la logique métier complexe est extraite des hooks dans de
 | `lib/chores-logic.ts` | `resolveIntensityAction`, `filterVisibleTasks` | `useChores` |
 | `lib/recipes-logic.ts` | `canAdvanceStep`, `isLastStep`, `getInstanceProgress` | `useRecipes` |
 | `lib/nav-preferences-logic.ts` | `parseStoredTabs` | `useNavPreferences` |
+| `lib/household-logic.ts` | `canKick`, `canPromote`, `canDemote`, `canManageHousehold`, `isLastAdmin` | `ProfileSettings` |
 
 ## Tests
 
@@ -171,11 +183,11 @@ Pour la testabilité, la logique métier complexe est extraite des hooks dans de
 ### Commandes
 
 ```bash
-npm test                    # Tests unitaires (66 tests, ~4s)
+npm test                    # Tests unitaires (85 tests, ~4s)
 npm run test:integration    # Tests d'intégration Supabase (24 tests, ~12s)
 ```
 
-### Tests unitaires (66 tests)
+### Tests unitaires (85 tests)
 
 Tests de la logique métier pure, sans appel réseau ni composant React.
 
@@ -187,6 +199,7 @@ Tests de la logique métier pure, sans appel réseau ni composant React.
 | `chores-logic.test.ts` | 13 | Cycle d'intensité des tâches (0→1→2→3→suppression) et filtrage de visibilité |
 | `recipes-logic.test.ts` | 15 | Avancement des étapes de recette, détection dernière étape, calcul de progression |
 | `useNavPreferences.test.ts` | 9 | Parsing des préférences navbar depuis AsyncStorage, injection du tab home, fallback sur données corrompues |
+| `household-logic.test.ts` | 19 | Permissions admin (kick, promote, demote), gestion du dernier admin, génération de code d'invitation |
 
 ### Tests d'intégration (24 tests)
 

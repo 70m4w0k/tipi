@@ -7,9 +7,17 @@
 - **Magic link** — Lien de connexion envoyé par email, sans mot de passe
 
 ### Gestion de colocation
-- **Créer une coloc** — L'utilisateur donne un nom, un code d'invitation à 6 caractères est généré
+- **Créer une coloc** — L'utilisateur donne un nom, un code d'invitation à 6 caractères est généré. Le créateur devient admin.
 - **Rejoindre une coloc** — Saisir le code d'invitation d'une coloc existante
 - **Quitter une coloc** — Possible depuis les paramètres du profil
+
+### Administration (admin uniquement)
+- **Renommer la coloc** — Modifier le nom depuis les paramètres
+- **Régénérer le code d'invitation** — L'ancien code est invalidé
+- **Exclure un membre** — Le membre perd l'accès, son historique est conservé
+- **Promouvoir un membre** — Le rendre admin
+- **Rétrograder un admin** — Le repasser en membre simple
+- **Supprimer la coloc** — Tous les membres sont déconnectés (irréversible)
 
 ## 2. Messagerie (Chat)
 
@@ -103,7 +111,8 @@ Stockage centralisé de documents (factures, bail, quittances, etc.).
 | Événements | ✅ Implémenté |
 | Documents partagés | ✅ Implémenté |
 | Profil (couleur) | ✅ Implémenté |
-| Tests unitaires (66) | ✅ Implémenté |
+| Gestion coloc (admin, rôles) | ✅ Implémenté |
+| Tests unitaires (85) | ✅ Implémenté |
 | Tests d'intégration Supabase (24) | ✅ Implémenté |
 | Push notifications | ❌ Pas encore |
 | Refonte UI/design | ❌ À discuter |

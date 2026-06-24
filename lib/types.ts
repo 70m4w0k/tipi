@@ -5,6 +5,7 @@ export type Profile = {
   color: string;
   avatar_url: string | null;
   household_id: string | null;
+  role: "admin" | "member";
   created_at: string;
 };
 

@@ -30,19 +30,37 @@ const COLOR_PRESETS = [
 export function ProfileSettings({
   profile,
   household,
+  members,
+  isAdmin,
   onSignOut,
   onProfileUpdated,
+  onRenameHousehold,
+  onRegenerateCode,
+  onKickMember,
+  onPromoteMember,
+  onDemoteMember,
+  onDeleteHousehold,
 }: {
   profile: Profile;
   household: Household | null;
+  members: Profile[];
+  isAdmin: boolean;
   onSignOut: () => void;
   onProfileUpdated: () => void;
+  onRenameHousehold: (name: string) => Promise<{ error: any }>;
+  onRegenerateCode: () => Promise<{ error: any }>;
+  onKickMember: (id: string) => Promise<{ error: any }>;
+  onPromoteMember: (id: string) => Promise<{ error: any }>;
+  onDemoteMember: (id: string) => Promise<{ error: any }>;
+  onDeleteHousehold: () => Promise<{ error: any }>;
 }) {
   const router = useRouter();
   const { enabledTabs, setTabs } = useNavPreferences();
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [selectedColor, setSelectedColor] = useState(profile.color);
   const [saving, setSaving] = useState(false);
+  const [editingHouseName, setEditingHouseName] = useState(false);
+  const [houseName, setHouseName] = useState(household?.name ?? "");
 
   const MAX_NAV_TABS = 4;
   const toggleNavTab = async (key: NavTab) => {
@@ -101,6 +119,102 @@ export function ProfileSettings({
     );
   };
 
+  const handleRename = async () => {
+    if (!houseName.trim()) return;
+    const { error } = await onRenameHousehold(houseName);
+    if (error) Alert.alert("Erreur", error.message);
+    setEditingHouseName(false);
+  };
+
+  const handleRegenerateCode = () => {
+    Alert.alert(
+      "Régénérer le code ?",
+      "L'ancien code ne fonctionnera plus. Les membres actuels ne sont pas affectés.",
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Régénérer",
+          onPress: async () => {
+            const { error } = await onRegenerateCode();
+            if (error) Alert.alert("Erreur", error.message);
+          },
+        },
+      ],
+    );
+  };
+
+  const handleKick = (member: Profile) => {
+    Alert.alert(
+      "Exclure ce membre ?",
+      `${member.display_name} ne pourra plus accéder à la coloc. Son historique sera conservé.`,
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Exclure",
+          style: "destructive",
+          onPress: async () => {
+            const { error } = await onKickMember(member.id);
+            if (error) Alert.alert("Erreur", error.message);
+          },
+        },
+      ],
+    );
+  };
+
+  const handlePromote = (member: Profile) => {
+    Alert.alert(
+      "Promouvoir admin ?",
+      `${member.display_name} pourra gérer la coloc (renommer, exclure, etc.)`,
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Promouvoir",
+          onPress: async () => {
+            const { error } = await onPromoteMember(member.id);
+            if (error) Alert.alert("Erreur", error.message);
+          },
+        },
+      ],
+    );
+  };
+
+  const handleDemote = (member: Profile) => {
+    Alert.alert(
+      "Rétrograder ?",
+      `${member.display_name} ne pourra plus gérer la coloc.`,
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Rétrograder",
+          style: "destructive",
+          onPress: async () => {
+            const { error } = await onDemoteMember(member.id);
+            if (error) Alert.alert("Erreur", error.message);
+          },
+        },
+      ],
+    );
+  };
+
+  const handleDeleteHousehold = () => {
+    Alert.alert(
+      "Supprimer la coloc ?",
+      "Tous les membres seront déconnectés. Cette action est irréversible.",
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Supprimer",
+          style: "destructive",
+          onPress: async () => {
+            const { error } = await onDeleteHousehold();
+            if (error) Alert.alert("Erreur", error.message);
+            else router.replace("/");
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.sectionTitle}>Profil</Text>
@@ -147,10 +261,41 @@ export function ProfileSettings({
           <Text style={styles.sectionTitle}>Coloc</Text>
           <View style={styles.card}>
             <Text style={styles.label}>Nom</Text>
-            <Text style={styles.value}>{household.name}</Text>
+            {editingHouseName && isAdmin ? (
+              <View style={styles.inlineEdit}>
+                <TextInput
+                  style={[styles.input, { flex: 1 }]}
+                  value={houseName}
+                  onChangeText={setHouseName}
+                  autoFocus
+                />
+                <Pressable style={styles.inlineBtn} onPress={() => void handleRename()}>
+                  <Ionicons name="checkmark" size={20} color="#10B981" />
+                </Pressable>
+                <Pressable style={styles.inlineBtn} onPress={() => { setEditingHouseName(false); setHouseName(household.name); }}>
+                  <Ionicons name="close" size={20} color="#9CA3AF" />
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable
+                style={styles.editableRow}
+                onPress={() => isAdmin && setEditingHouseName(true)}
+                disabled={!isAdmin}
+              >
+                <Text style={styles.value}>{household.name}</Text>
+                {isAdmin && <Ionicons name="pencil" size={16} color="#9CA3AF" />}
+              </Pressable>
+            )}
 
             <Text style={styles.label}>Code d'invitation</Text>
-            <Text style={styles.codeDisplay}>{household.invite_code}</Text>
+            <View style={styles.codeRow}>
+              <Text style={styles.codeDisplay}>{household.invite_code}</Text>
+              {isAdmin && (
+                <Pressable style={styles.inlineBtn} onPress={handleRegenerateCode}>
+                  <Ionicons name="refresh" size={20} color="#1D4ED8" />
+                </Pressable>
+              )}
+            </View>
             <Text style={styles.hint}>
               Partage ce code pour inviter tes colocataires
             </Text>
@@ -162,6 +307,63 @@ export function ProfileSettings({
               <Text style={styles.buttonText}>Quitter la coloc</Text>
             </Pressable>
           </View>
+
+          {/* Members list */}
+          <Text style={styles.sectionTitle}>Membres</Text>
+          <View style={styles.card}>
+            {members.map((m) => (
+              <View key={m.id} style={styles.memberRow}>
+                <View style={[styles.memberAvatar, { backgroundColor: m.color }]}>
+                  <Text style={styles.memberAvatarText}>
+                    {m.display_name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.memberName}>
+                    {m.display_name}
+                    {m.id === profile.id ? " (toi)" : ""}
+                  </Text>
+                  <Text style={styles.memberRole}>
+                    {m.role === "admin" ? "Admin" : "Membre"}
+                  </Text>
+                </View>
+                {isAdmin && m.id !== profile.id && (
+                  <View style={styles.memberActions}>
+                    {m.role === "member" ? (
+                      <Pressable style={styles.memberActionBtn} onPress={() => handlePromote(m)}>
+                        <Ionicons name="arrow-up-circle-outline" size={22} color="#1D4ED8" />
+                      </Pressable>
+                    ) : (
+                      <Pressable style={styles.memberActionBtn} onPress={() => handleDemote(m)}>
+                        <Ionicons name="arrow-down-circle-outline" size={22} color="#F59E0B" />
+                      </Pressable>
+                    )}
+                    <Pressable style={styles.memberActionBtn} onPress={() => handleKick(m)}>
+                      <Ionicons name="person-remove-outline" size={20} color="#EF4444" />
+                    </Pressable>
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+
+          {/* Admin danger zone */}
+          {isAdmin && (
+            <>
+              <Text style={styles.sectionTitle}>Zone dangereuse</Text>
+              <View style={styles.card}>
+                <Text style={styles.hint}>
+                  Supprimer la coloc déconnectera tous les membres. Cette action est irréversible.
+                </Text>
+                <Pressable
+                  style={[styles.button, styles.buttonDanger]}
+                  onPress={handleDeleteHousehold}
+                >
+                  <Text style={styles.buttonText}>Supprimer la coloc</Text>
+                </Pressable>
+              </View>
+            </>
+          )}
         </>
       )}
 
@@ -256,7 +458,62 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingVertical: 8,
   },
+  codeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
   hint: { color: "#6B7280", fontSize: 12, textAlign: "center" },
+  inlineEdit: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  inlineBtn: {
+    padding: 6,
+  },
+  editableRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  memberRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  memberAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  memberAvatarText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  memberName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  memberRole: {
+    fontSize: 12,
+    color: "#9CA3AF",
+  },
+  memberActions: {
+    flexDirection: "row",
+    gap: 4,
+  },
+  memberActionBtn: {
+    padding: 6,
+  },
   navConfigItem: {
     flexDirection: "row",
     alignItems: "center",

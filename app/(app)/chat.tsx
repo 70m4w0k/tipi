@@ -187,7 +187,7 @@ export default function ChatScreen() {
           />
         )}
 
-        <View style={styles.inputBar}>
+        <View style={[styles.inputBar, Platform.OS === "android" && { paddingBottom: 12 }]}>
           <View style={styles.inputRow}>
             <Pressable
               style={styles.iconButton}
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     borderTopColor: "#E5E7EB",
     paddingHorizontal: 8,
     paddingTop: 8,
-    paddingBottom: Platform.OS === "ios" ? 20 : 8,
+    paddingBottom: 8,
   },
   inputRow: {
     flexDirection: "row",

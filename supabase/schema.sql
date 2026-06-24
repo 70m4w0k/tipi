@@ -19,6 +19,7 @@ CREATE TABLE profiles (
   color text NOT NULL DEFAULT '#2563EB',
   avatar_url text,
   household_id uuid REFERENCES households(id),
+  role text NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
   created_at timestamptz DEFAULT now()
 );
 

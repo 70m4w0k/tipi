@@ -6,7 +6,11 @@ import { ProfileSettings } from "../../components/ProfileSettings";
 
 export default function ProfileScreen() {
   const { profile, signOut, refreshProfile } = useAuth();
-  const { household } = useHousehold(profile);
+  const {
+    household, members, isAdmin,
+    renameHousehold, regenerateInviteCode,
+    kickMember, promoteMember, demoteMember, deleteHousehold,
+  } = useHousehold(profile);
 
   if (!profile) return null;
 
@@ -15,8 +19,16 @@ export default function ProfileScreen() {
       <ProfileSettings
         profile={profile}
         household={household}
+        members={members}
+        isAdmin={isAdmin}
         onSignOut={signOut}
         onProfileUpdated={refreshProfile}
+        onRenameHousehold={renameHousehold}
+        onRegenerateCode={regenerateInviteCode}
+        onKickMember={kickMember}
+        onPromoteMember={promoteMember}
+        onDemoteMember={demoteMember}
+        onDeleteHousehold={deleteHousehold}
       />
     </SafeAreaView>
   );

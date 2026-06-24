@@ -13,6 +13,7 @@ function makeProfile(id: string): Profile {
     color: "#000",
     avatar_url: null,
     household_id: "h1",
+    role: "member",
     created_at: "",
   };
 }
