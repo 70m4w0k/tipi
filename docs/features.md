@@ -1,0 +1,107 @@
+# Fonctionnalités — Tipi
+
+## 1. Authentification et onboarding
+
+### Connexion
+- **Email + mot de passe** — Création de compte classique avec confirmation par email
+- **Magic link** — Lien de connexion envoyé par email, sans mot de passe
+
+### Gestion de colocation
+- **Créer une coloc** — L'utilisateur donne un nom, un code d'invitation à 6 caractères est généré
+- **Rejoindre une coloc** — Saisir le code d'invitation d'une coloc existante
+- **Quitter une coloc** — Possible depuis les paramètres du profil
+
+## 2. Messagerie (Chat)
+
+Chat en temps réel entre les colocataires d'un même household.
+
+### Types de messages
+- **Texte** — Message classique
+- **Image** — Sélection depuis la galerie, upload vers Supabase Storage
+- **Sondage** — Question + options de vote, résultats en temps réel avec barres de progression
+
+### Interactions
+- **Réactions** — Long press sur un message pour ajouter un emoji (👍 ❤️ 😂 😮 🔥 😢)
+- **Accusés de lecture** — Indicateur de lecture (✓✓) par utilisateur
+- **Temps réel** — Synchronisation instantanée via Supabase Realtime (WebSocket)
+
+## 3. Dépenses (Tricount-like)
+
+Suivi et répartition des dépenses partagées.
+
+### Fonctionnalités
+- **Ajouter une dépense** — Titre, montant, catégorie, payeur, participants
+- **Catégories** — Courses, Loyer, Restaurant, Transport, Loisirs, Autre (avec couleurs)
+- **Calcul automatique des parts** — Répartition égale entre les participants sélectionnés
+- **Solde personnel** — Affichage en temps réel de ce que chacun doit/est dû
+- **Remboursements suggérés** — Algorithme d'optimisation minimisant le nombre de transactions
+- **Breakdown par catégorie** — Vue des totaux par catégorie
+
+### Algorithme de settlement
+L'algorithme calcule les balances nettes (payeur reçoit, participant doit), trie créanciers et débiteurs par montant décroissant, puis apparie les plus grands pour minimiser les transferts.
+
+## 4. Ménage (Contribution grid)
+
+Système de suivi des contributions au ménage basé sur le volontariat.
+
+### Philosophie
+Le système est **contribution-based, PAS assignment-based**. Chaque colocataire indique ce qu'il a fait plutôt que de se voir assigner des tâches. Cela encourage le comportement responsable plutôt que le contrôle.
+
+### Grille de contributions
+- **Axe vertical** — Tâches de ménage (personnalisables : Plan de travail, Sol cuisine, etc.)
+- **Axe horizontal** — Semaines (numéro de semaine ISO)
+- **Cellules** — Tap pour indiquer une contribution avec 3 niveaux d'intensité :
+  - Niveau 1 (léger/rapide) — opacité 35%
+  - Niveau 2 (partiel) — opacité 65%
+  - Niveau 3 (complet) — opacité 100%
+- **Couleurs** — Chaque utilisateur a sa propre couleur (configurable dans le profil)
+- **Filtres** — "Moi" (ses contributions) ou "Tous" (vue d'ensemble)
+
+### Gestion des tâches
+- Ajouter/renommer/supprimer des tâches
+- L'historique est conservé par tâche
+
+### Rappels
+- Un rappel configurable (ex: "Sortir les poubelles — Tous les lundis, mercredis et vendredis")
+- Détection automatique du jour courant pour afficher si le rappel est dû
+- Bouton "Marquer fait" pour confirmer
+
+## 5. Événements
+
+Calendrier simple pour noter les événements de la colocation.
+
+- **Ajouter un événement** — Titre, date/heure, note optionnelle
+- **Liste chronologique** — Tri par date décroissante
+- **Synchronisation** — Temps réel entre les colocataires
+
+## 6. Documents partagés
+
+Stockage centralisé de documents (factures, bail, quittances, etc.).
+
+- **Import** — Sélection de fichier depuis l'appareil
+- **Stockage** — Supabase Storage avec accès restreint au household
+- **Consultation** — Téléchargement via URL signée
+- **Métadonnées** — Nom, uploadeur, date d'upload
+
+## 7. Profil utilisateur
+
+- **Nom d'affichage** — Modifiable
+- **Couleur** — Sélection parmi 10 couleurs prédéfinies (utilisée dans la grille ménage)
+- **Code d'invitation** — Affichage du code de la coloc pour inviter d'autres personnes
+- **Déconnexion** — Se déconnecter de l'app
+- **Quitter la coloc** — Quitter sa colocation actuelle
+
+## État d'avancement
+
+| Feature | Status |
+|---------|--------|
+| Auth (email + magic link) | ✅ Implémenté |
+| Household (créer/rejoindre) | ✅ Implémenté |
+| Chat temps réel | ✅ Implémenté |
+| Dépenses | ✅ Implémenté |
+| Ménage (contribution grid) | ✅ Implémenté |
+| Événements | ✅ Implémenté |
+| Documents partagés | ✅ Implémenté |
+| Profil (couleur) | ✅ Implémenté |
+| Push notifications | ❌ Pas encore |
+| Refonte UI/design | ❌ À discuter |
