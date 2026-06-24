@@ -1,3 +1,4 @@
+import { Image } from "react-native";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavPreferences, ALL_TABS } from "../../lib/hooks/useNavPreferences";
@@ -32,9 +33,16 @@ export default function AppLayout() {
           options={{
             title: tab.label,
             href: isTabEnabled(tab.key) ? undefined : null,
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name={tab.icon as any} size={size} color={color} />
-            ),
+            tabBarIcon: tab.key === "home"
+              ? ({ size }) => (
+                  <Image
+                    source={require("../../assets/tipi_icon.jpg")}
+                    style={{ width: size, height: size, borderRadius: 4 }}
+                  />
+                )
+              : ({ color, size }) => (
+                  <Ionicons name={tab.icon as any} size={size} color={color} />
+                ),
           }}
         />
       ))}

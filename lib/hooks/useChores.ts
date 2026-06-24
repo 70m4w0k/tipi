@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabase";
 import { Chore, ChoreTask, ChoreReminder } from "../types";
 
+let channelCounter = 0;
+
 export function useChores(householdId: string | null | undefined) {
+  const channelId = useRef(++channelCounter);
   const [chores, setChores] = useState<Chore[]>([]);
   const [tasks, setTasks] = useState<ChoreTask[]>([]);
   const [reminders, setReminders] = useState<ChoreReminder[]>([]);
@@ -46,53 +49,24 @@ export function useChores(householdId: string | null | undefined) {
   }, [fetchAll]);
 
   // Realtime subscriptions
+  const fetchRef = useRef(fetchAll);
+  fetchRef.current = fetchAll;
+
   useEffect(() => {
     if (!householdId) return;
 
+    const handler = () => void fetchRef.current();
     const channel = supabase
-      .channel(`chores:${householdId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "chores",
-          filter: `household_id=eq.${householdId}`,
-        },
-        () => {
-          void fetchAll();
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "chore_tasks",
-          filter: `household_id=eq.${householdId}`,
-        },
-        () => {
-          void fetchAll();
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "chore_reminders",
-          filter: `household_id=eq.${householdId}`,
-        },
-        () => {
-          void fetchAll();
-        }
-      )
+      .channel(`chores:${householdId}:${channelId.current}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "chores", filter: `household_id=eq.${householdId}` }, handler)
+      .on("postgres_changes", { event: "*", schema: "public", table: "chore_tasks", filter: `household_id=eq.${householdId}` }, handler)
+      .on("postgres_changes", { event: "*", schema: "public", table: "chore_reminders", filter: `household_id=eq.${householdId}` }, handler)
       .subscribe();
 
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [householdId, fetchAll]);
+  }, [householdId]);
 
   const setCellIntensity = useCallback(
     async (taskName: string, week: number, year: number, userId: string) => {

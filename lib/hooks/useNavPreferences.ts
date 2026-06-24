@@ -26,7 +26,8 @@ export function useNavPreferences() {
         try {
           const parsed = JSON.parse(val) as NavTab[];
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setEnabledTabs(parsed);
+            const withHome: NavTab[] = parsed.includes("home") ? parsed : ["home" as NavTab, ...parsed];
+            setEnabledTabs(withHome);
           }
         } catch {
           // ignore

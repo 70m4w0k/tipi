@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { supabase } from "../lib/supabase";
 import { Profile, Household } from "../lib/types";
@@ -177,12 +178,15 @@ export function ProfileSettings({
               style={styles.navConfigItem}
               onPress={() => void toggleNavTab(t.key)}
             >
+              <Ionicons name={t.icon as any} size={20} color={isEnabled ? "#1D4ED8" : "#9CA3AF"} />
               <Text style={[styles.navConfigLabel, isEnabled && styles.navConfigLabelActive]}>
                 {t.label}
               </Text>
-              <Text style={{ color: isEnabled ? "#1D4ED8" : "#D1D5DB", fontSize: 18 }}>
-                {isEnabled ? "☑" : "☐"}
-              </Text>
+              <Ionicons
+                name={isEnabled ? "checkbox" : "square-outline"}
+                size={22}
+                color={isEnabled ? "#1D4ED8" : "#9CA3AF"}
+              />
             </Pressable>
           );
         })}
@@ -255,13 +259,13 @@ const styles = StyleSheet.create({
   hint: { color: "#6B7280", fontSize: 12, textAlign: "center" },
   navConfigItem: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 10,
+    gap: 12,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
   },
-  navConfigLabel: { fontSize: 15, color: "#6B7280" },
+  navConfigLabel: { fontSize: 15, color: "#6B7280", flex: 1 },
   navConfigLabelActive: { color: "#111827", fontWeight: "600" },
   logoutButton: {
     alignItems: "center",

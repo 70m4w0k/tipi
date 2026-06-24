@@ -1,5 +1,6 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,66 +17,13 @@ import { useRecipes } from "../../lib/hooks/useRecipes";
 import { useNavPreferences, ALL_TABS } from "../../lib/hooks/useNavPreferences";
 import { recurrenceMatchesToday } from "../../components/ChoreReminder";
 
-function TipiLogo({ size = 64 }: { size?: number }) {
-  return (
-    <View style={[logoStyles.container, { width: size, height: size }]}>
-      <View style={[logoStyles.triangle, {
-        borderLeftWidth: size * 0.45,
-        borderRightWidth: size * 0.45,
-        borderBottomWidth: size * 0.7,
-      }]} />
-      <View style={[logoStyles.pole, {
-        height: size * 0.15,
-        top: size * 0.12,
-        left: size * 0.47,
-      }]} />
-      <View style={[logoStyles.pole, {
-        height: size * 0.15,
-        top: size * 0.12,
-        left: size * 0.47,
-        transform: [{ rotate: "30deg" }],
-      }]} />
-      <View style={[logoStyles.pole, {
-        height: size * 0.15,
-        top: size * 0.12,
-        left: size * 0.47,
-        transform: [{ rotate: "-30deg" }],
-      }]} />
-      <View style={[logoStyles.door, {
-        width: size * 0.18,
-        height: size * 0.22,
-        bottom: size * 0.15,
-        left: size * 0.41,
-        borderTopLeftRadius: size * 0.09,
-        borderTopRightRadius: size * 0.09,
-      }]} />
-    </View>
-  );
-}
-
-const logoStyles = StyleSheet.create({
-  container: { alignItems: "center", justifyContent: "center" },
-  triangle: {
-    width: 0,
-    height: 0,
-    backgroundColor: "transparent",
-    borderStyle: "solid",
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderBottomColor: "#1D4ED8",
-    position: "absolute",
-    bottom: "15%",
-  },
-  pole: {
-    position: "absolute",
-    width: 2,
-    backgroundColor: "#92400E",
-  },
-  door: {
-    position: "absolute",
-    backgroundColor: "#DBEAFE",
-  },
-});
+type Notification = {
+  id: string;
+  text: string;
+  icon: string;
+  color: string;
+  route: string;
+};
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -84,6 +32,7 @@ export default function HomeScreen() {
   const { reminders } = useChores(profile?.household_id);
   const { instances, recipes } = useRecipes(profile?.household_id);
   const { enabledTabs } = useNavPreferences();
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   const todayReminders = useMemo(
     () => reminders.filter((r) => recurrenceMatchesToday(r.recurrence)),
@@ -95,40 +44,54 @@ export default function HomeScreen() {
     [enabledTabs]
   );
 
-  const notifications: Array<{ id: string; text: string; icon: string; color: string }> = [];
-
-  for (const r of todayReminders) {
+  const notifications = useMemo(() => {
+    const notifs: Notification[] = [];
     const today = new Date().toISOString().slice(0, 10);
-    const isDone = r.last_done_date === today;
-    if (!isDone) {
-      notifications.push({
-        id: `reminder-${r.id}`,
-        text: r.title,
-        icon: "alert-circle-outline",
-        color: "#F59E0B",
-      });
-    }
-  }
 
-  for (const inst of instances) {
-    const recipe = recipes.find((r) => r.id === inst.recipe_id);
-    if (!recipe) continue;
-    if (inst.current_step >= recipe.steps.length - 1) {
-      notifications.push({
-        id: `recipe-${inst.id}`,
-        text: `${inst.label} — dernière étape !`,
-        icon: "restaurant-outline",
-        color: "#10B981",
-      });
+    for (const r of todayReminders) {
+      if (r.last_done_date !== today) {
+        notifs.push({
+          id: `reminder-${r.id}`,
+          text: r.title,
+          icon: "alert-circle-outline",
+          color: "#F59E0B",
+          route: "/(app)/chores",
+        });
+      }
     }
-  }
+
+    for (const inst of instances) {
+      const recipe = recipes.find((rc) => rc.id === inst.recipe_id);
+      if (!recipe) continue;
+      if (inst.current_step >= recipe.steps.length - 1) {
+        notifs.push({
+          id: `recipe-${inst.id}`,
+          text: `${inst.label} — dernière étape !`,
+          icon: "restaurant-outline",
+          color: "#10B981",
+          route: "/(app)/recipes",
+        });
+      }
+    }
+
+    return notifs;
+  }, [todayReminders, instances, recipes]);
+
+  const visibleNotifs = notifications.filter((n) => !dismissed.has(n.id));
+
+  const dismiss = (id: string) => {
+    setDismissed((prev) => new Set(prev).add(id));
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Header with logo */}
+        {/* Header */}
         <View style={styles.logoSection}>
-          <TipiLogo size={56} />
+          <Image
+            source={require("../../assets/tipi_icon.jpg")}
+            style={styles.logo}
+          />
           <View>
             <Text style={styles.appName}>Tipi</Text>
             <Text style={styles.houseName}>{household?.name ?? ""}</Text>
@@ -143,19 +106,30 @@ export default function HomeScreen() {
         </View>
 
         {/* Notifications */}
-        {notifications.length > 0 && (
+        {visibleNotifs.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Aujourd'hui</Text>
-            {notifications.map((n) => (
-              <View key={n.id} style={styles.notifCard}>
+            {visibleNotifs.map((n) => (
+              <Pressable
+                key={n.id}
+                style={styles.notifCard}
+                onPress={() => router.push(n.route as any)}
+              >
                 <Ionicons name={n.icon as any} size={20} color={n.color} />
                 <Text style={styles.notifText}>{n.text}</Text>
-              </View>
+                <Pressable
+                  onPress={(e) => { e.stopPropagation(); dismiss(n.id); }}
+                  hitSlop={8}
+                  style={styles.dismissBtn}
+                >
+                  <Ionicons name="close" size={16} color="#9CA3AF" />
+                </Pressable>
+              </Pressable>
             ))}
           </View>
         )}
 
-        {notifications.length === 0 && (
+        {visibleNotifs.length === 0 && (
           <View style={styles.emptyNotif}>
             <Ionicons name="checkmark-circle-outline" size={32} color="#10B981" />
             <Text style={styles.emptyNotifText}>Rien de prévu pour aujourd'hui</Text>
@@ -195,6 +169,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingVertical: 8,
   },
+  logo: { width: 44, height: 44, borderRadius: 10 },
   appName: { fontSize: 22, fontWeight: "800", color: "#1D4ED8" },
   houseName: { fontSize: 13, color: "#6B7280" },
   profileButton: { padding: 4 },
@@ -212,6 +187,14 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   notifText: { fontSize: 14, color: "#1F2937", flex: 1 },
+  dismissBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F3F4F6",
+  },
   emptyNotif: {
     alignItems: "center",
     gap: 8,

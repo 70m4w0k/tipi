@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabase";
 import { Recipe, RecipeInstance, RecipeStep } from "../types";
 
+let channelCounter = 0;
+
 export function useRecipes(householdId: string | null | undefined) {
+  const channelId = useRef(++channelCounter);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [instances, setInstances] = useState<RecipeInstance[]>([]);
   const [loading, setLoading] = useState(false);
@@ -35,25 +38,21 @@ export function useRecipes(householdId: string | null | undefined) {
     void fetchAll();
   }, [fetchAll]);
 
+  const fetchRef = useRef(fetchAll);
+  fetchRef.current = fetchAll;
+
   useEffect(() => {
     if (!householdId) return;
+    const handler = () => void fetchRef.current();
     const channel = supabase
-      .channel(`recipes:${householdId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "recipes", filter: `household_id=eq.${householdId}` },
-        () => void fetchAll()
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "recipe_instances", filter: `household_id=eq.${householdId}` },
-        () => void fetchAll()
-      )
+      .channel(`recipes:${householdId}:${channelId.current}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "recipes", filter: `household_id=eq.${householdId}` }, handler)
+      .on("postgres_changes", { event: "*", schema: "public", table: "recipe_instances", filter: `household_id=eq.${householdId}` }, handler)
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [householdId, fetchAll]);
+  }, [householdId]);
 
   const addRecipe = useCallback(
     async (title: string, description: string, ingredients: string[], steps: RecipeStep[]) => {
