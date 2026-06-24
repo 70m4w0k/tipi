@@ -103,5 +103,7 @@ Stockage centralisé de documents (factures, bail, quittances, etc.).
 | Événements | ✅ Implémenté |
 | Documents partagés | ✅ Implémenté |
 | Profil (couleur) | ✅ Implémenté |
+| Tests unitaires (66) | ✅ Implémenté |
+| Tests d'intégration Supabase (24) | ✅ Implémenté |
 | Push notifications | ❌ Pas encore |
 | Refonte UI/design | ❌ À discuter |

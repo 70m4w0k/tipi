@@ -57,6 +57,10 @@ components/                 # Composants UI réutilisables
 lib/                        # Logique métier
 ├── supabase.ts             # Initialisation client Supabase
 ├── types.ts                # Types TypeScript (miroir du schéma DB)
+├── recurrence.ts           # Matching jours français pour rappels
+├── chores-logic.ts         # Logique pure : cycle d'intensité, filtrage tâches
+├── recipes-logic.ts        # Logique pure : avancement étapes, progression
+├── nav-preferences-logic.ts # Logique pure : parsing préférences navbar
 └── hooks/                  # Hooks React
     ├── useAuth.ts          # Session + profil utilisateur
     ├── useHousehold.ts     # Gestion colocation + membres
@@ -64,7 +68,24 @@ lib/                        # Logique métier
     ├── useExpenses.ts      # Dépenses + calcul soldes
     ├── useChores.ts        # Ménage + tâches + rappels
     ├── useEvents.ts        # Événements
-    └── useFiles.ts         # Documents partagés
+    ├── useFiles.ts         # Documents partagés
+    └── useNavPreferences.ts # Préférences onglets navbar
+
+__tests__/                  # Tests automatisés
+├── setup.ts                # Mocks globaux (AsyncStorage, Supabase)
+├── recurrence.test.ts      # Tests matching jours français
+├── expenses.test.ts        # Tests calcul soldes et remboursements
+├── notifications.test.ts   # Tests logique notifications accueil
+├── chores-logic.test.ts    # Tests cycle intensité et filtrage
+├── recipes-logic.test.ts   # Tests avancement recettes et progression
+├── useNavPreferences.test.ts # Tests parsing préférences navbar
+└── integration/            # Tests d'intégration (Supabase réel)
+    ├── setup.ts            # Chargement .env via dotenv
+    ├── supabase-client.ts  # Infrastructure : user/household de test
+    ├── chores.integration.test.ts
+    ├── expenses.integration.test.ts
+    ├── shopping.integration.test.ts
+    └── recipes.integration.test.ts
 
 supabase/
 ├── schema.sql              # Schéma complet + RLS + triggers
@@ -125,3 +146,66 @@ Deux buckets Supabase Storage :
 - `shared-files` — Documents partagés
 
 Les fichiers sont organisés par household : `{bucket}/{household_id}/{filename}`.
+
+### Logique pure extraite
+
+Pour la testabilité, la logique métier complexe est extraite des hooks dans des modules purs (sans dépendances React ni Supabase) :
+
+| Module | Fonctions | Utilisé par |
+|--------|-----------|-------------|
+| `lib/recurrence.ts` | `recurrenceMatchesDay`, `recurrenceMatchesToday` | `ChoreReminder` |
+| `lib/chores-logic.ts` | `resolveIntensityAction`, `filterVisibleTasks` | `useChores` |
+| `lib/recipes-logic.ts` | `canAdvanceStep`, `isLastStep`, `getInstanceProgress` | `useRecipes` |
+| `lib/nav-preferences-logic.ts` | `parseStoredTabs` | `useNavPreferences` |
+
+## Tests
+
+### Stack de test
+
+| Outil | Rôle |
+|-------|------|
+| Jest | Runner + assertions |
+| jest-expo | Preset pour l'environnement React Native/Expo |
+| dotenv | Chargement des variables d'environnement pour les tests d'intégration |
+
+### Commandes
+
+```bash
+npm test                    # Tests unitaires (66 tests, ~4s)
+npm run test:integration    # Tests d'intégration Supabase (24 tests, ~12s)
+```
+
+### Tests unitaires (66 tests)
+
+Tests de la logique métier pure, sans appel réseau ni composant React.
+
+| Suite | Tests | Description |
+|-------|-------|-------------|
+| `recurrence.test.ts` | 9 | Matching des jours français (lundi, mardi...) avec la récurrence des rappels |
+| `expenses.test.ts` | 12 | Calcul des balances nettes et optimisation des remboursements (settlements) |
+| `notifications.test.ts` | 8 | Logique des notifications de la page d'accueil (rappels dus, événements à venir) |
+| `chores-logic.test.ts` | 13 | Cycle d'intensité des tâches (0→1→2→3→suppression) et filtrage de visibilité |
+| `recipes-logic.test.ts` | 15 | Avancement des étapes de recette, détection dernière étape, calcul de progression |
+| `useNavPreferences.test.ts` | 9 | Parsing des préférences navbar depuis AsyncStorage, injection du tab home, fallback sur données corrompues |
+
+### Tests d'intégration (24 tests)
+
+Tests CRUD contre une instance Supabase réelle, avec création/nettoyage automatique d'un utilisateur et household de test.
+
+| Suite | Tests | Description |
+|-------|-------|-------------|
+| `chores.integration.test.ts` | 7 | Création tâche, ajout entrée avec intensité, mise à jour, lecture filtrée, rappels, visibilité, suppression |
+| `expenses.integration.test.ts` | 4 | Création dépense + participants, lecture avec jointure, suppression en cascade |
+| `shopping.integration.test.ts` | 5 | Ajout item, toggle checked, tri, suppression bulk des cochés, suppression unitaire |
+| `recipes.integration.test.ts` | 8 | Création recette, démarrage instance, avancement étape, notes, lecture, suppression instance/recette |
+
+### Configuration des tests d'intégration
+
+Les tests d'intégration nécessitent un accès à Supabase. Ajouter dans `.env` :
+
+```
+TEST_USER_EMAIL=email-utilisateur-test@exemple.com
+TEST_USER_PASSWORD=mot-de-passe-test
+```
+
+L'utilisateur peut être créé depuis le dashboard Supabase (Authentication > Users > Add user, avec "Auto Confirm" coché). Les tests créent un household temporaire, exécutent les opérations CRUD, puis nettoient toutes les données créées.
