@@ -168,6 +168,16 @@ L'app utilise exclusivement Ionicons (via `@expo/vector-icons`) pour toutes les 
 - **Pull-to-refresh** — Disponible sur toutes les pages (chat, dépenses, ménage, courses, recettes, documents, accueil)
 - **Retour haptique** — Feedback tactile sur ~25 actions clés (voir `docs/haptic-feedback.md`)
 
+## 15. Onboarding
+
+Tutoriel interactif au premier lancement pour guider les nouveaux utilisateurs.
+
+- **3 slides** — Bienvenue, présentation des outils, invitation des colocs
+- **Pagination** — FlatList horizontal avec dots indicator
+- **Persistance** — État "déjà vu" sauvegardé via AsyncStorage
+- **Skip** — Bouton "Passer" accessible à tout moment
+- **Replay** — Bouton "Revoir le tutoriel" dans les paramètres profil
+
 ## État d'avancement
 
 | Feature | Status |
@@ -191,6 +201,7 @@ L'app utilise exclusivement Ionicons (via `@expo/vector-icons`) pour toutes les 
 | Suggestions contextuelles ménage | ✅ Implémenté |
 | Mode cuisine + minuteur multi-instance | ✅ Implémenté |
 | Pull-to-refresh + haptic feedback | ✅ Implémenté |
+| Onboarding tutoriel (3 slides) | ✅ Implémenté |
 | Tests unitaires (115) | ✅ Implémenté |
 | Tests d'intégration Supabase (24) | ✅ Implémenté |
 | Push notifications | ❌ Pas encore |

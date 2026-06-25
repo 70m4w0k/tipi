@@ -13,7 +13,8 @@ Propositions pour rendre l'app intuitive et sans friction.
 ## Backlog
 
 ### Onboarding
-- [ ] Tutoriel interactif au premier lancement (overlay 3-4 étapes)
+- [x] Tutoriel interactif au premier lancement (overlay 3 slides, persisté AsyncStorage)
+- [x] Bouton "Revoir le tutoriel" dans les paramètres profil
 
 ### Chat
 - [ ] Prévisualisation des liens (titre + image)

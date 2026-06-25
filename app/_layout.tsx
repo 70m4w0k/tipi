@@ -7,6 +7,7 @@ import "react-native-url-polyfill/auto";
 import { AuthProvider, useAuth } from "../lib/AuthContext";
 import { ThemeProvider, useTheme } from "../lib/theme";
 import { TimerProvider } from "../lib/timer-context";
+import { OnboardingProvider } from "../lib/onboarding-context";
 import { registerPWA } from "../lib/pwa";
 
 function RootGate() {
@@ -35,7 +36,9 @@ export default function RootLayout() {
       <ThemeProvider>
         <AuthProvider>
           <TimerProvider>
-            <RootGate />
+            <OnboardingProvider>
+              <RootGate />
+            </OnboardingProvider>
           </TimerProvider>
         </AuthProvider>
       </ThemeProvider>

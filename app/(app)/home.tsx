@@ -19,6 +19,7 @@ import { useExpenses, computeBalances } from "../../lib/hooks/useExpenses";
 import { useShoppingList } from "../../lib/hooks/useShoppingList";
 import { useNavPreferences, ALL_TABS } from "../../lib/hooks/useNavPreferences";
 import { useTheme } from "../../lib/theme";
+import { OnboardingOverlay } from "../../components/OnboardingOverlay";
 import { recurrenceMatchesToday } from "../../components/ChoreReminder";
 
 type Notification = {
@@ -118,6 +119,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: t.background }]} edges={["top"]}>
+      <OnboardingOverlay />
       <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} colors={[t.accent]} />}>
         {/* Header */}
         <View style={styles.headerRow}>

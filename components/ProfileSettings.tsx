@@ -16,6 +16,7 @@ import { Profile, Household } from "../lib/types";
 import { haptic } from "../lib/haptics";
 import { useNavPreferences, ALL_TABS, NavTab } from "../lib/hooks/useNavPreferences";
 import { useTheme, useThemeMode, ThemeMode } from "../lib/theme";
+import { useOnboarding } from "../lib/onboarding-context";
 
 const COLOR_PRESETS = [
   "#2563EB",
@@ -61,6 +62,7 @@ export function ProfileSettings({
   const { enabledTabs, setTabs } = useNavPreferences();
   const t = useTheme();
   const { mode: themeMode, setMode: setThemeMode } = useThemeMode();
+  const { resetOnboarding } = useOnboarding();
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [selectedColor, setSelectedColor] = useState(profile.color);
   const [saving, setSaving] = useState(false);
@@ -435,6 +437,14 @@ export function ProfileSettings({
         })}
       </View>
 
+      <Pressable
+        style={[styles.tutorialButton, { backgroundColor: t.card, borderColor: t.cardBorder }]}
+        onPress={() => { void haptic.light(); resetOnboarding(); }}
+      >
+        <Ionicons name="help-circle-outline" size={20} color={t.accent} />
+        <Text style={[styles.tutorialButtonText, { color: t.accent }]}>Revoir le tutoriel</Text>
+      </Pressable>
+
       <Pressable style={styles.logoutButton} onPress={onSignOut}>
         <Text style={[styles.logoutText, { color: t.danger }]}>Se déconnecter</Text>
       </Pressable>
@@ -575,6 +585,17 @@ const styles = StyleSheet.create({
   },
   navConfigLabel: { fontSize: 15, color: "#6B7280", flex: 1 },
   navConfigLabelActive: { color: "#111827", fontWeight: "600" },
+  tutorialButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingVertical: 12,
+    marginTop: 4,
+  },
+  tutorialButtonText: { fontWeight: "600", fontSize: 15 },
   logoutButton: {
     alignItems: "center",
     paddingVertical: 16,
