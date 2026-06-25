@@ -18,7 +18,7 @@ import { useHousehold } from "../../lib/hooks/useHousehold";
 import { useTheme } from "../../lib/theme";
 
 export default function JoinScreen() {
-  const { profile, signOut, refreshProfile } = useAuth();
+  const { session, profile, signOut, refreshProfile } = useAuth();
   const { createHousehold, joinHousehold } = useHousehold(profile);
   const router = useRouter();
   const t = useTheme();
@@ -28,10 +28,14 @@ export default function JoinScreen() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (!session) {
+      router.replace("/(auth)/login");
+      return;
+    }
     if (profile?.household_id) {
       router.replace("/(app)/home");
     }
-  }, [profile?.household_id, router]);
+  }, [session, profile?.household_id, router]);
 
   const handleCreate = async () => {
     if (!houseName.trim()) {

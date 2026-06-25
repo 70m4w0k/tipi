@@ -32,7 +32,7 @@ export default function ChoresScreen() {
     chores, tasks, reminders, loading,
     setCellIntensity, addTask, editTask, removeTask,
     toggleReminderDone, updateReminder, addReminder, toggleTaskVisibility,
-    fetchAll, seedTestSuggestion,
+    fetchAll,
   } = useChores(profile?.household_id);
   const t = useTheme();
   const [refreshing, setRefreshing] = useState(false);
@@ -136,15 +136,7 @@ export default function ChoresScreen() {
         {/* Contextual suggestions */}
         {(() => {
           const sug = getContextualSuggestions(chores, tasks);
-          if (sug.length === 0) return (
-            <Pressable
-              style={[styles.suggestionCard, { backgroundColor: t.accentLight, borderColor: t.accent }]}
-              onPress={() => void seedTestSuggestion()}
-            >
-              <Ionicons name="flask-outline" size={18} color={t.accent} />
-              <Text style={[styles.suggestionText, { color: t.accent }]}>Créer un exemple de suggestion</Text>
-            </Pressable>
-          );
+          if (sug.length === 0) return null;
           return sug.map((s) => (
             <View key={s.taskName} style={[styles.suggestionCard, { backgroundColor: t.warningLight, borderColor: t.warning }]}>
               <Ionicons name="alert-circle-outline" size={18} color={t.warning} />

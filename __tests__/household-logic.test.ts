@@ -6,6 +6,8 @@ import {
   generateInviteCode,
   countAdmins,
   isLastAdmin,
+  COLOR_PRESETS,
+  pickAvailableColor,
 } from "../lib/household-logic";
 import { Profile } from "../lib/types";
 
@@ -140,5 +142,32 @@ describe("countAdmins / isLastAdmin", () => {
     const member = makeProfile({ id: "m1", role: "member" });
     const members = [member, makeProfile({ id: "a1", role: "admin" })];
     expect(isLastAdmin(member, members)).toBe(false);
+  });
+});
+
+describe("pickAvailableColor", () => {
+  it("returns first color when none taken", () => {
+    expect(pickAvailableColor([])).toBe(COLOR_PRESETS[0]);
+  });
+
+  it("skips taken colors", () => {
+    expect(pickAvailableColor([COLOR_PRESETS[0]])).toBe(COLOR_PRESETS[1]);
+  });
+
+  it("returns third color when first two taken", () => {
+    expect(pickAvailableColor([COLOR_PRESETS[0], COLOR_PRESETS[1]])).toBe(COLOR_PRESETS[2]);
+  });
+
+  it("wraps to first color when all taken", () => {
+    expect(pickAvailableColor([...COLOR_PRESETS])).toBe(COLOR_PRESETS[0]);
+  });
+
+  it("handles non-preset colors gracefully", () => {
+    expect(pickAvailableColor(["#FFFFFF", "#000000"])).toBe(COLOR_PRESETS[0]);
+  });
+
+  it("finds gap in middle of list", () => {
+    const taken = [COLOR_PRESETS[0], COLOR_PRESETS[1], COLOR_PRESETS[3]];
+    expect(pickAvailableColor(taken)).toBe(COLOR_PRESETS[2]);
   });
 });

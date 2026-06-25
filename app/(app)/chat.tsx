@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useHousehold } from "../../lib/hooks/useHousehold";
@@ -26,8 +27,10 @@ import PollCreator from "../../components/PollCreator";
 import { haptic } from "../../lib/haptics";
 
 export default function ChatScreen() {
+  const router = useRouter();
   const { session, profile } = useAuth();
   const { household, members } = useHousehold(profile);
+  const insets = useSafeAreaInsets();
   const { messages, loading, sendMessage, addReaction, vote, fetchMessages } = useMessages(
     profile?.household_id
   );
@@ -166,12 +169,17 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: t.background }]} edges={["top", "left", "right"]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: t.background }]} edges={["top", "left", "right", "bottom"]}>
       <View style={[styles.header, { backgroundColor: t.card, borderBottomColor: t.cardBorder }]}>
-        <Text style={[styles.headerTitle, { color: t.text }]}>{household?.name ?? "Chat"}</Text>
-        <Text style={[styles.headerSubtitle, { color: t.textSecondary }]}>
-          {members.length} membre{members.length > 1 ? "s" : ""}
-        </Text>
+        <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={8}>
+          <Ionicons name="chevron-back" size={24} color={t.accent} />
+        </Pressable>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.headerTitle, { color: t.text }]}>{household?.name ?? "Chat"}</Text>
+          <Text style={[styles.headerSubtitle, { color: t.textSecondary }]}>
+            {members.length} membre{members.length > 1 ? "s" : ""}
+          </Text>
+        </View>
       </View>
 
       <KeyboardAvoidingView
@@ -192,6 +200,13 @@ export default function ChatScreen() {
             <Text style={[styles.emptyText, { color: t.textSecondary }]}>
               Envoie le premier message à tes colocs !
             </Text>
+            <Pressable
+              style={[styles.refreshBtn, { borderColor: t.accent }]}
+              onPress={onRefresh}
+            >
+              <Ionicons name="refresh-outline" size={18} color={t.accent} />
+              <Text style={[styles.refreshBtnText, { color: t.accent }]}>Rafraîchir</Text>
+            </Pressable>
           </View>
         ) : (
           <FlatList
@@ -206,7 +221,7 @@ export default function ChatScreen() {
           />
         )}
 
-        <View style={[styles.inputBar, { backgroundColor: t.card, borderTopColor: t.cardBorder }, Platform.OS === "android" && { paddingBottom: 12 }]}>
+        <View style={[styles.inputBar, { backgroundColor: t.card, borderTopColor: t.cardBorder }]}>
           <View style={styles.inputRow}>
             <Pressable
               style={styles.iconButton}
@@ -272,8 +287,14 @@ const styles = StyleSheet.create({
   },
   header: {
     borderBottomWidth: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  backBtn: {
+    padding: 4,
   },
   headerTitle: {
     fontSize: 18,
@@ -353,5 +374,19 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     opacity: 0.5,
+  },
+  refreshBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginTop: 12,
+  },
+  refreshBtnText: {
+    fontWeight: "600",
+    fontSize: 14,
   },
 });

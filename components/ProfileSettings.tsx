@@ -17,19 +17,7 @@ import { haptic } from "../lib/haptics";
 import { useNavPreferences, ALL_TABS, NavTab } from "../lib/hooks/useNavPreferences";
 import { useTheme, useThemeMode, ThemeMode } from "../lib/theme";
 import { useOnboarding } from "../lib/onboarding-context";
-
-const COLOR_PRESETS = [
-  "#2563EB",
-  "#F97316",
-  "#16A34A",
-  "#9333EA",
-  "#EF4444",
-  "#0D9488",
-  "#EC4899",
-  "#D97706",
-  "#4F46E5",
-  "#059669",
-];
+import { COLOR_PRESETS } from "../lib/household-logic";
 
 export function ProfileSettings({
   profile,
@@ -240,17 +228,29 @@ export function ProfileSettings({
 
         <Text style={[styles.label, { color: t.text }]}>Couleur</Text>
         <View style={styles.colorRow}>
-          {COLOR_PRESETS.map((color) => (
-            <Pressable
-              key={color}
-              style={[
-                styles.colorSwatch,
-                { backgroundColor: color },
-                selectedColor === color && styles.colorSwatchSelected,
-              ]}
-              onPress={() => { void haptic.light(); setSelectedColor(color); }}
-            />
-          ))}
+          {COLOR_PRESETS.map((color) => {
+            const takenBy = members.find((m) => m.id !== profile.id && m.color === color);
+            return (
+              <Pressable
+                key={color}
+                style={[
+                  styles.colorSwatch,
+                  { backgroundColor: color },
+                  selectedColor === color && styles.colorSwatchSelected,
+                  !!takenBy && styles.colorSwatchTaken,
+                ]}
+                onPress={() => {
+                  if (takenBy) return;
+                  void haptic.light();
+                  setSelectedColor(color);
+                }}
+              >
+                {!!takenBy && (
+                  <Ionicons name="ban-outline" size={18} color="#FFFFFF" />
+                )}
+              </Pressable>
+            );
+          })}
         </View>
 
         {hasChanges && (
@@ -486,10 +486,15 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 2,
     borderColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
   },
   colorSwatchSelected: {
     borderColor: "#111827",
     borderWidth: 3,
+  },
+  colorSwatchTaken: {
+    opacity: 0.5,
   },
   button: {
     backgroundColor: "#1D4ED8",

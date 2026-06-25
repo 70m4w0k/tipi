@@ -41,6 +41,7 @@ export default function AppLayout() {
           options={{
             title: tab.label,
             href: isTabEnabled(tab.key) ? undefined : null,
+            ...(tab.key === "chat" ? { tabBarStyle: { display: "none" as const } } : {}),
             tabBarIcon: tab.key === "home"
               ? ({ color, size }) => (
                   <TipiIcon size={size} color={color as string} />

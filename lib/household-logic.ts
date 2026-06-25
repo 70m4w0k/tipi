@@ -27,3 +27,13 @@ export function countAdmins(members: Profile[]): number {
 export function isLastAdmin(profile: Profile, members: Profile[]): boolean {
   return profile.role === "admin" && countAdmins(members) === 1;
 }
+
+export const COLOR_PRESETS = [
+  "#2563EB", "#F97316", "#16A34A", "#9333EA", "#EF4444",
+  "#0D9488", "#EC4899", "#D97706", "#4F46E5", "#059669",
+];
+
+export function pickAvailableColor(takenColors: string[]): string {
+  const taken = new Set(takenColors);
+  return COLOR_PRESETS.find((c) => !taken.has(c)) ?? COLOR_PRESETS[0];
+}

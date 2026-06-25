@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AppState, AppStateStatus } from "react-native";
 import { supabase } from "../supabase";
 import { Message, MessageType, Poll } from "../types";
 
@@ -74,6 +75,16 @@ export function useMessages(householdId: string | null | undefined) {
       channelRef.current = null;
     };
   }, [householdId]);
+
+  useEffect(() => {
+    const handleAppState = (state: AppStateStatus) => {
+      if (state === "active" && householdId) {
+        void fetchMessages();
+      }
+    };
+    const sub = AppState.addEventListener("change", handleAppState);
+    return () => sub.remove();
+  }, [householdId, fetchMessages]);
 
   const sendMessage = useCallback(
     async (type: MessageType, content: string | null, poll?: Poll) => {

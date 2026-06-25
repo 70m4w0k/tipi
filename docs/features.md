@@ -32,6 +32,8 @@ Chat en temps réel entre les colocataires d'un même household.
 - **Réactions** — Long press sur un message pour ajouter un emoji (👍 ❤️ 😂 😮 🔥 😢)
 - **Accusés de lecture** — Indicateur de lecture (✓✓) par utilisateur
 - **Temps réel** — Synchronisation instantanée via Supabase Realtime (WebSocket)
+- **Plein écran** — Le chat masque la barre de navigation pour maximiser l'espace, avec chevron retour dans le header
+- **Auto-refresh** — Rechargement automatique au retour au premier plan + bouton rafraîchir si aucun message visible
 
 ## 3. Dépenses (Tricount-like)
 
@@ -62,8 +64,12 @@ Le système est **contribution-based, PAS assignment-based**. Chaque colocataire
   - Niveau 1 (léger/rapide) — opacité 35%
   - Niveau 2 (partiel) — opacité 65%
   - Niveau 3 (complet) — opacité 100%
-- **Couleurs** — Chaque utilisateur a sa propre couleur (configurable dans le profil)
+- **Couleurs** — Chaque utilisateur a sa propre couleur (auto-assignée à l'inscription, configurable dans le profil, couleurs prises marquées comme indisponibles)
 - **Filtres** — "Moi" (ses contributions) ou "Tous" (vue d'ensemble)
+
+### Tâches préremplies
+- **14 tâches par défaut** — Aspi haut/bas, Serp haut/bas, WC haut/bas, Cuisine, Véranda, Verre, SdB 1/2/3, Escalier, Poubelles
+- Seeding automatique lors de la première visite de la page ménage (si aucune tâche n'existe)
 
 ### Gestion des tâches
 - Ajouter/renommer/supprimer des tâches
@@ -94,7 +100,7 @@ Stockage centralisé de documents (factures, bail, quittances, etc.).
 ## 7. Profil utilisateur
 
 - **Nom d'affichage** — Modifiable
-- **Couleur** — Sélection parmi 10 couleurs prédéfinies (utilisée dans la grille ménage), propagée en temps réel via Realtime
+- **Couleur** — Sélection parmi 10 couleurs prédéfinies (auto-assignée à l'inscription, couleurs prises indisponibles avec icône), propagée en temps réel via Realtime
 - **Code d'invitation** — Affichage du code de la coloc pour inviter d'autres personnes
 - **Partage d'invitation** — Bouton share natif avec message pré-rédigé
 - **Déconnexion** — Se déconnecter de l'app
@@ -202,6 +208,6 @@ Tutoriel interactif au premier lancement pour guider les nouveaux utilisateurs.
 | Mode cuisine + minuteur multi-instance | ✅ Implémenté |
 | Pull-to-refresh + haptic feedback | ✅ Implémenté |
 | Onboarding tutoriel (3 slides) | ✅ Implémenté |
-| Tests unitaires (115) | ✅ Implémenté |
+| Tests unitaires (124) | ✅ Implémenté |
 | Tests d'intégration Supabase (24) | ✅ Implémenté |
 | Push notifications | ❌ Pas encore |

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabase";
 import { Household, Profile } from "../types";
+import { pickAvailableColor as pickColor } from "../household-logic";
 
 let channelCounter = 0;
 
@@ -50,7 +51,11 @@ export function useHousehold(profile: Profile | null) {
         { event: "UPDATE", schema: "public", table: "profiles", filter: `household_id=eq.${householdId}` },
         (payload) => {
           const updated = payload.new as Profile;
-          setMembers((prev) => prev.map((m) => m.id === updated.id ? updated : m));
+          setMembers((prev) => {
+            const exists = prev.some((m) => m.id === updated.id);
+            if (exists) return prev.map((m) => m.id === updated.id ? updated : m);
+            return [...prev, updated];
+          });
         }
       )
       .subscribe();
@@ -75,6 +80,14 @@ export function useHousehold(profile: Profile | null) {
     return { error: null, household: data };
   };
 
+  const pickAvailableColor = async (hid: string): Promise<string> => {
+    const { data: existingMembers } = await supabase
+      .from("profiles")
+      .select("color")
+      .eq("household_id", hid);
+    return pickColor((existingMembers ?? []).map((m) => m.color));
+  };
+
   const joinHousehold = async (inviteCode: string) => {
     const { data, error } = await supabase
       .from("households")
@@ -89,6 +102,12 @@ export function useHousehold(profile: Profile | null) {
       .update({ household_id: data.id })
       .eq("id", profile!.id);
     if (updateError) return { error: updateError };
+
+    const color = await pickAvailableColor(data.id);
+    await supabase
+      .from("profiles")
+      .update({ color })
+      .eq("id", profile!.id);
 
     setHousehold(data);
     return { error: null, household: data };

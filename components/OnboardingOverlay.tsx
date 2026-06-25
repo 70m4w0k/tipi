@@ -4,6 +4,7 @@ import {
   FlatList,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -79,7 +80,11 @@ export function OnboardingOverlay() {
   };
 
   const renderSlide = ({ item }: { item: Slide }) => (
-    <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
+    <ScrollView
+      style={{ width: SCREEN_WIDTH }}
+      contentContainerStyle={styles.slide}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={[styles.iconCircle, { backgroundColor: t.accentLight }]}>
         <Ionicons name={item.icon as any} size={56} color={t.accent} />
       </View>
@@ -95,7 +100,7 @@ export function OnboardingOverlay() {
           ))}
         </View>
       )}
-    </View>
+    </ScrollView>
   );
 
   if (!showOnboarding) return null;
@@ -171,10 +176,11 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   slide: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 36,
+    paddingVertical: 20,
   },
   iconCircle: {
     width: 112,

@@ -1,4 +1,4 @@
-import { resolveIntensityAction, filterVisibleTasks } from "../lib/chores-logic";
+import { resolveIntensityAction, filterVisibleTasks, DEFAULT_CHORE_TASKS } from "../lib/chores-logic";
 import { Chore, ChoreTask } from "../lib/types";
 
 function makeChore(
@@ -115,5 +115,23 @@ describe("filterVisibleTasks", () => {
 
   it("returns empty array for empty input", () => {
     expect(filterVisibleTasks([])).toEqual([]);
+  });
+});
+
+describe("DEFAULT_CHORE_TASKS", () => {
+  it("contains 14 tasks", () => {
+    expect(DEFAULT_CHORE_TASKS).toHaveLength(14);
+  });
+
+  it("has no duplicates", () => {
+    const unique = new Set(DEFAULT_CHORE_TASKS);
+    expect(unique.size).toBe(DEFAULT_CHORE_TASKS.length);
+  });
+
+  it("includes expected tasks", () => {
+    expect(DEFAULT_CHORE_TASKS).toContain("Cuisine");
+    expect(DEFAULT_CHORE_TASKS).toContain("Poubelles");
+    expect(DEFAULT_CHORE_TASKS).toContain("Escalier");
+    expect(DEFAULT_CHORE_TASKS).toContain("SdB 1");
   });
 });

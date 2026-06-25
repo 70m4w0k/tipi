@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabase";
 import { Chore, ChoreTask, ChoreReminder } from "../types";
+import { DEFAULT_CHORE_TASKS } from "../chores-logic";
 
 let channelCounter = 0;
 
@@ -10,6 +11,8 @@ export function useChores(householdId: string | null | undefined) {
   const [tasks, setTasks] = useState<ChoreTask[]>([]);
   const [reminders, setReminders] = useState<ChoreReminder[]>([]);
   const [loading, setLoading] = useState(false);
+  const hasFetched = useRef(false);
+  const seededRef = useRef(false);
 
   const fetchAll = useCallback(async () => {
     if (!householdId) {
@@ -42,6 +45,7 @@ export function useChores(householdId: string | null | undefined) {
     setTasks(taskRes.data ?? []);
     setReminders(reminderRes.data ?? []);
     setLoading(false);
+    hasFetched.current = true;
   }, [householdId]);
 
   useEffect(() => {
@@ -218,21 +222,26 @@ export function useChores(householdId: string | null | undefined) {
     [householdId, fetchAll]
   );
 
-  const seedTestSuggestion = useCallback(
+  const seedDefaultTasks = useCallback(
     async () => {
       if (!householdId) return;
-      const threeWeeksAgo = new Date();
-      threeWeeksAgo.setDate(threeWeeksAgo.getDate() - 21);
-      await supabase.from("chore_tasks").insert({
+      const rows = DEFAULT_CHORE_TASKS.map((name) => ({
         household_id: householdId,
-        name: "Nettoyage SDB",
+        name,
         show_in_grid: true,
-        created_at: threeWeeksAgo.toISOString(),
-      });
+      }));
+      await supabase.from("chore_tasks").insert(rows);
       void fetchAll();
     },
     [householdId, fetchAll]
   );
+
+  useEffect(() => {
+    if (householdId && hasFetched.current && !loading && tasks.length === 0 && !seededRef.current) {
+      seededRef.current = true;
+      void seedDefaultTasks();
+    }
+  }, [householdId, loading, tasks.length]);
 
   return {
     chores,
@@ -248,6 +257,6 @@ export function useChores(householdId: string | null | undefined) {
     addReminder,
     toggleTaskVisibility,
     fetchAll,
-    seedTestSuggestion,
+    seedDefaultTasks,
   };
 }

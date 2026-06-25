@@ -1,5 +1,12 @@
 import { Chore, ChoreTask } from "./types";
 
+export const DEFAULT_CHORE_TASKS = [
+  "Aspi haut", "Aspi bas", "Serp haut", "Serp bas",
+  "WC haut", "WC bas", "Cuisine", "Véranda",
+  "Verre", "SdB 1", "SdB 2", "SdB 3",
+  "Escalier", "Poubelles",
+];
+
 export type IntensityAction =
   | { type: "insert"; intensity: 1 }
   | { type: "update"; id: string; intensity: 1 | 2 | 3 }
