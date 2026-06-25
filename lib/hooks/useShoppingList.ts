@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabase";
 import { ShoppingItem } from "../types";
+import { guessAisle } from "../shopping-categories";
 
 let channelCounter = 0;
 
 export function useShoppingList(householdId: string | null | undefined) {
   const [items, setItems] = useState<ShoppingItem[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const channelId = useRef(++channelCounter);
 
@@ -25,9 +27,30 @@ export function useShoppingList(householdId: string | null | undefined) {
     setLoading(false);
   }, [householdId]);
 
+  const fetchSuggestions = useCallback(async () => {
+    if (!householdId) return;
+    const { data } = await supabase
+      .from("shopping_items")
+      .select("title")
+      .eq("household_id", householdId)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (!data) return;
+    const counts = new Map<string, number>();
+    for (const row of data) {
+      const key = row.title.toLowerCase().trim();
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const sorted = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([title]) => title);
+    setSuggestions(sorted.slice(0, 10));
+  }, [householdId]);
+
   useEffect(() => {
     void fetchItems();
-  }, [fetchItems]);
+    void fetchSuggestions();
+  }, [fetchItems, fetchSuggestions]);
 
   useEffect(() => {
     if (!householdId) return;
@@ -50,12 +73,13 @@ export function useShoppingList(householdId: string | null | undefined) {
   }, [householdId, fetchItems]);
 
   const addItem = useCallback(
-    async (title: string, category = "") => {
+    async (title: string, category?: string) => {
       if (!householdId || !title.trim()) return;
+      const resolvedCategory = category?.trim() || guessAisle(title);
       await supabase.from("shopping_items").insert({
         household_id: householdId,
         title: title.trim(),
-        category: category.trim(),
+        category: resolvedCategory,
       });
       void fetchItems();
     },
@@ -93,5 +117,5 @@ export function useShoppingList(householdId: string | null | undefined) {
     void fetchItems();
   }, [householdId, fetchItems]);
 
-  return { items, loading, addItem, toggleItem, deleteItem, clearChecked };
+  return { items, suggestions, loading, addItem, toggleItem, deleteItem, clearChecked, fetchItems };
 }

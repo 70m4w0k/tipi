@@ -218,6 +218,22 @@ export function useChores(householdId: string | null | undefined) {
     [householdId, fetchAll]
   );
 
+  const seedTestSuggestion = useCallback(
+    async () => {
+      if (!householdId) return;
+      const threeWeeksAgo = new Date();
+      threeWeeksAgo.setDate(threeWeeksAgo.getDate() - 21);
+      await supabase.from("chore_tasks").insert({
+        household_id: householdId,
+        name: "Nettoyage SDB",
+        show_in_grid: true,
+        created_at: threeWeeksAgo.toISOString(),
+      });
+      void fetchAll();
+    },
+    [householdId, fetchAll]
+  );
+
   return {
     chores,
     tasks,
@@ -231,5 +247,7 @@ export function useChores(householdId: string | null | undefined) {
     updateReminder,
     addReminder,
     toggleTaskVisibility,
+    fetchAll,
+    seedTestSuggestion,
   };
 }

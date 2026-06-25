@@ -6,6 +6,7 @@ import { NavigationBar } from "expo-navigation-bar";
 import "react-native-url-polyfill/auto";
 import { AuthProvider, useAuth } from "../lib/AuthContext";
 import { ThemeProvider, useTheme } from "../lib/theme";
+import { TimerProvider } from "../lib/timer-context";
 import { registerPWA } from "../lib/pwa";
 
 function RootGate() {
@@ -33,7 +34,9 @@ export default function RootLayout() {
       {Platform.OS === "android" && <NavigationBar style="dark" />}
       <ThemeProvider>
         <AuthProvider>
-          <RootGate />
+          <TimerProvider>
+            <RootGate />
+          </TimerProvider>
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>

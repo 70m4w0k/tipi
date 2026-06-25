@@ -124,6 +124,50 @@ L'app utilise exclusivement Ionicons (via `@expo/vector-icons`) pour toutes les 
 - Actions (trash, document-text, people, close, checkmark, etc.)
 - Navigation et UI (wallet, share, person-circle, etc.)
 
+## 11. Courses améliorées
+
+### Catégorisation automatique par rayon
+- **5 rayons** — Frais, Épicerie, Hygiène, Ménage, Autre
+- **Détection automatique** — Les articles sont catégorisés via analyse par mots-clés (regex word-boundary)
+- **Affichage groupé** — Les articles sont regroupés par rayon avec icônes et couleurs
+- **Prévisualisation** — Badge de catégorie affiché en temps réel pendant la saisie
+
+### Suggestions intelligentes
+- **Basées sur l'historique** — Les 10 articles les plus fréquemment achetés sont proposés
+- **Filtrage** — Les suggestions déjà dans la liste sont masquées
+- **Quick-add** — Tap sur une suggestion pour l'ajouter instantanément
+
+### Mode courses
+- **Bouton "J'y vais !"** — Notifie les colocataires dans le chat avec le nombre d'articles
+- **Mode shopping** — Toggle entre "J'y vais !" et "Courses terminées"
+
+## 12. Suggestions contextuelles ménage
+
+- **Détection d'inactivité** — Alerte si une tâche n'a pas été faite depuis 14+ jours
+- **Message contextuel** — "X semaines sans [tâche]"
+- **Tri par urgence** — Les suggestions les plus anciennes apparaissent en premier
+
+## 13. Mode cuisine (Recettes)
+
+### Mode plein écran
+- **Grandes polices** — Titre 28px, description 20px pour lisibilité en cuisine
+- **Écran toujours allumé** — `expo-keep-awake` empêche la mise en veille
+- **Barre de progression** — Avancement visuel dans la recette
+- **Navigation d'étapes** — Boutons suivant/précédent pour naviguer entre les étapes
+
+### Minuteur intégré
+- **Un timer par recette** — Chaque recette en cours a son propre minuteur indépendant
+- **Persistant** — Les timers survivent à la navigation entre pages (TimerContext global)
+- **Contrôles** — Pause, reprise, arrêt
+- **Alerte de fin** — Vibration haptique + alerte quand le temps est écoulé
+- **Badge sur les cartes** — Le décompte s'affiche directement sur la carte de la recette en cours
+- **Auto-stop** — Le timer s'arrête automatiquement au changement d'étape
+
+## 14. Pull-to-refresh & Haptic feedback
+
+- **Pull-to-refresh** — Disponible sur toutes les pages (chat, dépenses, ménage, courses, recettes, documents, accueil)
+- **Retour haptique** — Feedback tactile sur ~25 actions clés (voir `docs/haptic-feedback.md`)
+
 ## État d'avancement
 
 | Feature | Status |
@@ -143,6 +187,10 @@ L'app utilise exclusivement Ionicons (via `@expo/vector-icons`) pour toutes les 
 | Partage code invitation | ✅ Implémenté |
 | États vides engageants | ✅ Implémenté |
 | FAB dépenses | ✅ Implémenté |
-| Tests unitaires (98) | ✅ Implémenté |
+| Courses (catégorisation, suggestions, J'y vais) | ✅ Implémenté |
+| Suggestions contextuelles ménage | ✅ Implémenté |
+| Mode cuisine + minuteur multi-instance | ✅ Implémenté |
+| Pull-to-refresh + haptic feedback | ✅ Implémenté |
+| Tests unitaires (115) | ✅ Implémenté |
 | Tests d'intégration Supabase (24) | ✅ Implémenté |
 | Push notifications | ❌ Pas encore |

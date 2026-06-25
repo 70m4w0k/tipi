@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { ChoreReminder as ChoreReminderType } from "../lib/types";
 import { recurrenceMatchesToday } from "../lib/recurrence";
 import { useTheme } from "../lib/theme";
+import { haptic } from "../lib/haptics";
 
 export { recurrenceMatchesToday };
 
@@ -24,7 +25,7 @@ export default function ChoreReminderCard({ reminder, onToggleDone }: Props) {
   return (
     <Pressable
       style={[styles.card, { backgroundColor: t.accentLight, borderColor: t.accent }, isDoneToday && { backgroundColor: t.separator, borderColor: t.cardBorder }]}
-      onPress={() => onToggleDone(reminder.id)}
+      onPress={() => { void haptic.success(); onToggleDone(reminder.id); }}
     >
       <View style={styles.row}>
         <Ionicons

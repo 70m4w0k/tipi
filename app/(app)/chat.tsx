@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -22,13 +23,20 @@ import { supabase } from "../../lib/supabase";
 import { Message, Poll } from "../../lib/types";
 import MessageBubble from "../../components/MessageBubble";
 import PollCreator from "../../components/PollCreator";
+import { haptic } from "../../lib/haptics";
 
 export default function ChatScreen() {
   const { session, profile } = useAuth();
   const { household, members } = useHousehold(profile);
-  const { messages, loading, sendMessage, addReaction, vote } = useMessages(
+  const { messages, loading, sendMessage, addReaction, vote, fetchMessages } = useMessages(
     profile?.household_id
   );
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchMessages();
+    setRefreshing(false);
+  }, [fetchMessages]);
   const t = useTheme();
 
   const [text, setText] = useState("");
@@ -41,6 +49,7 @@ export default function ChatScreen() {
   const handleSend = useCallback(async () => {
     const trimmed = text.trim();
     if (!trimmed) return;
+    void haptic.light();
     setText("");
     await sendMessage("text", trimmed);
   }, [text, sendMessage]);
@@ -91,6 +100,7 @@ export default function ChatScreen() {
         .getPublicUrl(filePath);
 
       await sendMessage("image", urlData.publicUrl);
+      void haptic.medium();
     } catch {
       Alert.alert("Erreur", "Impossible d'envoyer l'image.");
     }
@@ -107,6 +117,7 @@ export default function ChatScreen() {
           votes: [],
         })),
       };
+      void haptic.medium();
       await sendMessage("poll", null, poll);
     },
     [sendMessage]
@@ -114,6 +125,7 @@ export default function ChatScreen() {
 
   const handleReaction = useCallback(
     (messageId: string, emoji: string) => {
+      void haptic.light();
       void addReaction(messageId, emoji);
     },
     [addReaction]
@@ -121,6 +133,7 @@ export default function ChatScreen() {
 
   const handleVote = useCallback(
     (messageId: string, optionId: string) => {
+      void haptic.light();
       void vote(messageId, optionId);
     },
     [vote]
@@ -189,6 +202,7 @@ export default function ChatScreen() {
             contentContainerStyle={styles.listContent}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive"
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} colors={[t.accent]} />}
           />
         )}
 

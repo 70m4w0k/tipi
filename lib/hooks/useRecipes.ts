@@ -122,6 +122,19 @@ export function useRecipes(householdId: string | null | undefined) {
     [instances, recipes, fetchAll]
   );
 
+  const goBackStep = useCallback(
+    async (instanceId: string) => {
+      const inst = instances.find((i) => i.id === instanceId);
+      if (!inst || inst.current_step <= 0) return;
+      await supabase
+        .from("recipe_instances")
+        .update({ current_step: inst.current_step - 1, step_started_at: new Date().toISOString() })
+        .eq("id", instanceId);
+      void fetchAll();
+    },
+    [instances, fetchAll]
+  );
+
   const updateInstanceNotes = useCallback(
     async (instanceId: string, notes: string) => {
       await supabase
@@ -158,8 +171,10 @@ export function useRecipes(householdId: string | null | undefined) {
     deleteRecipe,
     startInstance,
     advanceStep,
+    goBackStep,
     updateInstanceNotes,
     deleteInstance,
     completeInstance,
+    fetchAll,
   };
 }

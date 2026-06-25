@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
   TextInput,
   Pressable,
+  RefreshControl,
   ScrollView,
   Alert,
   Modal,
@@ -19,6 +20,8 @@ import { useTheme } from "../../lib/theme";
 import ChoreGrid from "../../components/ChoreGrid";
 import ChoreReminderCard from "../../components/ChoreReminder";
 import { EmptyState } from "../../components/EmptyState";
+import { haptic } from "../../lib/haptics";
+import { getContextualSuggestions } from "../../lib/chores-logic";
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 
@@ -29,8 +32,15 @@ export default function ChoresScreen() {
     chores, tasks, reminders, loading,
     setCellIntensity, addTask, editTask, removeTask,
     toggleReminderDone, updateReminder, addReminder, toggleTaskVisibility,
+    fetchAll, seedTestSuggestion,
   } = useChores(profile?.household_id);
   const t = useTheme();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchAll();
+    setRefreshing(false);
+  }, [fetchAll]);
 
   const [filterMode, setFilterMode] = useState<"me" | "all">("all");
 
@@ -56,6 +66,7 @@ export default function ChoresScreen() {
 
   const handleAddTask = async () => {
     if (!newTaskName.trim()) return;
+    void haptic.medium();
     await addTask(newTaskName.trim(), showInGrid);
     if (isRecurrent && selectedDays.length > 0) {
       const recurrence = selectedDays.join(", ");
@@ -75,6 +86,7 @@ export default function ChoresScreen() {
   };
 
   const handleCellPress = (taskName: string, week: number, year: number) => {
+    void haptic.light();
     setCellIntensity(taskName, week, year, profile.id);
   };
 
@@ -92,6 +104,7 @@ export default function ChoresScreen() {
 
   const handleDeleteTask = () => {
     if (!actionTask) return;
+    void haptic.warning();
     Alert.alert(
       "Supprimer",
       `Supprimer "${actionTask.name}" et ses contributions ?`,
@@ -118,7 +131,27 @@ export default function ChoresScreen() {
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} colors={[t.accent]} />}>
+
+        {/* Contextual suggestions */}
+        {(() => {
+          const sug = getContextualSuggestions(chores, tasks);
+          if (sug.length === 0) return (
+            <Pressable
+              style={[styles.suggestionCard, { backgroundColor: t.accentLight, borderColor: t.accent }]}
+              onPress={() => void seedTestSuggestion()}
+            >
+              <Ionicons name="flask-outline" size={18} color={t.accent} />
+              <Text style={[styles.suggestionText, { color: t.accent }]}>Créer un exemple de suggestion</Text>
+            </Pressable>
+          );
+          return sug.map((s) => (
+            <View key={s.taskName} style={[styles.suggestionCard, { backgroundColor: t.warningLight, borderColor: t.warning }]}>
+              <Ionicons name="alert-circle-outline" size={18} color={t.warning} />
+              <Text style={[styles.suggestionText, { color: t.text }]}>{s.message}</Text>
+            </View>
+          ));
+        })()}
 
         {/* Reminders */}
         {reminders.map((r) => (
@@ -313,6 +346,16 @@ export default function ChoresScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  suggestionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+  },
+  suggestionText: { fontSize: 13, fontWeight: "600", flex: 1 },
   header: {
     borderBottomWidth: 1,
     paddingHorizontal: 20,

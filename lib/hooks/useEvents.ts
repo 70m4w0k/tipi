@@ -80,5 +80,5 @@ export function useEvents(householdId: string | null | undefined) {
     await supabase.from("events").delete().eq("id", id);
   };
 
-  return { events, loading, addEvent, deleteEvent };
+  return { events, loading, addEvent, deleteEvent, fetchEvents };
 }

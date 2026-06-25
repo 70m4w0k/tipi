@@ -110,5 +110,5 @@ export function useFiles(householdId: string | null | undefined) {
     await supabase.from("shared_files").delete().eq("id", id);
   };
 
-  return { files, loading, uploadFile, getFileUrl, deleteFile };
+  return { files, loading, uploadFile, getFileUrl, deleteFile, fetchFiles };
 }

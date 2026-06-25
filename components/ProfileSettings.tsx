@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { supabase } from "../lib/supabase";
 import { Profile, Household } from "../lib/types";
+import { haptic } from "../lib/haptics";
 import { useNavPreferences, ALL_TABS, NavTab } from "../lib/hooks/useNavPreferences";
 import { useTheme, useThemeMode, ThemeMode } from "../lib/theme";
 
@@ -102,6 +103,7 @@ export function ProfileSettings({
   };
 
   const handleLeaveHousehold = () => {
+    void haptic.heavy();
     Alert.alert(
       "Quitter la coloc ?",
       "Tu devras rejoindre une coloc avec un code d'invitation pour utiliser l'app.",
@@ -244,7 +246,7 @@ export function ProfileSettings({
                 { backgroundColor: color },
                 selectedColor === color && styles.colorSwatchSelected,
               ]}
-              onPress={() => setSelectedColor(color)}
+              onPress={() => { void haptic.light(); setSelectedColor(color); }}
             />
           ))}
         </View>

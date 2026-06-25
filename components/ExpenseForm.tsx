@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { ExpenseCategory, Profile } from "../lib/types";
 import { useTheme } from "../lib/theme";
 import { CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_ICONS } from "../lib/expense-categories";
+import { haptic } from "../lib/haptics";
 
 export type ExpenseFormData = {
   title: string;
@@ -119,7 +120,7 @@ export function ExpenseForm({ members, currentUserId, onSubmit }: Props) {
                   category === cat ? CATEGORY_COLORS[cat] : t.separator,
               },
             ]}
-            onPress={() => setCategory(cat)}
+            onPress={() => { void haptic.light(); setCategory(cat); }}
           >
             <View style={styles.categoryChipContent}>
               <Ionicons
@@ -147,7 +148,7 @@ export function ExpenseForm({ members, currentUserId, onSubmit }: Props) {
           <Pressable
             key={member.id}
             style={[styles.chip, { borderColor: t.textMuted }, payer === member.id && { backgroundColor: t.accent, borderColor: t.accent }]}
-            onPress={() => setPayer(member.id)}
+            onPress={() => { void haptic.light(); setPayer(member.id); }}
           >
             <Text
               style={[

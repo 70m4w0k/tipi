@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,15 +19,22 @@ import { ExpenseCard } from "../../components/ExpenseCard";
 import { ExpenseForm, ExpenseFormData } from "../../components/ExpenseForm";
 import { BalancesView } from "../../components/BalancesView";
 import { EmptyState } from "../../components/EmptyState";
+import { haptic } from "../../lib/haptics";
 
 type ActiveTab = "list" | "add" | "balances";
 
 export default function ExpensesScreen() {
   const { profile } = useAuth();
   const { members } = useHousehold(profile);
-  const { expenses, loading, addExpense, deleteExpense } = useExpenses(
+  const { expenses, loading, addExpense, deleteExpense, fetchExpenses } = useExpenses(
     profile?.household_id
   );
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchExpenses();
+    setRefreshing(false);
+  }, [fetchExpenses]);
   const t = useTheme();
 
   const [view, setView] = useState<ActiveTab>("list");
@@ -43,10 +51,12 @@ export default function ExpensesScreen() {
 
   const handleAddExpense = async (data: ExpenseFormData) => {
     await addExpense(data);
+    void haptic.success();
     setView("list");
   };
 
   const handleDelete = (id: string) => {
+    void haptic.warning();
     Alert.alert(
       "Supprimer ?",
       "Cette dépense sera définitivement supprimée.",
@@ -112,7 +122,7 @@ export default function ExpensesScreen() {
         ))}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={styles.scroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} colors={[t.accent]} />}>
         {/* Liste */}
         {view === "list" && (
           <View style={styles.section}>

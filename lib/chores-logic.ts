@@ -36,3 +36,69 @@ export function resolveIntensityAction(
 export function filterVisibleTasks(tasks: ChoreTask[]): ChoreTask[] {
   return tasks.filter((t) => t.show_in_grid);
 }
+
+export type ChoreSuggestion = {
+  taskName: string;
+  daysSince: number;
+  message: string;
+};
+
+export function getContextualSuggestions(
+  chores: Chore[],
+  tasks: ChoreTask[]
+): ChoreSuggestion[] {
+  const now = Date.now();
+  const suggestions: ChoreSuggestion[] = [];
+
+  for (const task of tasks) {
+    const taskChores = chores.filter((c) => c.task_name === task.name && c.intensity > 0);
+    if (taskChores.length === 0 && task.created_at) {
+      const created = new Date(task.created_at).getTime();
+      const daysSince = Math.floor((now - created) / 86400000);
+      if (daysSince >= 14) {
+        const weeks = Math.floor(daysSince / 7);
+        suggestions.push({
+          taskName: task.name,
+          daysSince,
+          message: `${weeks} semaine${weeks > 1 ? "s" : ""} sans ${task.name.toLowerCase()}`,
+        });
+      }
+      continue;
+    }
+
+    let latestDate = 0;
+    for (const c of taskChores) {
+      if (c.performed_at) {
+        const d = new Date(c.performed_at).getTime();
+        if (d > latestDate) latestDate = d;
+      } else {
+        const isoDate = getDateFromWeekYear(c.week, c.year);
+        if (isoDate > latestDate) latestDate = isoDate;
+      }
+    }
+
+    if (latestDate > 0) {
+      const daysSince = Math.floor((now - latestDate) / 86400000);
+      if (daysSince >= 14) {
+        const weeks = Math.floor(daysSince / 7);
+        suggestions.push({
+          taskName: task.name,
+          daysSince,
+          message: `${weeks} semaine${weeks > 1 ? "s" : ""} sans ${task.name.toLowerCase()}`,
+        });
+      }
+    }
+  }
+
+  return suggestions.sort((a, b) => b.daysSince - a.daysSince);
+}
+
+function getDateFromWeekYear(week: number, year: number): number {
+  const jan4 = new Date(year, 0, 4);
+  const dayOfWeek = jan4.getDay() || 7;
+  const mondayOfWeek1 = new Date(jan4);
+  mondayOfWeek1.setDate(jan4.getDate() - dayOfWeek + 1);
+  const target = new Date(mondayOfWeek1);
+  target.setDate(mondayOfWeek1.getDate() + (week - 1) * 7);
+  return target.getTime();
+}

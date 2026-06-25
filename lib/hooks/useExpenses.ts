@@ -152,7 +152,7 @@ export function useExpenses(householdId: string | null | undefined) {
     return { error };
   }, []);
 
-  return { expenses, loading, addExpense, deleteExpense };
+  return { expenses, loading, addExpense, deleteExpense, fetchExpenses };
 }
 
 // ── Pure utility functions ──

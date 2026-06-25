@@ -1,22 +1,27 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
   Modal,
   Pressable,
+  RefreshControl,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
+import { useKeepAwake } from "expo-keep-awake";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useRecipes } from "../../lib/hooks/useRecipes";
 import { useTheme } from "../../lib/theme";
+import { useTimer } from "../../lib/timer-context";
 import { Recipe, RecipeInstance, RecipeStep } from "../../lib/types";
+import { haptic } from "../../lib/haptics";
 
 type Tab = "recipes" | "active";
 
@@ -34,14 +39,22 @@ function formatDuration(startDate: string): string {
 }
 
 export default function RecipesScreen() {
+  const insets = useSafeAreaInsets();
   const { profile } = useAuth();
   const searchParams = useLocalSearchParams<{ tab?: string; instanceId?: string }>();
   const {
     recipes, instances, loading,
     addRecipe, updateRecipe, deleteRecipe,
-    startInstance, advanceStep, updateInstanceNotes, deleteInstance, completeInstance,
+    startInstance, advanceStep, goBackStep, updateInstanceNotes, deleteInstance, completeInstance,
+    fetchAll,
   } = useRecipes(profile?.household_id);
   const t = useTheme();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchAll();
+    setRefreshing(false);
+  }, [fetchAll]);
 
   const [tab, setTab] = useState<Tab>(searchParams.tab === "active" ? "active" : "recipes");
   const [deepLinkHandled, setDeepLinkHandled] = useState(false);
@@ -77,6 +90,16 @@ export default function RecipesScreen() {
   const [selectedInstance, setSelectedInstance] = useState<string | null>(null);
   const [editingNotes, setEditingNotes] = useState("");
 
+  // Cooking mode (state persisted in TimerContext across navigation)
+  const {
+    timers, cookingInstanceId,
+    startTimer, stopTimer, pauseResumeTimer,
+    openCookingMode, closeCookingMode, formatTimer,
+  } = useTimer();
+  const [timerInput, setTimerInput] = useState("");
+
+  useKeepAwake(cookingInstanceId ? "cooking-mode" : undefined);
+
   const resetForm = () => {
     setFormTitle("");
     setFormDesc("");
@@ -100,6 +123,7 @@ export default function RecipesScreen() {
 
   const handleSaveRecipe = async () => {
     if (!formTitle.trim()) return;
+    void haptic.medium();
     const ingredients = formIngredients
       .split("\n")
       .map((l) => l.trim())
@@ -125,6 +149,7 @@ export default function RecipesScreen() {
   };
 
   const handleDeleteRecipe = (id: string, title: string) => {
+    void haptic.warning();
     Alert.alert("Supprimer", `Supprimer "${title}" et toutes ses instances ?`, [
       { text: "Annuler", style: "cancel" },
       { text: "Supprimer", style: "destructive", onPress: () => void deleteRecipe(id) },
@@ -133,6 +158,7 @@ export default function RecipesScreen() {
 
   const handleStartInstance = async () => {
     if (!startRecipeId || !instanceLabel.trim()) return;
+    void haptic.medium();
     await startInstance(startRecipeId, instanceLabel, instanceNotes);
     setShowStartModal(false);
     setStartRecipeId(null);
@@ -142,6 +168,7 @@ export default function RecipesScreen() {
   };
 
   const handleDeleteInstance = (id: string, label: string) => {
+    void haptic.warning();
     Alert.alert("Supprimer", `Arrêter "${label}" ?`, [
       { text: "Annuler", style: "cancel" },
       { text: "Supprimer", style: "destructive", onPress: () => void deleteInstance(id) },
@@ -194,6 +221,7 @@ export default function RecipesScreen() {
     const progress = recipe.steps.length > 0
       ? ((item.current_step + 1) / recipe.steps.length) * 100
       : 100;
+    const instanceTimer = timers[item.id];
 
     return (
       <Pressable
@@ -219,6 +247,24 @@ export default function RecipesScreen() {
           <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: t.accent }]} />
         </View>
 
+        {/* Timer badge on instance card */}
+        {instanceTimer && (
+          <Pressable
+            style={[styles.cardTimerBadge, { backgroundColor: instanceTimer.seconds <= 10 ? t.dangerLight : t.warningLight, borderColor: instanceTimer.seconds <= 10 ? t.danger : t.warning }]}
+            onPress={() => openCookingMode(item.id)}
+          >
+            <Ionicons name="timer-outline" size={16} color={instanceTimer.seconds <= 10 ? t.danger : t.warning} />
+            <Text style={[styles.cardTimerText, { color: instanceTimer.seconds <= 10 ? t.danger : t.warning }]}>
+              {formatTimer(instanceTimer.seconds)}
+            </Text>
+            {!instanceTimer.running && (
+              <View style={[styles.cardTimerPaused, { backgroundColor: t.warning }]}>
+                <Text style={styles.cardTimerPausedText}>pause</Text>
+              </View>
+            )}
+          </Pressable>
+        )}
+
         {currentStep && (
           <View style={[styles.stepInfo, { backgroundColor: t.separator }]}>
             <Text style={[styles.stepTitle, { color: t.text }]}>
@@ -243,7 +289,7 @@ export default function RecipesScreen() {
           {!isLastStep ? (
             <Pressable
               style={[styles.nextStepBtn, { backgroundColor: t.accent }]}
-              onPress={() => void advanceStep(item.id)}
+              onPress={() => { void haptic.success(); stopTimer(item.id); void advanceStep(item.id); }}
             >
               <Text style={styles.nextStepText}>Étape suivante</Text>
               <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
@@ -251,7 +297,7 @@ export default function RecipesScreen() {
           ) : (
             <Pressable
               style={[styles.nextStepBtn, { backgroundColor: t.success }]}
-              onPress={() => void completeInstance(item.id)}
+              onPress={() => { stopTimer(item.id); void completeInstance(item.id); }}
             >
               <Text style={styles.nextStepText}>Terminer</Text>
               <Ionicons name="checkmark" size={16} color="#FFFFFF" />
@@ -265,9 +311,18 @@ export default function RecipesScreen() {
           </Pressable>
         </View>
 
-        <Text style={[styles.startedAt, { color: t.textMuted }]}>
-          Début : {new Date(item.started_at).toLocaleDateString("fr-FR")} · Total : {formatDuration(item.started_at)}
-        </Text>
+        <View style={styles.instanceFooter}>
+          <Text style={[styles.startedAt, { color: t.textMuted }]}>
+            Début : {new Date(item.started_at).toLocaleDateString("fr-FR")} · Total : {formatDuration(item.started_at)}
+          </Text>
+          <Pressable
+            style={[styles.cookingModeBtn, { backgroundColor: t.warningLight, borderColor: t.warning }]}
+            onPress={() => openCookingMode(item.id)}
+          >
+            <Ionicons name="flame-outline" size={14} color={t.warning} />
+            <Text style={[styles.cookingModeBtnText, { color: t.warning }]}>Cuisine</Text>
+          </Pressable>
+        </View>
       </Pressable>
     );
   };
@@ -306,6 +361,7 @@ export default function RecipesScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderRecipe}
           contentContainerStyle={styles.list}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} colors={[t.accent]} />}
           ListEmptyComponent={
             loading ? null : (
               <View style={styles.emptyContainer}>
@@ -321,6 +377,7 @@ export default function RecipesScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderInstance}
           contentContainerStyle={styles.list}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} colors={[t.accent]} />}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons name="flask-outline" size={48} color={t.emptyIcon} />
@@ -541,6 +598,141 @@ export default function RecipesScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+      {/* Cooking mode modal */}
+      <Modal visible={!!cookingInstanceId} animationType="slide" statusBarTranslucent>
+        {(() => {
+          const inst = instances.find((i) => i.id === cookingInstanceId);
+          if (!inst) return null;
+          const recipe = recipes.find((r) => r.id === inst.recipe_id);
+          if (!recipe) return null;
+          const currentStep = recipe.steps[inst.current_step];
+          const isLast = inst.current_step >= recipe.steps.length - 1;
+          const isFirst = inst.current_step === 0;
+          const ct = timers[inst.id];
+          return (
+            <SafeAreaView style={[styles.cookingContainer, { backgroundColor: t.background }]}>
+              <StatusBar barStyle="light-content" />
+              <View style={styles.cookingHeader}>
+                <Pressable onPress={() => closeCookingMode()}>
+                  <Ionicons name="close" size={28} color={t.text} />
+                </Pressable>
+                <View style={{ flex: 1, alignItems: "center" }}>
+                  <Text style={[styles.cookingTitle, { color: t.text }]}>{inst.label}</Text>
+                  <Text style={[styles.cookingSubtitle, { color: t.textSecondary }]}>
+                    Étape {inst.current_step + 1} / {recipe.steps.length}
+                  </Text>
+                </View>
+                <View style={{ width: 28 }} />
+              </View>
+
+              <View style={[styles.cookingProgressBar, { backgroundColor: t.cardBorder }]}>
+                <View style={[styles.cookingProgressFill, { width: `${((inst.current_step + 1) / recipe.steps.length) * 100}%`, backgroundColor: t.accent }]} />
+              </View>
+
+              <ScrollView contentContainerStyle={styles.cookingContent}>
+                {currentStep && (
+                  <>
+                    <Text style={[styles.cookingStepTitle, { color: t.text }]}>
+                      {currentStep.title}
+                    </Text>
+                    {currentStep.description ? (
+                      <Text style={[styles.cookingStepDesc, { color: t.textSecondary }]}>
+                        {currentStep.description}
+                      </Text>
+                    ) : null}
+                    {currentStep.duration_hint ? (
+                      <View style={[styles.cookingHint, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+                        <Ionicons name="time-outline" size={16} color={t.textSecondary} />
+                        <Text style={[styles.cookingHintText, { color: t.textSecondary }]}>
+                          Durée estimée : {currentStep.duration_hint}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </>
+                )}
+
+                {/* Timer */}
+                <View style={[styles.timerContainer, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+                  <Text style={[styles.timerLabel, { color: t.textSecondary }]}>Minuteur</Text>
+                  {ct ? (
+                    <>
+                      <Text style={[styles.timerDisplay, { color: ct.seconds <= 10 ? t.danger : t.text }]}>
+                        {formatTimer(ct.seconds)}
+                      </Text>
+                      <View style={styles.timerButtons}>
+                        <Pressable
+                          style={[styles.timerBtn, { backgroundColor: ct.running ? t.warningLight : t.accentLight }]}
+                          onPress={() => pauseResumeTimer(inst.id)}
+                        >
+                          <Ionicons name={ct.running ? "pause" : "play"} size={20} color={ct.running ? t.warning : t.accent} />
+                        </Pressable>
+                        <Pressable
+                          style={[styles.timerBtn, { backgroundColor: t.dangerLight }]}
+                          onPress={() => stopTimer(inst.id)}
+                        >
+                          <Ionicons name="stop" size={20} color={t.danger} />
+                        </Pressable>
+                      </View>
+                    </>
+                  ) : (
+                    <View style={styles.timerSetup}>
+                      <TextInput
+                        style={[styles.timerInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
+                        placeholder="min"
+                        placeholderTextColor={t.textMuted}
+                        keyboardType="number-pad"
+                        value={timerInput}
+                        onChangeText={setTimerInput}
+                      />
+                      <Pressable
+                        style={[styles.timerStartBtn, { backgroundColor: t.accent }, !timerInput.trim() && { opacity: 0.5 }]}
+                        onPress={() => {
+                          const mins = parseInt(timerInput, 10);
+                          if (mins > 0) { startTimer(inst.id, mins); setTimerInput(""); }
+                        }}
+                        disabled={!timerInput.trim()}
+                      >
+                        <Ionicons name="play" size={18} color="#FFFFFF" />
+                        <Text style={styles.timerStartText}>Démarrer</Text>
+                      </Pressable>
+                    </View>
+                  )}
+                </View>
+              </ScrollView>
+
+              <View style={[styles.cookingActions, { paddingBottom: Math.max(insets.bottom, 20) + 16 }]}>
+                <View style={styles.cookingActionsRow}>
+                  {!isFirst && (
+                    <Pressable
+                      style={[styles.cookingBackBtn, { borderColor: t.cardBorder, backgroundColor: t.card }]}
+                      onPress={() => { void haptic.light(); stopTimer(inst.id); void goBackStep(inst.id); }}
+                    >
+                      <Ionicons name="arrow-back" size={20} color={t.textSecondary} />
+                    </Pressable>
+                  )}
+                  {!isLast ? (
+                    <Pressable
+                      style={[styles.cookingNextBtn, { backgroundColor: t.accent, flex: 1 }]}
+                      onPress={() => { void haptic.success(); stopTimer(inst.id); void advanceStep(inst.id); }}
+                    >
+                      <Text style={styles.cookingNextText}>Étape suivante</Text>
+                      <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                    </Pressable>
+                  ) : (
+                    <Pressable
+                      style={[styles.cookingNextBtn, { backgroundColor: t.success, flex: 1 }]}
+                      onPress={() => { void haptic.success(); stopTimer(inst.id); void completeInstance(inst.id); closeCookingMode(); }}
+                    >
+                      <Text style={styles.cookingNextText}>Terminer la recette</Text>
+                      <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+                    </Pressable>
+                  )}
+                </View>
+              </View>
+            </SafeAreaView>
+          );
+        })()}
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -729,4 +921,137 @@ const styles = StyleSheet.create({
     backgroundColor: "#1D4ED8",
   },
   modalSubmitText: { fontWeight: "600", color: "#FFFFFF", fontSize: 15 },
+
+  // Instance footer
+  instanceFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+
+  // Card timer badge
+  cardTimerBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+  },
+  cardTimerText: { fontSize: 20, fontWeight: "800", fontVariant: ["tabular-nums"] },
+  cardTimerPaused: {
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    marginLeft: "auto",
+  },
+  cardTimerPausedText: { color: "#FFFFFF", fontSize: 10, fontWeight: "700", textTransform: "uppercase" },
+
+  // Cooking mode button
+  cookingModeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  cookingModeBtnText: { fontSize: 12, fontWeight: "600" },
+
+  // Cooking mode modal
+  cookingContainer: { flex: 1 },
+  cookingHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  cookingTitle: { fontSize: 18, fontWeight: "700" },
+  cookingSubtitle: { fontSize: 13, marginTop: 2 },
+  cookingProgressBar: { height: 6, marginHorizontal: 16, borderRadius: 3 },
+  cookingProgressFill: { height: 6, borderRadius: 3 },
+  cookingContent: { padding: 24, paddingBottom: 120 },
+  cookingStepTitle: { fontSize: 28, fontWeight: "800", marginBottom: 16 },
+  cookingStepDesc: { fontSize: 20, lineHeight: 30, marginBottom: 20 },
+  cookingHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 20,
+  },
+  cookingHintText: { fontSize: 15 },
+  cookingActions: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  cookingActionsRow: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center",
+  },
+  cookingBackBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cookingNextBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 14,
+  },
+  cookingNextText: { color: "#FFFFFF", fontWeight: "700", fontSize: 18 },
+
+  // Timer
+  timerContainer: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 20,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  timerLabel: { fontSize: 14, fontWeight: "600", marginBottom: 12 },
+  timerDisplay: { fontSize: 56, fontWeight: "800", fontVariant: ["tabular-nums"] },
+  timerButtons: { flexDirection: "row", gap: 12, marginTop: 16 },
+  timerBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  timerSetup: { flexDirection: "row", gap: 10, alignItems: "center" },
+  timerInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    width: 80,
+    fontSize: 16,
+    textAlign: "center",
+  },
+  timerStartBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  timerStartText: { color: "#FFFFFF", fontWeight: "600", fontSize: 15 },
 });

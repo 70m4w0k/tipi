@@ -22,26 +22,25 @@ Propositions pour rendre l'app intuitive et sans friction.
 ### Dépenses
 - [ ] Scan de ticket (OCR via API)
 - [ ] Rappel de remboursement ("Thomas te doit 12,50€")
-- [ ] Résumé mensuel des dépenses
 
 ### Ménage
 - [ ] Gamification légère (streaks, badges)
-- [ ] Suggestions contextuelles ("2 semaines sans nettoyage SDB")
-- [ ] Vue résumé hebdo
+- [x] Suggestions contextuelles ("2 semaines sans nettoyage SDB")
 
 ### Courses
-- [ ] Suggestions intelligentes basées sur l'historique
-- [ ] Catégorisation auto par rayon
-- [ ] Bouton "J'y vais !" avec notification aux autres
+- [x] Suggestions intelligentes basées sur l'historique
+- [x] Catégorisation auto par rayon
+- [x] Bouton "J'y vais !" avec notification aux autres
 
 ### Recettes
-- [ ] Mode cuisine (plein écran, grandes polices, pas de veille)
-- [ ] Minuteur intégré
+- [x] Mode cuisine (plein écran, grandes polices, pas de veille)
+- [x] Minuteur intégré (un par recette, persistant entre pages)
+- [x] Navigation étape précédente en mode cuisine
 
 ### Navigation & global
 - [ ] Quick actions (long press icône app)
-- [ ] Haptic feedback sur actions clés
-- [ ] Pull-to-refresh partout
+- [x] Haptic feedback sur actions clés
+- [x] Pull-to-refresh partout
 
 ### Social & engagement
 - [ ] Notification de bienvenue dans le chat (nouveau membre)

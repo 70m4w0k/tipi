@@ -2,10 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabase";
 import { Message, MessageType, Poll } from "../types";
 
+let channelCounter = 0;
+
 export function useMessages(householdId: string | null | undefined) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const channelId = useRef(++channelCounter);
 
   const fetchMessages = useCallback(async () => {
     if (!householdId) {
@@ -30,7 +33,7 @@ export function useMessages(householdId: string | null | undefined) {
     if (!householdId) return;
 
     const channel = supabase
-      .channel(`messages:${householdId}`)
+      .channel(`messages:${householdId}:${channelId.current}`)
       .on(
         "postgres_changes",
         {
@@ -171,5 +174,5 @@ export function useMessages(householdId: string | null | undefined) {
     []
   );
 
-  return { messages, loading, sendMessage, addReaction, vote, markAsRead };
+  return { messages, loading, sendMessage, addReaction, vote, markAsRead, fetchMessages };
 }

@@ -1,9 +1,11 @@
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   Linking,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
@@ -15,12 +17,19 @@ import { useHousehold } from "../../lib/hooks/useHousehold";
 import { useFiles } from "../../lib/hooks/useFiles";
 import { useTheme } from "../../lib/theme";
 import { SharedFile } from "../../lib/types";
+import { haptic } from "../../lib/haptics";
 
 export default function DocumentsScreen() {
   const { profile } = useAuth();
   const { household, members } = useHousehold(profile);
-  const { files, loading, uploadFile, getFileUrl, deleteFile } = useFiles(household?.id);
+  const { files, loading, uploadFile, getFileUrl, deleteFile, fetchFiles } = useFiles(household?.id);
   const t = useTheme();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchFiles();
+    setRefreshing(false);
+  }, [fetchFiles]);
 
   const getMemberName = (userId: string | null) => {
     if (!userId) return "Inconnu";
@@ -40,6 +49,7 @@ export default function DocumentsScreen() {
   const handleUploadFile = async () => {
     try {
       await uploadFile();
+      void haptic.medium();
     } catch {
       Alert.alert("Erreur", "Impossible d'importer le document.");
     }
@@ -55,6 +65,7 @@ export default function DocumentsScreen() {
   };
 
   const handleDeleteFile = (id: string, storagePath: string) => {
+    void haptic.warning();
     Alert.alert("Supprimer", "Supprimer ce document ?", [
       { text: "Annuler", style: "cancel" },
       { text: "Supprimer", style: "destructive", onPress: () => void deleteFile(id, storagePath) },
@@ -92,6 +103,7 @@ export default function DocumentsScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderFile}
         contentContainerStyle={styles.list}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} colors={[t.accent]} />}
         ListEmptyComponent={
           loading ? (
             <ActivityIndicator style={styles.loader} color={t.accent} />

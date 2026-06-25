@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Pressable,
+  RefreshControl,
   ScrollView,
   Share,
   StyleSheet,
@@ -33,13 +34,19 @@ export default function HomeScreen() {
   const router = useRouter();
   const { profile } = useAuth();
   const { household, members } = useHousehold(profile);
-  const { reminders } = useChores(profile?.household_id);
-  const { instances, recipes } = useRecipes(profile?.household_id);
-  const { expenses } = useExpenses(profile?.household_id);
-  const { items: shoppingItems } = useShoppingList(profile?.household_id);
+  const { reminders, fetchAll: fetchChores } = useChores(profile?.household_id);
+  const { instances, recipes, fetchAll: fetchRecipes } = useRecipes(profile?.household_id);
+  const { expenses, fetchExpenses } = useExpenses(profile?.household_id);
+  const { items: shoppingItems, fetchItems: fetchShopping } = useShoppingList(profile?.household_id);
   const { enabledTabs } = useNavPreferences();
   const t = useTheme();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([fetchChores(), fetchRecipes(), fetchExpenses(), fetchShopping()]);
+    setRefreshing(false);
+  }, [fetchChores, fetchRecipes, fetchExpenses, fetchShopping]);
 
   const todayReminders = useMemo(
     () => reminders.filter((r) => recurrenceMatchesToday(r.recurrence)),
@@ -111,7 +118,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: t.background }]} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} colors={[t.accent]} />}>
         {/* Header */}
         <View style={styles.headerRow}>
           <View>
