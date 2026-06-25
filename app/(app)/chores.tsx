@@ -174,12 +174,12 @@ export default function ChoresScreen() {
       {/* Add task modal */}
       <Modal visible={showAddTask} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Nouvelle tâche</Text>
+          <View style={[styles.modalContent, { backgroundColor: t.card }]}>
+            <Text style={[styles.modalTitle, { color: t.text }]}>Nouvelle tâche</Text>
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
               placeholder="Nom de la tâche"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={t.textMuted}
               value={newTaskName}
               onChangeText={setNewTaskName}
               autoFocus
@@ -214,10 +214,10 @@ export default function ChoresScreen() {
                 {DAYS.map((day) => (
                   <Pressable
                     key={day}
-                    style={[styles.dayChip, selectedDays.includes(day) && styles.dayChipActive]}
+                    style={[styles.dayChip, { backgroundColor: t.separator, borderColor: t.cardBorder }, selectedDays.includes(day) && { backgroundColor: t.accent, borderColor: t.accent }]}
                     onPress={() => toggleDay(day)}
                   >
-                    <Text style={[styles.dayChipText, selectedDays.includes(day) && styles.dayChipTextActive]}>
+                    <Text style={[styles.dayChipText, { color: t.textSecondary }, selectedDays.includes(day) && styles.dayChipTextActive]}>
                       {day.slice(0, 3)}
                     </Text>
                   </Pressable>
@@ -226,11 +226,11 @@ export default function ChoresScreen() {
             )}
 
             <View style={styles.modalBtnRow}>
-              <Pressable style={styles.modalCancelBtn} onPress={() => { setShowAddTask(false); setNewTaskName(""); setIsRecurrent(false); setSelectedDays([]); setShowInGrid(true); }}>
-                <Text style={styles.modalCancelText}>Annuler</Text>
+              <Pressable style={[styles.modalCancelBtn, { backgroundColor: t.separator, borderColor: t.cardBorder }]} onPress={() => { setShowAddTask(false); setNewTaskName(""); setIsRecurrent(false); setSelectedDays([]); setShowInGrid(true); }}>
+                <Text style={[styles.modalCancelText, { color: t.textSecondary }]}>Annuler</Text>
               </Pressable>
               <Pressable
-                style={[styles.modalSubmitBtn, !newTaskName.trim() && { opacity: 0.5 }]}
+                style={[styles.modalSubmitBtn, { backgroundColor: t.accent }, !newTaskName.trim() && { opacity: 0.5 }]}
                 onPress={() => void handleAddTask()}
                 disabled={!newTaskName.trim()}
               >
@@ -244,37 +244,37 @@ export default function ChoresScreen() {
       {/* Task action modal */}
       <Modal visible={!!actionTask} transparent animationType="fade">
         <Pressable style={styles.modalOverlay} onPress={() => setActionTask(null)}>
-          <Pressable style={styles.modalContent} onPress={() => {}}>
-            <Text style={styles.modalTitle}>{actionTask?.name}</Text>
+          <Pressable style={[styles.modalContent, { backgroundColor: t.card }]} onPress={() => {}}>
+            <Text style={[styles.modalTitle, { color: t.text }]}>{actionTask?.name}</Text>
 
             {showEditInput ? (
               <>
                 <TextInput
-                  style={styles.modalInput}
+                  style={[styles.modalInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
                   value={editingName}
                   onChangeText={setEditingName}
                   autoFocus
                 />
                 <View style={styles.modalBtnRow}>
-                  <Pressable style={styles.modalCancelBtn} onPress={() => setShowEditInput(false)}>
-                    <Text style={styles.modalCancelText}>Annuler</Text>
+                  <Pressable style={[styles.modalCancelBtn, { backgroundColor: t.separator, borderColor: t.cardBorder }]} onPress={() => setShowEditInput(false)}>
+                    <Text style={[styles.modalCancelText, { color: t.textSecondary }]}>Annuler</Text>
                   </Pressable>
-                  <Pressable style={styles.modalSubmitBtn} onPress={() => void handleSaveEdit()}>
+                  <Pressable style={[styles.modalSubmitBtn, { backgroundColor: t.accent }]} onPress={() => void handleSaveEdit()}>
                     <Text style={styles.modalSubmitText}>Enregistrer</Text>
                   </Pressable>
                 </View>
               </>
             ) : (
               <View style={styles.actionList}>
-                <Pressable style={styles.actionItem} onPress={() => setShowEditInput(true)}>
-                  <Ionicons name="pencil-outline" size={20} color="#1D4ED8" />
-                  <Text style={styles.actionText}>Renommer</Text>
+                <Pressable style={[styles.actionItem, { borderBottomColor: t.separator }]} onPress={() => setShowEditInput(true)}>
+                  <Ionicons name="pencil-outline" size={20} color={t.accent} />
+                  <Text style={[styles.actionText, { color: t.accent }]}>Renommer</Text>
                 </Pressable>
                 <Pressable
-                  style={styles.actionItem}
+                  style={[styles.actionItem, { borderBottomColor: t.separator }]}
                   onPress={() => {
                     if (!actionTask) return;
-                    const task = tasks.find((t) => t.id === actionTask.id);
+                    const task = tasks.find((tk) => tk.id === actionTask.id);
                     if (task) {
                       void toggleTaskVisibility(task.id, !task.show_in_grid);
                       setActionTask(null);
@@ -282,19 +282,19 @@ export default function ChoresScreen() {
                   }}
                 >
                   <Ionicons
-                    name={tasks.find((t) => t.id === actionTask?.id)?.show_in_grid ? "eye-off-outline" : "eye-outline"}
+                    name={tasks.find((tk) => tk.id === actionTask?.id)?.show_in_grid ? "eye-off-outline" : "eye-outline"}
                     size={20}
-                    color="#1D4ED8"
+                    color={t.accent}
                   />
-                  <Text style={styles.actionText}>
-                    {tasks.find((t) => t.id === actionTask?.id)?.show_in_grid
+                  <Text style={[styles.actionText, { color: t.accent }]}>
+                    {tasks.find((tk) => tk.id === actionTask?.id)?.show_in_grid
                       ? "Masquer du tableau"
                       : "Afficher dans le tableau"}
                   </Text>
                 </Pressable>
-                <Pressable style={styles.actionItem} onPress={handleDeleteTask}>
-                  <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                  <Text style={[styles.actionText, { color: "#EF4444" }]}>Supprimer</Text>
+                <Pressable style={[styles.actionItem, { borderBottomColor: t.separator }]} onPress={handleDeleteTask}>
+                  <Ionicons name="trash-outline" size={20} color={t.danger} />
+                  <Text style={[styles.actionText, { color: t.danger }]}>Supprimer</Text>
                 </Pressable>
               </View>
             )}
@@ -303,8 +303,8 @@ export default function ChoresScreen() {
       </Modal>
 
       {loading && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="small" color="#1D4ED8" />
+        <View style={[styles.loadingOverlay, { backgroundColor: t.card }]}>
+          <ActivityIndicator size="small" color={t.accent} />
         </View>
       )}
     </SafeAreaView>

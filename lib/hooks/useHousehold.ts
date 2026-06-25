@@ -1,16 +1,22 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabase";
 import { Household, Profile } from "../types";
+
+let channelCounter = 0;
 
 export function useHousehold(profile: Profile | null) {
   const [household, setHousehold] = useState<Household | null>(null);
   const [members, setMembers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(false);
+  const channelId = useRef(++channelCounter);
 
   const isAdmin = profile?.role === "admin";
 
+  const householdId = profile?.household_id;
+  const profileVersion = profile ? `${profile.id}:${profile.display_name}:${profile.color}` : "";
+
   const fetchHousehold = useCallback(async () => {
-    if (!profile?.household_id) {
+    if (!householdId) {
       setHousehold(null);
       setMembers([]);
       return;
@@ -19,21 +25,37 @@ export function useHousehold(profile: Profile | null) {
     const { data: h } = await supabase
       .from("households")
       .select("*")
-      .eq("id", profile.household_id)
+      .eq("id", householdId)
       .single();
     setHousehold(h);
 
     const { data: m } = await supabase
       .from("profiles")
       .select("*")
-      .eq("household_id", profile.household_id);
+      .eq("household_id", householdId);
     setMembers(m ?? []);
     setLoading(false);
-  }, [profile?.household_id]);
+  }, [householdId, profileVersion]);
 
   useEffect(() => {
     void fetchHousehold();
   }, [fetchHousehold]);
+
+  useEffect(() => {
+    if (!householdId) return;
+    const channel = supabase
+      .channel(`household-profiles:${householdId}:${channelId.current}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `household_id=eq.${householdId}` },
+        (payload) => {
+          const updated = payload.new as Profile;
+          setMembers((prev) => prev.map((m) => m.id === updated.id ? updated : m));
+        }
+      )
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [householdId]);
 
   const createHousehold = async (name: string) => {
     const { data, error } = await supabase

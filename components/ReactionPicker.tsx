@@ -1,4 +1,5 @@
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useTheme } from "../lib/theme";
 
 const EMOJIS = ["\u{1F44D}", "❤️", "\u{1F602}", "\u{1F62E}", "\u{1F525}", "\u{1F622}"];
 
@@ -8,10 +9,11 @@ type Props = {
 };
 
 export default function ReactionPicker({ onSelectEmoji, onClose }: Props) {
+  const t = useTheme();
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: t.card }]}>
           {EMOJIS.map((emoji) => (
             <Pressable
               key={emoji}

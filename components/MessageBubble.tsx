@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Message, Profile } from "../lib/types";
+import { useTheme } from "../lib/theme";
 import ReactionPicker from "./ReactionPicker";
 
 type Props = {
@@ -19,6 +20,7 @@ export default function MessageBubble({
   onVote,
 }: Props) {
   const [showPicker, setShowPicker] = useState(false);
+  const t = useTheme();
 
   const author = profiles.find((p) => p.id === message.author_id);
   const isOwn = message.author_id === currentUserId;
@@ -33,18 +35,18 @@ export default function MessageBubble({
   return (
     <View style={[styles.wrapper, isOwn && styles.wrapperOwn]}>
       <Pressable
-        style={[styles.card, isOwn && styles.cardOwn]}
+        style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }, isOwn && { backgroundColor: t.accentLight, borderColor: t.accent }]}
         onLongPress={() => setShowPicker(true)}
       >
         <View style={styles.header}>
-          <Text style={[styles.authorName, { color: author?.color ?? "#6B7280" }]}>
+          <Text style={[styles.authorName, { color: author?.color ?? t.textSecondary }]}>
             {author?.display_name ?? "Inconnu"}
           </Text>
-          <Text style={styles.time}>{time}</Text>
+          <Text style={[styles.time, { color: t.textMuted }]}>{time}</Text>
         </View>
 
         {message.type === "text" && message.content && (
-          <Text style={styles.contentText}>{message.content}</Text>
+          <Text style={[styles.contentText, { color: t.text }]}>{message.content}</Text>
         )}
 
         {message.type === "image" && message.content && (
@@ -57,7 +59,7 @@ export default function MessageBubble({
 
         {message.type === "poll" && message.poll && (
           <View style={styles.pollContainer}>
-            <Text style={styles.pollQuestion}>{message.poll.question}</Text>
+            <Text style={[styles.pollQuestion, { color: t.text }]}>{message.poll.question}</Text>
             {message.poll.options.map((option) => {
               const pct =
                 totalVotes > 0
@@ -68,12 +70,12 @@ export default function MessageBubble({
               return (
                 <Pressable
                   key={option.id}
-                  style={[styles.pollOption, hasVoted && styles.pollOptionVoted]}
+                  style={[styles.pollOption, { borderColor: t.cardBorder }, hasVoted && { borderColor: t.accent }]}
                   onPress={() => onVote(message.id, option.id)}
                 >
                   <View style={styles.pollBarTrack}>
                     <View
-                      style={[styles.pollBar, { flex: pct, maxWidth: "100%" }]}
+                      style={[styles.pollBar, { flex: pct, maxWidth: "100%", backgroundColor: t.accentLight }]}
                     />
                     <View style={{ flex: 100 - pct }} />
                   </View>
@@ -81,19 +83,20 @@ export default function MessageBubble({
                     <Text
                       style={[
                         styles.pollOptionText,
-                        hasVoted && styles.pollOptionTextVoted,
+                        { color: t.textSecondary },
+                        hasVoted && { fontWeight: "700", color: t.accent },
                       ]}
                     >
                       {option.text}
                     </Text>
-                    <Text style={styles.pollPct}>
+                    <Text style={[styles.pollPct, { color: t.textSecondary }]}>
                       {option.votes.length} ({pct}%)
                     </Text>
                   </View>
                 </Pressable>
               );
             })}
-            <Text style={styles.pollTotal}>
+            <Text style={[styles.pollTotal, { color: t.textMuted }]}>
               {totalVotes} vote{totalVotes !== 1 ? "s" : ""}
             </Text>
           </View>
@@ -106,12 +109,13 @@ export default function MessageBubble({
                 key={emoji}
                 style={[
                   styles.reactionBadge,
-                  users.includes(currentUserId) && styles.reactionBadgeOwn,
+                  { backgroundColor: t.separator },
+                  users.includes(currentUserId) && { backgroundColor: t.accentLight, borderWidth: 1, borderColor: t.accent },
                 ]}
                 onPress={() => onReaction(message.id, emoji)}
               >
                 <Text style={styles.reactionEmoji}>{emoji}</Text>
-                <Text style={styles.reactionCount}>{users.length}</Text>
+                <Text style={[styles.reactionCount, { color: t.textSecondary }]}>{users.length}</Text>
               </Pressable>
             ))}
           </View>

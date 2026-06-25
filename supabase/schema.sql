@@ -309,4 +309,4 @@ CREATE POLICY "household_delete" ON storage.objects FOR DELETE USING (
 -- REALTIME
 -- ============================================================
 
-ALTER PUBLICATION supabase_realtime ADD TABLE messages, expenses, chores, chore_tasks, chore_reminders, events, shared_files, shopping_items, recipes, recipe_instances;
+ALTER PUBLICATION supabase_realtime ADD TABLE messages, expenses, chores, chore_tasks, chore_reminders, events, shared_files, shopping_items, recipes, recipe_instances, profiles;

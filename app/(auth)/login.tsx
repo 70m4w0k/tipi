@@ -13,11 +13,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/hooks/useAuth";
+import { useTheme } from "../../lib/theme";
 
 export default function LoginScreen() {
   const { signUp, signIn, signInWithMagicLink } = useAuth();
   const router = useRouter();
+  const t = useTheme();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -75,7 +78,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: t.background }]}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -84,38 +87,43 @@ export default function LoginScreen() {
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.logo}>🏠</Text>
-          <Text style={styles.title}>Tipi</Text>
-          <Text style={styles.subtitle}>Gérez votre coloc ensemble</Text>
+          <View style={styles.logoContainer}>
+            <Ionicons name="home" size={56} color={t.accent} />
+          </View>
+          <Text style={[styles.title, { color: t.text }]}>Tipi</Text>
+          <Text style={[styles.subtitle, { color: t.textSecondary }]}>Gérez votre coloc ensemble</Text>
 
           <View style={styles.form}>
             {mode === "register" && (
               <TextInput
-                style={styles.input}
+                style={[styles.input, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
                 placeholder="Nom d'affichage"
+                placeholderTextColor={t.textMuted}
                 value={displayName}
                 onChangeText={setDisplayName}
                 autoCapitalize="words"
               />
             )}
             <TextInput
-              style={styles.input}
+              style={[styles.input, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
               placeholder="Email"
+              placeholderTextColor={t.textMuted}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
             />
             <TextInput
-              style={styles.input}
+              style={[styles.input, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
               placeholder="Mot de passe"
+              placeholderTextColor={t.textMuted}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
             />
 
             <Pressable
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={[styles.button, { backgroundColor: t.accent }, loading && styles.buttonDisabled]}
               onPress={() => void handleSubmit()}
               disabled={loading}
             >
@@ -132,7 +140,7 @@ export default function LoginScreen() {
               style={styles.linkButton}
               onPress={() => setMode(mode === "login" ? "register" : "login")}
             >
-              <Text style={styles.linkText}>
+              <Text style={[styles.linkText, { color: t.accent }]}>
                 {mode === "login"
                   ? "Pas encore de compte ? Créer un compte"
                   : "Déjà un compte ? Se connecter"}
@@ -140,22 +148,22 @@ export default function LoginScreen() {
             </Pressable>
 
             <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>ou</Text>
-              <View style={styles.dividerLine} />
+              <View style={[styles.dividerLine, { backgroundColor: t.inputBorder }]} />
+              <Text style={[styles.dividerText, { color: t.textMuted }]}>ou</Text>
+              <View style={[styles.dividerLine, { backgroundColor: t.inputBorder }]} />
             </View>
 
             {magicLinkSent ? (
-              <Text style={styles.magicLinkSent}>
+              <Text style={[styles.magicLinkSent, { color: t.success }]}>
                 Lien envoyé ! Vérifie ta boîte mail.
               </Text>
             ) : (
               <Pressable
-                style={[styles.button, styles.buttonSecondary]}
+                style={[styles.button, styles.buttonSecondary, { backgroundColor: t.card, borderColor: t.inputBorder }]}
                 onPress={() => void handleMagicLink()}
                 disabled={loading}
               >
-                <Text style={[styles.buttonText, styles.buttonTextSecondary]}>
+                <Text style={[styles.buttonText, { color: t.textSecondary }]}>
                   Recevoir un lien de connexion
                 </Text>
               </Pressable>
@@ -175,7 +183,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 24,
   },
-  logo: { fontSize: 64, textAlign: "center", marginBottom: 8 },
+  logoContainer: { alignItems: "center", marginBottom: 8 },
   title: {
     fontSize: 32,
     fontWeight: "700",

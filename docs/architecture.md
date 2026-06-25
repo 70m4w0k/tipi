@@ -57,6 +57,8 @@ components/                 # Composants UI réutilisables
 lib/                        # Logique métier
 ├── supabase.ts             # Initialisation client Supabase
 ├── types.ts                # Types TypeScript (miroir du schéma DB)
+├── theme.ts                # Système de thème (light/dark) avec Context + AsyncStorage
+├── expense-categories.ts   # Constantes partagées : labels, couleurs, icônes par catégorie
 ├── recurrence.ts           # Matching jours français pour rappels
 ├── chores-logic.ts         # Logique pure : cycle d'intensité, filtrage tâches
 ├── recipes-logic.ts        # Logique pure : avancement étapes, progression
@@ -76,6 +78,8 @@ __tests__/                  # Tests automatisés
 ├── setup.ts                # Mocks globaux (AsyncStorage, Supabase)
 ├── recurrence.test.ts      # Tests matching jours français
 ├── expenses.test.ts        # Tests calcul soldes et remboursements
+├── expense-categories.test.ts # Tests constantes catégories (labels, couleurs, icônes)
+├── theme.test.ts           # Tests palettes thème et résolution isDark
 ├── notifications.test.ts   # Tests logique notifications accueil
 ├── chores-logic.test.ts    # Tests cycle intensité et filtrage
 ├── recipes-logic.test.ts   # Tests avancement recettes et progression
@@ -146,9 +150,20 @@ Chaque feature a un hook dédié (`useMessages`, `useExpenses`, etc.) qui :
 3. Expose des fonctions de mutation (create, update, delete)
 4. Se désinscrit du canal au unmount
 
+### Thème (dark mode)
+
+Le système de thème (`lib/theme.ts`) utilise un React Context + AsyncStorage :
+- **ThemeMode** : `"system"` | `"light"` | `"dark"` — persisté dans AsyncStorage
+- **`useTheme()`** retourne l'objet `Theme` (palette active) pour les composants
+- **`useThemeMode()`** retourne `{ mode, setMode, isDark }` pour le toggle dans les paramètres
+- Les palettes light/dark sont des objets plats avec les mêmes clés (21 tokens : background, card, accent, text, danger, success, etc.)
+- Pattern d'application : `StyleSheet` contient les valeurs statiques light, les styles inline utilisent les tokens `t.*` pour surcharger
+
 ### Temps réel
 
 Le chat utilise Supabase Realtime (WebSocket) pour une synchronisation instantanée. Les autres features (dépenses, ménage, etc.) utilisent aussi Realtime mais sont moins critiques en latence.
+
+`useHousehold` souscrit aussi aux changements de la table `profiles` pour propager en temps réel les modifications de couleur/nom entre colocataires. Un `profileVersion` computed key (`${id}:${display_name}:${color}`) déclenche un re-fetch des membres quand le profil local change.
 
 ### Stockage fichiers
 
@@ -169,6 +184,7 @@ Pour la testabilité, la logique métier complexe est extraite des hooks dans de
 | `lib/recipes-logic.ts` | `canAdvanceStep`, `isLastStep`, `getInstanceProgress` | `useRecipes` |
 | `lib/nav-preferences-logic.ts` | `parseStoredTabs` | `useNavPreferences` |
 | `lib/household-logic.ts` | `canKick`, `canPromote`, `canDemote`, `canManageHousehold`, `isLastAdmin` | `ProfileSettings` |
+| `lib/expense-categories.ts` | `CATEGORY_LABELS`, `CATEGORY_COLORS`, `CATEGORY_ICONS` | `ExpenseForm`, `ExpenseCard`, `BalancesView` |
 
 ## Tests
 
@@ -183,11 +199,11 @@ Pour la testabilité, la logique métier complexe est extraite des hooks dans de
 ### Commandes
 
 ```bash
-npm test                    # Tests unitaires (85 tests, ~4s)
+npm test                    # Tests unitaires (98 tests, ~3s)
 npm run test:integration    # Tests d'intégration Supabase (24 tests, ~12s)
 ```
 
-### Tests unitaires (85 tests)
+### Tests unitaires (98 tests)
 
 Tests de la logique métier pure, sans appel réseau ni composant React.
 
@@ -195,6 +211,8 @@ Tests de la logique métier pure, sans appel réseau ni composant React.
 |-------|-------|-------------|
 | `recurrence.test.ts` | 9 | Matching des jours français (lundi, mardi...) avec la récurrence des rappels |
 | `expenses.test.ts` | 12 | Calcul des balances nettes et optimisation des remboursements (settlements) |
+| `expense-categories.test.ts` | 5 | Constantes catégories : labels sans emoji, couleurs hex valides, icônes Ionicons, cohérence des clés |
+| `theme.test.ts` | 8 | Palettes light/dark (structure, contrastes, tokens requis) et résolution isDark par ThemeMode |
 | `notifications.test.ts` | 8 | Logique des notifications de la page d'accueil (rappels dus, événements à venir) |
 | `chores-logic.test.ts` | 13 | Cycle d'intensité des tâches (0→1→2→3→suppression) et filtrage de visibilité |
 | `recipes-logic.test.ts` | 15 | Avancement des étapes de recette, détection dernière étape, calcul de progression |

@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ChoreReminder as ChoreReminderType } from "../lib/types";
 import { recurrenceMatchesToday } from "../lib/recurrence";
+import { useTheme } from "../lib/theme";
 
 export { recurrenceMatchesToday };
 
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export default function ChoreReminderCard({ reminder, onToggleDone }: Props) {
+  const t = useTheme();
   const today = new Date().toISOString().slice(0, 10);
   const isDoneToday = reminder.last_done_date === today;
   const matchesToday = recurrenceMatchesToday(reminder.recurrence);
@@ -21,23 +23,23 @@ export default function ChoreReminderCard({ reminder, onToggleDone }: Props) {
 
   return (
     <Pressable
-      style={[styles.card, isDoneToday && styles.cardDone]}
+      style={[styles.card, { backgroundColor: t.accentLight, borderColor: t.accent }, isDoneToday && { backgroundColor: t.separator, borderColor: t.cardBorder }]}
       onPress={() => onToggleDone(reminder.id)}
     >
       <View style={styles.row}>
         <Ionicons
           name={isDoneToday ? "checkmark-circle" : "ellipse-outline"}
           size={22}
-          color={isDoneToday ? "#10B981" : "#1D4ED8"}
+          color={isDoneToday ? t.success : t.accent}
         />
         <View style={styles.info}>
-          <Text style={[styles.title, isDoneToday && styles.titleDone]}>
+          <Text style={[styles.title, { color: t.accent }, isDoneToday && { color: t.textMuted, textDecorationLine: "line-through" }]}>
             {reminder.title}
           </Text>
-          <Text style={styles.recurrence}>{reminder.recurrence}</Text>
+          <Text style={[styles.recurrence, { color: t.textSecondary }]}>{reminder.recurrence}</Text>
         </View>
         {isDoneToday && (
-          <Text style={styles.doneLabel}>Fait</Text>
+          <Text style={[styles.doneLabel, { color: t.success }]}>Fait</Text>
         )}
       </View>
     </Pressable>

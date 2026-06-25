@@ -10,10 +10,16 @@ export default function ProfileScreen() {
     household, members, isAdmin,
     renameHousehold, regenerateInviteCode,
     kickMember, promoteMember, demoteMember, deleteHousehold,
+    refreshHousehold,
   } = useHousehold(profile);
   const t = useTheme();
 
   if (!profile) return null;
+
+  const handleProfileUpdated = async () => {
+    await refreshProfile();
+    await refreshHousehold();
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: t.background }} edges={["top"]}>
@@ -23,7 +29,7 @@ export default function ProfileScreen() {
         members={members}
         isAdmin={isAdmin}
         onSignOut={signOut}
-        onProfileUpdated={refreshProfile}
+        onProfileUpdated={handleProfileUpdated}
         onRenameHousehold={renameHousehold}
         onRegenerateCode={regenerateInviteCode}
         onKickMember={kickMember}

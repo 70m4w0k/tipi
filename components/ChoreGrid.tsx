@@ -7,6 +7,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { Chore, ChoreTask, Profile } from "../lib/types";
+import { useTheme } from "../lib/theme";
 
 const TASK_COL_WIDTH = 110;
 const WEEK_COL_WIDTH = 46;
@@ -85,6 +86,7 @@ type Props = {
 export default function ChoreGrid({
   chores, tasks, currentUserId, members, filterMode, onCellPress, onTaskPress,
 }: Props) {
+  const t = useTheme();
   const scrollRef = useRef<ScrollView>(null);
   const weeks = useMemo(() => buildWeeksFromFirstEntry(chores), [chores]);
   const currentWeek = useMemo(() => getISOWeekYear(new Date()), []);
@@ -114,20 +116,20 @@ export default function ChoreGrid({
   }, [weeks, currentWeek]);
 
   return (
-    <View style={styles.outer}>
+    <View style={[styles.outer, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
       {/* Fixed first column */}
-      <View style={styles.fixedCol}>
-        <View style={styles.taskHeader}>
-          <Text style={styles.taskHeaderText}>Tâche</Text>
+      <View style={[styles.fixedCol, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+        <View style={[styles.taskHeader, { backgroundColor: t.background, borderColor: t.cardBorder }]}>
+          <Text style={[styles.taskHeaderText, { color: t.textSecondary }]}>Tâche</Text>
         </View>
         {visibleTasks.map((task) => (
           <TouchableOpacity
             key={task.id}
-            style={styles.taskCell}
+            style={[styles.taskCell, { borderColor: t.cardBorder, backgroundColor: t.card }]}
             onPress={() => onTaskPress(task.id, task.name)}
             activeOpacity={0.7}
           >
-            <Text style={styles.taskCellText} numberOfLines={1}>{task.name}</Text>
+            <Text style={[styles.taskCellText, { color: t.text }]} numberOfLines={1}>{task.name}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -145,8 +147,8 @@ export default function ChoreGrid({
             {weeks.map((w) => {
               const cur = w.week === currentWeek.week && w.year === currentWeek.year;
               return (
-                <View key={`h-${w.week}-${w.year}`} style={[styles.weekHeader, cur && styles.weekHeaderCurrent]}>
-                  <Text style={[styles.weekHeaderText, cur && styles.weekHeaderTextCurrent]}>{w.label}</Text>
+                <View key={`h-${w.week}-${w.year}`} style={[styles.weekHeader, { backgroundColor: t.background, borderColor: t.cardBorder }, cur && { backgroundColor: t.accentLight }]}>
+                  <Text style={[styles.weekHeaderText, { color: t.textSecondary }, cur && { color: t.accent, fontWeight: "700" }]}>{w.label}</Text>
                 </View>
               );
             })}
@@ -161,7 +163,7 @@ export default function ChoreGrid({
                 return (
                   <TouchableOpacity
                     key={key}
-                    style={[styles.cell, cur && styles.cellCurrent]}
+                    style={[styles.cell, { borderColor: t.cardBorder, backgroundColor: t.card }, cur && { backgroundColor: t.accentLight }]}
                     onPress={() => onCellPress(task.name, w.week, w.year)}
                     activeOpacity={0.6}
                   >
@@ -191,7 +193,7 @@ export default function ChoreGrid({
 
       {tasks.length === 0 && (
         <View style={styles.emptyRow}>
-          <Text style={styles.emptyText}>Aucune tâche.</Text>
+          <Text style={[styles.emptyText, { color: t.textMuted }]}>Aucune tâche.</Text>
         </View>
       )}
     </View>

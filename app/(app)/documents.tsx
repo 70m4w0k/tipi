@@ -13,12 +13,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useHousehold } from "../../lib/hooks/useHousehold";
 import { useFiles } from "../../lib/hooks/useFiles";
+import { useTheme } from "../../lib/theme";
 import { SharedFile } from "../../lib/types";
 
 export default function DocumentsScreen() {
   const { profile } = useAuth();
   const { household, members } = useHousehold(profile);
   const { files, loading, uploadFile, getFileUrl, deleteFile } = useFiles(household?.id);
+  const t = useTheme();
 
   const getMemberName = (userId: string | null) => {
     if (!userId) return "Inconnu";
@@ -60,28 +62,28 @@ export default function DocumentsScreen() {
   };
 
   const renderFile = ({ item }: { item: SharedFile }) => (
-    <Pressable style={styles.card} onPress={() => void handleOpenFile(item.storage_path)}>
+    <Pressable style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }]} onPress={() => void handleOpenFile(item.storage_path)}>
       <View style={styles.cardRow}>
-        <Ionicons name="document-text-outline" size={24} color="#1D4ED8" />
+        <Ionicons name="document-text-outline" size={24} color={t.accent} />
         <View style={styles.fileInfo}>
-          <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.cardMeta}>
+          <Text style={[styles.cardTitle, { color: t.text }]} numberOfLines={1}>{item.name}</Text>
+          <Text style={[styles.cardMeta, { color: t.textSecondary }]}>
             {getMemberName(item.uploaded_by)} · {formatDate(item.uploaded_at)}
           </Text>
         </View>
         <Pressable onPress={() => handleDeleteFile(item.id, item.storage_path)} hitSlop={8}>
-          <Ionicons name="trash-outline" size={18} color="#EF4444" />
+          <Ionicons name="trash-outline" size={18} color={t.danger} />
         </Pressable>
       </View>
     </Pressable>
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Documents</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: t.background }]} edges={["top"]}>
+      <View style={[styles.header, { backgroundColor: t.card, borderBottomColor: t.cardBorder }]}>
+        <Text style={[styles.headerTitle, { color: t.text }]}>Documents</Text>
         <Pressable onPress={() => void handleUploadFile()} hitSlop={8}>
-          <Ionicons name="add" size={24} color="#1D4ED8" />
+          <Ionicons name="add" size={24} color={t.accent} />
         </Pressable>
       </View>
 
@@ -92,11 +94,11 @@ export default function DocumentsScreen() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           loading ? (
-            <ActivityIndicator style={styles.loader} color="#1D4ED8" />
+            <ActivityIndicator style={styles.loader} color={t.accent} />
           ) : (
             <View style={styles.emptyContainer}>
-              <Ionicons name="document-text-outline" size={48} color="#D1D5DB" />
-              <Text style={styles.emptyText}>Aucun document</Text>
+              <Ionicons name="document-text-outline" size={48} color={t.emptyIcon} />
+              <Text style={[styles.emptyText, { color: t.textMuted }]}>Aucun document</Text>
             </View>
           )
         }

@@ -1,16 +1,10 @@
 import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { Expense, ExpenseCategory, Profile } from "../lib/types";
 import { computeBalances, computeSettlements } from "../lib/hooks/useExpenses";
-
-const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
-  courses: "🛒 Courses",
-  loyer: "🏠 Loyer",
-  restaurant: "🍕 Restaurant",
-  transport: "🚗 Transport",
-  loisirs: "🎉 Loisirs",
-  autre: "📦 Autre",
-};
+import { useTheme } from "../lib/theme";
+import { CATEGORY_LABELS, CATEGORY_ICONS } from "../lib/expense-categories";
 
 type ExpenseWithParticipants = Expense & { participants: string[] };
 
@@ -26,6 +20,7 @@ function getName(userId: string, members: Profile[]): string {
 }
 
 export function BalancesView({ expenses, members, currentUserId }: Props) {
+  const t = useTheme();
   const balances = useMemo(
     () => computeBalances(expenses, members),
     [expenses, members]
@@ -43,7 +38,7 @@ export function BalancesView({ expenses, members, currentUserId }: Props) {
 
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Balances</Text>
+      <Text style={[styles.sectionTitle, { color: t.text }]}>Balances</Text>
       {members.map((member) => {
         const bal = balances[member.id] ?? 0;
         const barWidth =
@@ -51,14 +46,14 @@ export function BalancesView({ expenses, members, currentUserId }: Props) {
         const isPositive = bal >= 0;
         return (
           <View key={member.id} style={styles.balanceRow}>
-            <Text style={styles.balanceName}>{member.display_name}</Text>
-            <View style={styles.barTrack}>
+            <Text style={[styles.balanceName, { color: t.textSecondary }]}>{member.display_name}</Text>
+            <View style={[styles.barTrack, { backgroundColor: t.cardBorder }]}>
               <View
                 style={[
                   styles.bar,
                   {
                     width: `${barWidth}%`,
-                    backgroundColor: isPositive ? "#10B981" : "#EF4444",
+                    backgroundColor: isPositive ? t.success : t.danger,
                   },
                 ]}
               />
@@ -66,7 +61,7 @@ export function BalancesView({ expenses, members, currentUserId }: Props) {
             <Text
               style={[
                 styles.balanceAmount,
-                isPositive ? styles.positive : styles.negative,
+                { color: isPositive ? t.success : t.danger },
               ]}
             >
               {isPositive ? "+" : ""}
@@ -76,44 +71,52 @@ export function BalancesView({ expenses, members, currentUserId }: Props) {
         );
       })}
 
-      <Text style={[styles.sectionTitle, { marginTop: 24 }]}>
-        💸 Remboursements suggérés
-      </Text>
+      <View style={[styles.sectionHeader, { marginTop: 24 }]}>
+        <Ionicons name="swap-horizontal-outline" size={18} color={t.text} />
+        <Text style={[styles.sectionTitle, { color: t.text }]}>Remboursements suggérés</Text>
+      </View>
       {settlements.length === 0 ? (
-        <Text style={styles.empty}>
-          Tout le monde est à l'équilibre 🎉
-        </Text>
+        <View style={styles.emptyRow}>
+          <Ionicons name="checkmark-circle-outline" size={18} color={t.success} />
+          <Text style={[styles.empty, { color: t.textSecondary }]}>
+            Tout le monde est à l'équilibre
+          </Text>
+        </View>
       ) : (
         settlements.map((s, i) => (
-          <View key={i} style={styles.settlementCard}>
-            <Text style={styles.settlementText}>
-              <Text style={styles.settlementFrom}>
+          <View key={i} style={[styles.settlementCard, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+            <Text style={[styles.settlementText, { color: t.textSecondary }]}>
+              <Text style={[styles.settlementFrom, { color: t.danger }]}>
                 {getName(s.from, members)}
               </Text>
               {"  →  "}
-              <Text style={styles.settlementTo}>
+              <Text style={[styles.settlementTo, { color: t.success }]}>
                 {getName(s.to, members)}
               </Text>
             </Text>
-            <Text style={styles.settlementAmount}>
+            <Text style={[styles.settlementAmount, { color: t.text }]}>
               {s.amount.toFixed(2)} €
             </Text>
           </View>
         ))
       )}
 
-      <Text style={[styles.sectionTitle, { marginTop: 24 }]}>
-        📊 Par catégorie
-      </Text>
+      <View style={[styles.sectionHeader, { marginTop: 24 }]}>
+        <Ionicons name="stats-chart-outline" size={18} color={t.text} />
+        <Text style={[styles.sectionTitle, { color: t.text }]}>Par catégorie</Text>
+      </View>
       {(Object.keys(CATEGORY_LABELS) as ExpenseCategory[]).map((cat) => {
         const total = expenses
           .filter((e) => e.category === cat)
           .reduce((sum, e) => sum + e.amount, 0);
         if (total === 0) return null;
         return (
-          <View key={cat} style={styles.catRow}>
-            <Text style={styles.catLabel}>{CATEGORY_LABELS[cat]}</Text>
-            <Text style={styles.catTotal}>{total.toFixed(2)} €</Text>
+          <View key={cat} style={[styles.catRow, { borderBottomColor: t.separator }]}>
+            <View style={styles.catLabelRow}>
+              <Ionicons name={CATEGORY_ICONS[cat] as any} size={14} color={t.textSecondary} />
+              <Text style={[styles.catLabel, { color: t.textSecondary }]}>{CATEGORY_LABELS[cat]}</Text>
+            </View>
+            <Text style={[styles.catTotal, { color: t.text }]}>{total.toFixed(2)} €</Text>
           </View>
         );
       })}
@@ -123,8 +126,10 @@ export function BalancesView({ expenses, members, currentUserId }: Props) {
 
 const styles = StyleSheet.create({
   section: { gap: 12 },
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: "#111827" },
-  empty: { color: "#6B7280", textAlign: "center", paddingVertical: 24 },
+  emptyRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 24 },
+  empty: { color: "#6B7280" },
   balanceRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -164,6 +169,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
   },
+  catLabelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   catLabel: { color: "#374151" },
   catTotal: { fontWeight: "700", color: "#111827" },
 });

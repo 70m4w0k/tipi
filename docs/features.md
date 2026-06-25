@@ -94,10 +94,35 @@ Stockage centralisé de documents (factures, bail, quittances, etc.).
 ## 7. Profil utilisateur
 
 - **Nom d'affichage** — Modifiable
-- **Couleur** — Sélection parmi 10 couleurs prédéfinies (utilisée dans la grille ménage)
+- **Couleur** — Sélection parmi 10 couleurs prédéfinies (utilisée dans la grille ménage), propagée en temps réel via Realtime
 - **Code d'invitation** — Affichage du code de la coloc pour inviter d'autres personnes
+- **Partage d'invitation** — Bouton share natif avec message pré-rédigé
 - **Déconnexion** — Se déconnecter de l'app
 - **Quitter la coloc** — Quitter sa colocation actuelle
+
+## 8. Accueil contextuel
+
+Page d'accueil dynamique avec les informations pertinentes :
+- **Solde personnel** — Carte cliquable montrant le solde courant
+- **Courses** — Nombre d'articles non cochés
+- **Notifications** — Rappels ménage du jour, recettes en dernière étape
+- **Invitation** — Carte d'invitation si l'utilisateur est seul dans sa coloc
+- **Accès rapide** — Tuiles vers les pages non visibles dans la navbar
+
+## 9. Thème sombre
+
+Support complet du mode sombre sur toutes les pages et composants :
+- **3 modes** — Système (suit le réglage OS), Clair, Sombre
+- **Toggle** — Accessible depuis les paramètres du profil
+- **Persistance** — Le choix est sauvegardé via AsyncStorage
+- **21 tokens** — Palette complète (background, card, accent, text, danger, success, etc.)
+
+## 10. Icônes cohérentes
+
+L'app utilise exclusivement Ionicons (via `@expo/vector-icons`) pour toutes les icônes :
+- Catégories de dépenses avec icônes dédiées (cart, home, restaurant, car, game-controller, cube)
+- Actions (trash, document-text, people, close, checkmark, etc.)
+- Navigation et UI (wallet, share, person-circle, etc.)
 
 ## État d'avancement
 
@@ -110,9 +135,14 @@ Stockage centralisé de documents (factures, bail, quittances, etc.).
 | Ménage (contribution grid) | ✅ Implémenté |
 | Événements | ✅ Implémenté |
 | Documents partagés | ✅ Implémenté |
-| Profil (couleur) | ✅ Implémenté |
+| Profil (couleur + sync Realtime) | ✅ Implémenté |
 | Gestion coloc (admin, rôles) | ✅ Implémenté |
-| Tests unitaires (85) | ✅ Implémenté |
+| Accueil contextuel | ✅ Implémenté |
+| Thème sombre (light/dark/system) | ✅ Implémenté |
+| Icônes Ionicons (remplacement emojis) | ✅ Implémenté |
+| Partage code invitation | ✅ Implémenté |
+| États vides engageants | ✅ Implémenté |
+| FAB dépenses | ✅ Implémenté |
+| Tests unitaires (98) | ✅ Implémenté |
 | Tests d'intégration Supabase (24) | ✅ Implémenté |
 | Push notifications | ❌ Pas encore |
-| Refonte UI/design | ❌ À discuter |

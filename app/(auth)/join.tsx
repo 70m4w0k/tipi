@@ -15,11 +15,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useHousehold } from "../../lib/hooks/useHousehold";
+import { useTheme } from "../../lib/theme";
 
 export default function JoinScreen() {
   const { profile, signOut, refreshProfile } = useAuth();
   const { createHousehold, joinHousehold } = useHousehold(profile);
   const router = useRouter();
+  const t = useTheme();
   const [houseName, setHouseName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [createdCode, setCreatedCode] = useState<string | null>(null);
@@ -63,7 +65,7 @@ export default function JoinScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: t.background }]}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -72,34 +74,35 @@ export default function JoinScreen() {
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.title}>Bienvenue, {profile?.display_name} !</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: t.text }]}>Bienvenue, {profile?.display_name} !</Text>
+          <Text style={[styles.subtitle, { color: t.textSecondary }]}>
             Crée une coloc ou rejoins-en une avec un code d'invitation.
           </Text>
 
           {createdCode ? (
-            <View style={styles.successCard}>
-              <Text style={styles.successTitle}>Coloc créée !</Text>
-              <Text style={styles.successText}>
+            <View style={[styles.successCard, { backgroundColor: t.successLight, borderColor: t.success }]}>
+              <Text style={[styles.successTitle, { color: t.success }]}>Coloc créée !</Text>
+              <Text style={[styles.successText, { color: t.success }]}>
                 Partage ce code avec tes colocataires :
               </Text>
-              <Text style={styles.codeDisplay}>{createdCode}</Text>
-              <Text style={styles.successHint}>
+              <Text style={[styles.codeDisplay, { color: t.success }]}>{createdCode}</Text>
+              <Text style={[styles.successHint, { color: t.textSecondary }]}>
                 L'app va se charger automatiquement...
               </Text>
             </View>
           ) : (
             <>
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Créer une coloc</Text>
+              <View style={[styles.section, { backgroundColor: t.card }]}>
+                <Text style={[styles.sectionTitle, { color: t.text }]}>Créer une coloc</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
                   placeholder="Nom de la coloc (ex: Appart Belleville)"
+                  placeholderTextColor={t.textMuted}
                   value={houseName}
                   onChangeText={setHouseName}
                 />
                 <Pressable
-                  style={[styles.button, loading && styles.buttonDisabled]}
+                  style={[styles.button, { backgroundColor: t.accent }, loading && styles.buttonDisabled]}
                   onPress={() => void handleCreate()}
                   disabled={loading}
                 >
@@ -112,16 +115,17 @@ export default function JoinScreen() {
               </View>
 
               <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>ou</Text>
-                <View style={styles.dividerLine} />
+                <View style={[styles.dividerLine, { backgroundColor: t.inputBorder }]} />
+                <Text style={[styles.dividerText, { color: t.textMuted }]}>ou</Text>
+                <View style={[styles.dividerLine, { backgroundColor: t.inputBorder }]} />
               </View>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Rejoindre une coloc</Text>
+              <View style={[styles.section, { backgroundColor: t.card }]}>
+                <Text style={[styles.sectionTitle, { color: t.text }]}>Rejoindre une coloc</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
                   placeholder="Code d'invitation (6 caractères)"
+                  placeholderTextColor={t.textMuted}
                   value={inviteCode}
                   onChangeText={setInviteCode}
                   autoCapitalize="characters"
@@ -130,16 +134,16 @@ export default function JoinScreen() {
                 <Pressable
                   style={[
                     styles.button,
-                    styles.buttonSecondary,
+                    { backgroundColor: t.card, borderWidth: 1, borderColor: t.accent },
                     loading && styles.buttonDisabled,
                   ]}
                   onPress={() => void handleJoin()}
                   disabled={loading}
                 >
                   {loading ? (
-                    <ActivityIndicator color="#374151" />
+                    <ActivityIndicator color={t.accent} />
                   ) : (
-                    <Text style={[styles.buttonText, styles.buttonTextSecondary]}>
+                    <Text style={[styles.buttonText, { color: t.accent }]}>
                       Rejoindre
                     </Text>
                   )}
@@ -149,7 +153,7 @@ export default function JoinScreen() {
           )}
 
           <Pressable style={styles.logoutButton} onPress={() => void signOut()}>
-            <Text style={styles.logoutText}>Se déconnecter</Text>
+            <Text style={[styles.logoutText, { color: t.danger }]}>Se déconnecter</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>

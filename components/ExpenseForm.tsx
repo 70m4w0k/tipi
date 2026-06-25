@@ -11,24 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { ExpenseCategory, Profile } from "../lib/types";
 import { useTheme } from "../lib/theme";
-
-const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
-  courses: "🛒 Courses",
-  loyer: "🏠 Loyer",
-  restaurant: "🍕 Restaurant",
-  transport: "🚗 Transport",
-  loisirs: "🎉 Loisirs",
-  autre: "📦 Autre",
-};
-
-const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
-  courses: "#10B981",
-  loyer: "#3B82F6",
-  restaurant: "#F59E0B",
-  transport: "#8B5CF6",
-  loisirs: "#EC4899",
-  autre: "#6B7280",
-};
+import { CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_ICONS } from "../lib/expense-categories";
 
 export type ExpenseFormData = {
   title: string;
@@ -133,19 +116,27 @@ export function ExpenseForm({ members, currentUserId, onSubmit }: Props) {
               {
                 borderColor: CATEGORY_COLORS[cat],
                 backgroundColor:
-                  category === cat ? CATEGORY_COLORS[cat] : "#F9FAFB",
+                  category === cat ? CATEGORY_COLORS[cat] : t.separator,
               },
             ]}
             onPress={() => setCategory(cat)}
           >
-            <Text
-              style={[
-                styles.categoryChipText,
-                category === cat && styles.categoryChipTextActive,
-              ]}
-            >
-              {CATEGORY_LABELS[cat]}
-            </Text>
+            <View style={styles.categoryChipContent}>
+              <Ionicons
+                name={CATEGORY_ICONS[cat] as any}
+                size={14}
+                color={category === cat ? "#FFFFFF" : t.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.categoryChipText,
+                  { color: t.textSecondary },
+                  category === cat && styles.categoryChipTextActive,
+                ]}
+              >
+                {CATEGORY_LABELS[cat]}
+              </Text>
+            </View>
           </Pressable>
         ))}
       </ScrollView>
@@ -155,12 +146,13 @@ export function ExpenseForm({ members, currentUserId, onSubmit }: Props) {
         {members.map((member) => (
           <Pressable
             key={member.id}
-            style={[styles.chip, payer === member.id && styles.chipActive]}
+            style={[styles.chip, { borderColor: t.textMuted }, payer === member.id && { backgroundColor: t.accent, borderColor: t.accent }]}
             onPress={() => setPayer(member.id)}
           >
             <Text
               style={[
                 styles.chipText,
+                { color: t.text },
                 payer === member.id && styles.chipTextActive,
               ]}
             >
@@ -244,7 +236,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  categoryChipText: { color: "#374151", fontWeight: "600", fontSize: 12 },
+  categoryChipContent: { flexDirection: "row", alignItems: "center", gap: 4 },
+  categoryChipText: { fontWeight: "600", fontSize: 12 },
   categoryChipTextActive: { color: "#FFFFFF" },
   labelRow: {
     flexDirection: "row",
@@ -257,12 +250,11 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     borderWidth: 1,
-    borderColor: "#9CA3AF",
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  chipActive: { backgroundColor: "#111827", borderColor: "#111827" },
+  chipActive: {},
   chipText: { fontWeight: "600" },
   chipTextActive: { color: "#FFFFFF" },
   checkChip: {

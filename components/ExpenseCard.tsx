@@ -1,24 +1,9 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { Expense, ExpenseCategory, Profile } from "../lib/types";
-
-const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
-  courses: "🛒 Courses",
-  loyer: "🏠 Loyer",
-  restaurant: "🍕 Restaurant",
-  transport: "🚗 Transport",
-  loisirs: "🎉 Loisirs",
-  autre: "📦 Autre",
-};
-
-const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
-  courses: "#10B981",
-  loyer: "#3B82F6",
-  restaurant: "#F59E0B",
-  transport: "#8B5CF6",
-  loisirs: "#EC4899",
-  autre: "#6B7280",
-};
+import { useTheme } from "../lib/theme";
+import { CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_ICONS } from "../lib/expense-categories";
 
 type Props = {
   expense: Expense;
@@ -47,6 +32,7 @@ export function ExpenseCard({
   members,
   onDelete,
 }: Props) {
+  const t = useTheme();
   const share =
     participants.includes(currentUserId) && participants.length > 0
       ? expense.amount / participants.length
@@ -58,7 +44,7 @@ export function ExpenseCard({
     .join(", ");
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
       <View style={styles.cardHeader}>
         <View
           style={[
@@ -67,25 +53,31 @@ export function ExpenseCard({
           ]}
         />
         <View style={styles.cardMain}>
-          <Text style={styles.cardTitle}>{expense.title}</Text>
-          <Text style={styles.cardSub}>
+          <Text style={[styles.cardTitle, { color: t.text }]}>{expense.title}</Text>
+          <Text style={[styles.cardSub, { color: t.textSecondary }]}>
             {CATEGORY_LABELS[expense.category]} ·{" "}
             {formatDate(expense.created_at)}
           </Text>
           {expense.note ? (
-            <Text style={styles.cardNote}>📝 {expense.note}</Text>
+            <View style={styles.noteRow}>
+              <Ionicons name="document-text-outline" size={12} color={t.textSecondary} />
+              <Text style={[styles.cardNote, { color: t.textSecondary }]}>{expense.note}</Text>
+            </View>
           ) : null}
         </View>
         <View style={styles.cardRight}>
-          <Text style={styles.cardAmount}>{expense.amount.toFixed(2)} €</Text>
-          <Text style={styles.cardPayer}>
+          <Text style={[styles.cardAmount, { color: t.text }]}>{expense.amount.toFixed(2)} €</Text>
+          <Text style={[styles.cardPayer, { color: t.textSecondary }]}>
             payé par {getName(expense.payer_id, members)}
           </Text>
         </View>
       </View>
 
-      <View style={styles.cardFooter}>
-        <Text style={styles.participants}>👥 {participantNames}</Text>
+      <View style={[styles.cardFooter, { borderTopColor: t.separator }]}>
+        <View style={styles.participantsRow}>
+          <Ionicons name="people-outline" size={14} color={t.textSecondary} />
+          <Text style={[styles.participants, { color: t.textSecondary }]}>{participantNames}</Text>
+        </View>
         <Text
           style={[
             styles.myShare,
@@ -99,7 +91,7 @@ export function ExpenseCard({
               : "Non concerné"}
         </Text>
         <Pressable onPress={() => onDelete(expense.id)} style={styles.deleteButton}>
-          <Text style={styles.deleteText}>🗑️</Text>
+          <Ionicons name="trash-outline" size={18} color={t.danger} />
         </Pressable>
       </View>
     </View>
@@ -125,7 +117,8 @@ const styles = StyleSheet.create({
   cardMain: { flex: 1 },
   cardTitle: { fontWeight: "700", color: "#111827", fontSize: 15 },
   cardSub: { fontSize: 12, color: "#6B7280" },
-  cardNote: { fontSize: 12, color: "#6B7280", marginTop: 2 },
+  noteRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
+  cardNote: { fontSize: 12, color: "#6B7280" },
   cardRight: { alignItems: "flex-end" },
   cardAmount: { fontWeight: "700", fontSize: 16, color: "#111827" },
   cardPayer: { fontSize: 11, color: "#6B7280" },
@@ -137,10 +130,10 @@ const styles = StyleSheet.create({
     borderTopColor: "#F3F4F6",
     paddingTop: 8,
   },
+  participantsRow: { flex: 1, flexDirection: "row", alignItems: "center", gap: 4 },
   participants: { flex: 1, fontSize: 12, color: "#6B7280" },
   myShare: { fontSize: 12, fontWeight: "600" },
   sharePositive: { color: "#10B981" },
   shareNegative: { color: "#EF4444" },
   deleteButton: { padding: 4 },
-  deleteText: { fontSize: 16 },
 });

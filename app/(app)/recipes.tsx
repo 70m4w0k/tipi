@@ -15,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useRecipes } from "../../lib/hooks/useRecipes";
+import { useTheme } from "../../lib/theme";
 import { Recipe, RecipeInstance, RecipeStep } from "../../lib/types";
 
 type Tab = "recipes" | "active";
@@ -40,6 +41,7 @@ export default function RecipesScreen() {
     addRecipe, updateRecipe, deleteRecipe,
     startInstance, advanceStep, updateInstanceNotes, deleteInstance, completeInstance,
   } = useRecipes(profile?.household_id);
+  const t = useTheme();
 
   const [tab, setTab] = useState<Tab>(searchParams.tab === "active" ? "active" : "recipes");
   const [deepLinkHandled, setDeepLinkHandled] = useState(false);
@@ -149,14 +151,14 @@ export default function RecipesScreen() {
   const renderRecipe = ({ item }: { item: Recipe }) => {
     const activeCount = instances.filter((i) => i.recipe_id === item.id).length;
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
         <View style={styles.cardRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>{item.title}</Text>
+            <Text style={[styles.cardTitle, { color: t.text }]}>{item.title}</Text>
             {item.description ? (
-              <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
+              <Text style={[styles.cardDesc, { color: t.textSecondary }]} numberOfLines={2}>{item.description}</Text>
             ) : null}
-            <Text style={styles.cardMeta}>
+            <Text style={[styles.cardMeta, { color: t.textMuted }]}>
               {item.steps.length} étape{item.steps.length > 1 ? "s" : ""}
               {item.ingredients.length > 0 ? ` · ${item.ingredients.length} ingrédient${item.ingredients.length > 1 ? "s" : ""}` : ""}
               {activeCount > 0 ? ` · ${activeCount} en cours` : ""}
@@ -170,13 +172,13 @@ export default function RecipesScreen() {
                 setShowStartModal(true);
               }}
             >
-              <Ionicons name="play-circle-outline" size={24} color="#1D4ED8" />
+              <Ionicons name="play-circle-outline" size={24} color={t.accent} />
             </Pressable>
             <Pressable style={styles.cardActionBtn} onPress={() => openEditRecipe(item)}>
-              <Ionicons name="create-outline" size={20} color="#6B7280" />
+              <Ionicons name="create-outline" size={20} color={t.textSecondary} />
             </Pressable>
             <Pressable style={styles.cardActionBtn} onPress={() => handleDeleteRecipe(item.id, item.title)}>
-              <Ionicons name="trash-outline" size={20} color="#EF4444" />
+              <Ionicons name="trash-outline" size={20} color={t.danger} />
             </Pressable>
           </View>
         </View>
@@ -195,7 +197,7 @@ export default function RecipesScreen() {
 
     return (
       <Pressable
-        style={styles.instanceCard}
+        style={[styles.instanceCard, { backgroundColor: t.card, borderColor: t.cardBorder }]}
         onPress={() => {
           setSelectedInstance(item.id);
           setEditingNotes(item.notes);
@@ -203,35 +205,35 @@ export default function RecipesScreen() {
       >
         <View style={styles.instanceHeader}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.instanceLabel}>{item.label}</Text>
-            <Text style={styles.instanceRecipe}>{recipe.title}</Text>
+            <Text style={[styles.instanceLabel, { color: t.text }]}>{item.label}</Text>
+            <Text style={[styles.instanceRecipe, { color: t.textSecondary }]}>{recipe.title}</Text>
           </View>
-          <View style={styles.instanceBadge}>
-            <Text style={styles.instanceBadgeText}>
+          <View style={[styles.instanceBadge, { backgroundColor: t.accentLight }]}>
+            <Text style={[styles.instanceBadgeText, { color: t.accent }]}>
               {item.current_step + 1}/{recipe.steps.length}
             </Text>
           </View>
         </View>
 
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: `${progress}%` }]} />
+        <View style={[styles.progressBar, { backgroundColor: t.cardBorder }]}>
+          <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: t.accent }]} />
         </View>
 
         {currentStep && (
-          <View style={styles.stepInfo}>
-            <Text style={styles.stepTitle}>
+          <View style={[styles.stepInfo, { backgroundColor: t.separator }]}>
+            <Text style={[styles.stepTitle, { color: t.text }]}>
               Étape {item.current_step + 1} : {currentStep.title}
             </Text>
             {currentStep.description ? (
-              <Text style={styles.stepDesc} numberOfLines={2}>{currentStep.description}</Text>
+              <Text style={[styles.stepDesc, { color: t.textSecondary }]} numberOfLines={2}>{currentStep.description}</Text>
             ) : null}
             <View style={styles.timerRow}>
-              <Ionicons name="time-outline" size={14} color="#6B7280" />
-              <Text style={styles.timerText}>
+              <Ionicons name="time-outline" size={14} color={t.textSecondary} />
+              <Text style={[styles.timerText, { color: t.textSecondary }]}>
                 Depuis {formatDuration(item.step_started_at)}
               </Text>
               {currentStep.duration_hint ? (
-                <Text style={styles.timerHint}> · prévu : {currentStep.duration_hint}</Text>
+                <Text style={[styles.timerHint, { color: t.textMuted }]}> · prévu : {currentStep.duration_hint}</Text>
               ) : null}
             </View>
           </View>
@@ -240,7 +242,7 @@ export default function RecipesScreen() {
         <View style={styles.instanceActions}>
           {!isLastStep ? (
             <Pressable
-              style={styles.nextStepBtn}
+              style={[styles.nextStepBtn, { backgroundColor: t.accent }]}
               onPress={() => void advanceStep(item.id)}
             >
               <Text style={styles.nextStepText}>Étape suivante</Text>
@@ -248,7 +250,7 @@ export default function RecipesScreen() {
             </Pressable>
           ) : (
             <Pressable
-              style={[styles.nextStepBtn, { backgroundColor: "#10B981" }]}
+              style={[styles.nextStepBtn, { backgroundColor: t.success }]}
               onPress={() => void completeInstance(item.id)}
             >
               <Text style={styles.nextStepText}>Terminer</Text>
@@ -256,14 +258,14 @@ export default function RecipesScreen() {
             </Pressable>
           )}
           <Pressable
-            style={styles.deleteInstanceBtn}
+            style={[styles.deleteInstanceBtn, { borderColor: t.danger }]}
             onPress={() => handleDeleteInstance(item.id, item.label)}
           >
-            <Ionicons name="close" size={18} color="#EF4444" />
+            <Ionicons name="close" size={18} color={t.danger} />
           </Pressable>
         </View>
 
-        <Text style={styles.startedAt}>
+        <Text style={[styles.startedAt, { color: t.textMuted }]}>
           Début : {new Date(item.started_at).toLocaleDateString("fr-FR")} · Total : {formatDuration(item.started_at)}
         </Text>
       </Pressable>
@@ -271,28 +273,28 @@ export default function RecipesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Recettes</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: t.background }]} edges={["top"]}>
+      <View style={[styles.header, { backgroundColor: t.card, borderBottomColor: t.cardBorder }]}>
+        <Text style={[styles.headerTitle, { color: t.text }]}>Recettes</Text>
         {tab === "recipes" && (
           <Pressable onPress={() => setShowForm(true)} hitSlop={8}>
-            <Ionicons name="add" size={24} color="#1D4ED8" />
+            <Ionicons name="add" size={24} color={t.accent} />
           </Pressable>
         )}
       </View>
 
-      <View style={styles.tabRow}>
+      <View style={[styles.tabRow, { backgroundColor: t.tabBg }]}>
         <Pressable
-          style={[styles.tabButton, tab === "recipes" && styles.tabButtonActive]}
+          style={[styles.tabButton, tab === "recipes" && [styles.tabButtonActive, { backgroundColor: t.accent }]]}
           onPress={() => setTab("recipes")}
         >
-          <Text style={[styles.tabText, tab === "recipes" && styles.tabTextActive]}>Mes recettes</Text>
+          <Text style={[styles.tabText, { color: t.textSecondary }, tab === "recipes" && styles.tabTextActive]}>Mes recettes</Text>
         </Pressable>
         <Pressable
-          style={[styles.tabButton, tab === "active" && styles.tabButtonActive]}
+          style={[styles.tabButton, tab === "active" && [styles.tabButtonActive, { backgroundColor: t.accent }]]}
           onPress={() => setTab("active")}
         >
-          <Text style={[styles.tabText, tab === "active" && styles.tabTextActive]}>
+          <Text style={[styles.tabText, { color: t.textSecondary }, tab === "active" && styles.tabTextActive]}>
             En cours{instances.length > 0 ? ` (${instances.length})` : ""}
           </Text>
         </Pressable>
@@ -307,8 +309,8 @@ export default function RecipesScreen() {
           ListEmptyComponent={
             loading ? null : (
               <View style={styles.emptyContainer}>
-                <Ionicons name="restaurant-outline" size={48} color="#D1D5DB" />
-                <Text style={styles.emptyText}>Aucune recette</Text>
+                <Ionicons name="restaurant-outline" size={48} color={t.emptyIcon} />
+                <Text style={[styles.emptyText, { color: t.textMuted }]}>Aucune recette</Text>
               </View>
             )
           }
@@ -321,8 +323,8 @@ export default function RecipesScreen() {
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="flask-outline" size={48} color="#D1D5DB" />
-              <Text style={styles.emptyText}>Aucune recette en cours</Text>
+              <Ionicons name="flask-outline" size={48} color={t.emptyIcon} />
+              <Text style={[styles.emptyText, { color: t.textMuted }]}>Aucune recette en cours</Text>
             </View>
           }
         />
@@ -331,78 +333,78 @@ export default function RecipesScreen() {
       {/* Recipe form modal */}
       <Modal visible={showForm} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: t.card }]}>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.modalTitle}>
+              <Text style={[styles.modalTitle, { color: t.text }]}>
                 {editingRecipe ? "Modifier la recette" : "Nouvelle recette"}
               </Text>
 
               <TextInput
-                style={styles.modalInput}
+                style={[styles.modalInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
                 placeholder="Titre"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={t.textMuted}
                 value={formTitle}
                 onChangeText={setFormTitle}
                 autoFocus
               />
 
               <TextInput
-                style={styles.modalInput}
+                style={[styles.modalInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
                 placeholder="Description (optionnel)"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={t.textMuted}
                 value={formDesc}
                 onChangeText={setFormDesc}
               />
 
-              <Text style={styles.sectionLabel}>Ingrédients (un par ligne)</Text>
+              <Text style={[styles.sectionLabel, { color: t.textSecondary }]}>Ingrédients (un par ligne)</Text>
               <TextInput
-                style={[styles.modalInput, { minHeight: 80 }]}
+                style={[styles.modalInput, { minHeight: 80, borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
                 placeholder={"200g de sel\n1kg de magret\nPoivre noir"}
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={t.textMuted}
                 value={formIngredients}
                 onChangeText={setFormIngredients}
                 multiline
               />
 
-              <Text style={styles.sectionLabel}>Étapes</Text>
+              <Text style={[styles.sectionLabel, { color: t.textSecondary }]}>Étapes</Text>
               {formSteps.map((step, idx) => (
-                <View key={idx} style={styles.stepCard}>
+                <View key={idx} style={[styles.stepCard, { backgroundColor: t.separator, borderColor: t.cardBorder }]}>
                   <View style={styles.stepCardHeader}>
-                    <Text style={styles.stepCardTitle}>{idx + 1}. {step.title}</Text>
+                    <Text style={[styles.stepCardTitle, { color: t.text }]}>{idx + 1}. {step.title}</Text>
                     <Pressable
                       onPress={() =>
                         setFormSteps(formSteps.filter((_, i) => i !== idx))
                       }
                     >
-                      <Ionicons name="close-circle" size={20} color="#EF4444" />
+                      <Ionicons name="close-circle" size={20} color={t.danger} />
                     </Pressable>
                   </View>
-                  {step.description ? <Text style={styles.stepCardDesc}>{step.description}</Text> : null}
+                  {step.description ? <Text style={[styles.stepCardDesc, { color: t.textSecondary }]}>{step.description}</Text> : null}
                   {step.duration_hint ? (
-                    <Text style={styles.stepCardDuration}>Durée : {step.duration_hint}</Text>
+                    <Text style={[styles.stepCardDuration, { color: t.textMuted }]}>Durée : {step.duration_hint}</Text>
                   ) : null}
                 </View>
               ))}
 
               <View style={styles.addStepSection}>
                 <TextInput
-                  style={styles.modalInput}
+                  style={[styles.modalInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
                   placeholder="Titre de l'étape"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={t.textMuted}
                   value={newStepTitle}
                   onChangeText={setNewStepTitle}
                 />
                 <TextInput
-                  style={styles.modalInput}
+                  style={[styles.modalInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
                   placeholder="Description (optionnel)"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={t.textMuted}
                   value={newStepDesc}
                   onChangeText={setNewStepDesc}
                 />
                 <TextInput
-                  style={styles.modalInput}
+                  style={[styles.modalInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
                   placeholder="Durée estimée (ex: 48h, 3 jours)"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={t.textMuted}
                   value={newStepDuration}
                   onChangeText={setNewStepDuration}
                 />
@@ -411,17 +413,17 @@ export default function RecipesScreen() {
                   onPress={handleAddStep}
                   disabled={!newStepTitle.trim()}
                 >
-                  <Ionicons name="add-circle-outline" size={18} color="#1D4ED8" />
-                  <Text style={styles.addStepText}>Ajouter l'étape</Text>
+                  <Ionicons name="add-circle-outline" size={18} color={t.accent} />
+                  <Text style={[styles.addStepText, { color: t.accent }]}>Ajouter l'étape</Text>
                 </Pressable>
               </View>
 
               <View style={styles.modalBtnRow}>
-                <Pressable style={styles.modalCancelBtn} onPress={resetForm}>
-                  <Text style={styles.modalCancelText}>Annuler</Text>
+                <Pressable style={[styles.modalCancelBtn, { backgroundColor: t.separator, borderColor: t.cardBorder }]} onPress={resetForm}>
+                  <Text style={[styles.modalCancelText, { color: t.textSecondary }]}>Annuler</Text>
                 </Pressable>
                 <Pressable
-                  style={[styles.modalSubmitBtn, !formTitle.trim() && { opacity: 0.5 }]}
+                  style={[styles.modalSubmitBtn, { backgroundColor: t.accent }, !formTitle.trim() && { opacity: 0.5 }]}
                   onPress={() => void handleSaveRecipe()}
                   disabled={!formTitle.trim()}
                 >
@@ -436,36 +438,36 @@ export default function RecipesScreen() {
       {/* Start instance modal */}
       <Modal visible={showStartModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Lancer une préparation</Text>
-            <Text style={styles.modalHint}>
+          <View style={[styles.modalContent, { backgroundColor: t.card }]}>
+            <Text style={[styles.modalTitle, { color: t.text }]}>Lancer une préparation</Text>
+            <Text style={[styles.modalHint, { color: t.textSecondary }]}>
               {recipes.find((r) => r.id === startRecipeId)?.title}
             </Text>
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
               placeholder="Nom (ex: Magret séché #1)"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={t.textMuted}
               value={instanceLabel}
               onChangeText={setInstanceLabel}
               autoFocus
             />
             <TextInput
-              style={[styles.modalInput, { minHeight: 60 }]}
+              style={[styles.modalInput, { minHeight: 60, borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
               placeholder="Notes (épices, poids, etc.)"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={t.textMuted}
               value={instanceNotes}
               onChangeText={setInstanceNotes}
               multiline
             />
             <View style={styles.modalBtnRow}>
               <Pressable
-                style={styles.modalCancelBtn}
+                style={[styles.modalCancelBtn, { backgroundColor: t.separator, borderColor: t.cardBorder }]}
                 onPress={() => { setShowStartModal(false); setInstanceLabel(""); setInstanceNotes(""); }}
               >
-                <Text style={styles.modalCancelText}>Annuler</Text>
+                <Text style={[styles.modalCancelText, { color: t.textSecondary }]}>Annuler</Text>
               </Pressable>
               <Pressable
-                style={[styles.modalSubmitBtn, !instanceLabel.trim() && { opacity: 0.5 }]}
+                style={[styles.modalSubmitBtn, { backgroundColor: t.accent }, !instanceLabel.trim() && { opacity: 0.5 }]}
                 onPress={() => void handleStartInstance()}
                 disabled={!instanceLabel.trim()}
               >
@@ -479,7 +481,7 @@ export default function RecipesScreen() {
       {/* Instance detail modal */}
       <Modal visible={!!selectedInstance} transparent animationType="fade">
         <Pressable style={styles.modalOverlay} onPress={() => setSelectedInstance(null)}>
-          <Pressable style={styles.modalContent} onPress={() => {}}>
+          <Pressable style={[styles.modalContent, { backgroundColor: t.card }]} onPress={() => {}}>
             {(() => {
               const inst = instances.find((i) => i.id === selectedInstance);
               if (!inst) return null;
@@ -487,17 +489,17 @@ export default function RecipesScreen() {
               if (!recipe) return null;
               return (
                 <>
-                  <Text style={styles.modalTitle}>{inst.label}</Text>
-                  <Text style={styles.modalHint}>{recipe.title}</Text>
+                  <Text style={[styles.modalTitle, { color: t.text }]}>{inst.label}</Text>
+                  <Text style={[styles.modalHint, { color: t.textSecondary }]}>{recipe.title}</Text>
 
-                  <Text style={styles.sectionLabel}>Notes</Text>
+                  <Text style={[styles.sectionLabel, { color: t.textSecondary }]}>Notes</Text>
                   <TextInput
-                    style={[styles.modalInput, { minHeight: 80 }]}
+                    style={[styles.modalInput, { minHeight: 80, borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
                     value={editingNotes}
                     onChangeText={setEditingNotes}
                     multiline
                     placeholder="Ajouter des notes..."
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={t.textMuted}
                   />
                   <Pressable
                     style={[styles.addStepBtn, { marginBottom: 12 }]}
@@ -506,30 +508,31 @@ export default function RecipesScreen() {
                       setSelectedInstance(null);
                     }}
                   >
-                    <Text style={styles.addStepText}>Enregistrer les notes</Text>
+                    <Text style={[styles.addStepText, { color: t.accent }]}>Enregistrer les notes</Text>
                   </Pressable>
 
-                  <Text style={styles.sectionLabel}>Étapes</Text>
+                  <Text style={[styles.sectionLabel, { color: t.textSecondary }]}>Étapes</Text>
                   {recipe.steps.map((step, idx) => (
                     <View
                       key={idx}
                       style={[
                         styles.stepCard,
-                        idx < inst.current_step && { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" },
-                        idx === inst.current_step && { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" },
+                        { backgroundColor: t.separator, borderColor: t.cardBorder },
+                        idx < inst.current_step && { backgroundColor: t.successLight, borderColor: t.success },
+                        idx === inst.current_step && { backgroundColor: t.accentLight, borderColor: t.accent },
                       ]}
                     >
                       <View style={styles.stepCardHeader}>
-                        <Text style={styles.stepCardTitle}>
+                        <Text style={[styles.stepCardTitle, { color: t.text }]}>
                           {idx < inst.current_step ? "✓ " : ""}{idx + 1}. {step.title}
                         </Text>
                       </View>
-                      {step.description ? <Text style={styles.stepCardDesc}>{step.description}</Text> : null}
-                      {step.duration_hint ? <Text style={styles.stepCardDuration}>Durée : {step.duration_hint}</Text> : null}
+                      {step.description ? <Text style={[styles.stepCardDesc, { color: t.textSecondary }]}>{step.description}</Text> : null}
+                      {step.duration_hint ? <Text style={[styles.stepCardDuration, { color: t.textMuted }]}>Durée : {step.duration_hint}</Text> : null}
                     </View>
                   ))}
 
-                  <Text style={[styles.startedAt, { marginTop: 12 }]}>
+                  <Text style={[styles.startedAt, { marginTop: 12, color: t.textMuted }]}>
                     Début : {new Date(inst.started_at).toLocaleDateString("fr-FR")} · Total : {formatDuration(inst.started_at)}
                   </Text>
                 </>
