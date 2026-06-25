@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "scheme": "tipi",
     "orientation": "portrait",
-    "icon": "./assets/tipi_icon.jpg",
+    "icon": "./assets/tipi_icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,6 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../lib/hooks/useAuth";
@@ -26,6 +26,7 @@ export default function JoinScreen() {
   const [inviteCode, setInviteCode] = useState("");
   const [createdCode, setCreatedCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     if (!session) {
@@ -38,14 +39,15 @@ export default function JoinScreen() {
   }, [session, profile?.household_id, router]);
 
   const handleCreate = async () => {
+    setErrorMsg("");
     if (!houseName.trim()) {
-      Alert.alert("Nom requis", "Donne un nom à ta coloc.");
+      setErrorMsg("Donne un nom à ta coloc.");
       return;
     }
     setLoading(true);
     const { error, household } = await createHousehold(houseName.trim());
     if (error) {
-      Alert.alert("Erreur", String(error.message ?? error));
+      setErrorMsg(String(error.message ?? error));
     } else if (household) {
       setCreatedCode(household.invite_code);
       await refreshProfile();
@@ -54,14 +56,15 @@ export default function JoinScreen() {
   };
 
   const handleJoin = async () => {
+    setErrorMsg("");
     if (!inviteCode.trim()) {
-      Alert.alert("Code requis", "Entre le code d'invitation.");
+      setErrorMsg("Entre le code d'invitation.");
       return;
     }
     setLoading(true);
     const { error } = await joinHousehold(inviteCode.trim());
     if (error) {
-      Alert.alert("Erreur", String(error.message ?? error));
+      setErrorMsg(String(error.message ?? error));
     } else {
       await refreshProfile();
     }
@@ -82,6 +85,13 @@ export default function JoinScreen() {
           <Text style={[styles.subtitle, { color: t.textSecondary }]}>
             Crée une coloc ou rejoins-en une avec un code d'invitation.
           </Text>
+
+          {!!errorMsg && (
+            <View style={[styles.errorBanner, { backgroundColor: t.dangerLight, borderColor: t.danger }]}>
+              <Ionicons name="alert-circle" size={18} color={t.danger} />
+              <Text style={[styles.errorText, { color: t.danger }]}>{errorMsg}</Text>
+            </View>
+          )}
 
           {createdCode ? (
             <View style={[styles.successCard, { backgroundColor: t.successLight, borderColor: t.success }]}>
@@ -244,4 +254,18 @@ const styles = StyleSheet.create({
   successHint: { color: "#6B7280", fontSize: 13 },
   logoutButton: { alignItems: "center", marginTop: 24, paddingVertical: 8 },
   logoutText: { color: "#EF4444", fontWeight: "600", fontSize: 14 },
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "500",
+  },
 });

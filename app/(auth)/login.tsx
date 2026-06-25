@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -27,50 +26,52 @@ export default function LoginScreen() {
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const handleSubmit = async () => {
+    setErrorMsg("");
     if (!email.trim() || !password.trim()) {
-      Alert.alert("Champs requis", "Email et mot de passe sont obligatoires.");
+      setErrorMsg("Email et mot de passe sont obligatoires.");
       return;
     }
     setLoading(true);
     try {
       if (mode === "register") {
         if (!displayName.trim()) {
-          Alert.alert("Champ requis", "Choisis un nom d'affichage.");
+          setErrorMsg("Choisis un nom d'affichage.");
           setLoading(false);
           return;
         }
         const { error } = await signUp(email.trim(), password, displayName.trim());
         if (error) {
-          Alert.alert("Erreur", error.message);
+          setErrorMsg(error.message);
         } else {
           router.replace("/");
         }
       } else {
         const { error } = await signIn(email.trim(), password);
         if (error) {
-          Alert.alert("Erreur d'authentification", error.message);
+          setErrorMsg(error.message);
         } else {
           router.replace("/");
         }
       }
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Erreur inconnue";
-      Alert.alert("Erreur inattendue", msg);
+      setErrorMsg(e instanceof Error ? e.message : "Erreur inconnue");
     }
     setLoading(false);
   };
 
   const handleMagicLink = async () => {
+    setErrorMsg("");
     if (!email.trim()) {
-      Alert.alert("Email requis", "Entre ton email pour recevoir le lien.");
+      setErrorMsg("Entre ton email pour recevoir le lien.");
       return;
     }
     setLoading(true);
     const { error } = await signInWithMagicLink(email.trim());
     if (error) {
-      Alert.alert("Erreur", error.message);
+      setErrorMsg(error.message);
     } else {
       setMagicLinkSent(true);
     }
@@ -94,6 +95,12 @@ export default function LoginScreen() {
           <Text style={[styles.subtitle, { color: t.textSecondary }]}>Gérez votre coloc ensemble</Text>
 
           <View style={styles.form}>
+            {!!errorMsg && (
+              <View style={[styles.errorBanner, { backgroundColor: t.dangerLight, borderColor: t.danger }]}>
+                <Ionicons name="alert-circle" size={18} color={t.danger} />
+                <Text style={[styles.errorText, { color: t.danger }]}>{errorMsg}</Text>
+              </View>
+            )}
             {mode === "register" && (
               <TextInput
                 style={[styles.input, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
@@ -235,5 +242,18 @@ const styles = StyleSheet.create({
     color: "#10B981",
     fontWeight: "600",
     paddingVertical: 12,
+  },
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "500",
   },
 });
