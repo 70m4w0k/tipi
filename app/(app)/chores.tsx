@@ -126,6 +126,9 @@ export default function ChoresScreen() {
     <SafeAreaView style={[styles.screen, { backgroundColor: t.background }]} edges={["top"]}>
       <View style={[styles.header, { backgroundColor: t.card, borderBottomColor: t.cardBorder }]}>
         <Text style={[styles.headerTitle, { color: t.text }]}>Ménage</Text>
+        <Pressable style={styles.headerBtn} onPress={() => setShowAddTask(true)}>
+          <Ionicons name="add" size={24} color={t.accent} />
+        </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} colors={[t.accent]} />}>
@@ -188,7 +191,7 @@ export default function ChoresScreen() {
           onTaskPress={handleTaskPress}
         />
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 40 }} />
           </>
         )}
       </ScrollView>
@@ -324,14 +327,6 @@ export default function ChoresScreen() {
         </Pressable>
       </Modal>
 
-      {/* FAB — Ajouter une tâche */}
-      <Pressable
-        style={[styles.fab, { backgroundColor: t.accent }]}
-        onPress={() => setShowAddTask(true)}
-      >
-        <Ionicons name="add" size={28} color="#FFFFFF" />
-      </Pressable>
-
       {loading && (
         <View style={[styles.loadingOverlay, { backgroundColor: t.card }]}>
           <ActivityIndicator size="small" color={t.accent} />
@@ -357,23 +352,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     paddingHorizontal: 20,
     paddingVertical: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   headerTitle: { fontSize: 18, fontWeight: "700" },
-  fab: {
-    position: "absolute",
-    right: 20,
-    bottom: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-  },
+  headerBtn: { padding: 4 },
   content: { padding: 16 },
   centered: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 },
   emptyText: { fontSize: 15, textAlign: "center" },

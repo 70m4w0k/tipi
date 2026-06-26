@@ -15,6 +15,7 @@ import { useAuth } from "../../lib/hooks/useAuth";
 import { useHousehold } from "../../lib/hooks/useHousehold";
 import { useChores } from "../../lib/hooks/useChores";
 import { useRecipes } from "../../lib/hooks/useRecipes";
+import { useExpenses, computeBalances } from "../../lib/hooks/useExpenses";
 import { useShoppingList } from "../../lib/hooks/useShoppingList";
 import { useNavPreferences, ALL_TABS } from "../../lib/hooks/useNavPreferences";
 import { useTheme } from "../../lib/theme";
@@ -36,6 +37,7 @@ export default function HomeScreen() {
   const { household, members } = useHousehold(profile);
   const { reminders, fetchAll: fetchChores } = useChores(profile?.household_id);
   const { instances, recipes, fetchAll: fetchRecipes } = useRecipes(profile?.household_id);
+  const { expenses, fetchExpenses } = useExpenses(profile?.household_id);
   const { items: shoppingItems, fetchItems: fetchShopping } = useShoppingList(profile?.household_id);
   const { enabledTabs } = useNavPreferences();
   const t = useTheme();
@@ -43,9 +45,9 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([fetchChores(), fetchRecipes(), fetchShopping()]);
+    await Promise.all([fetchChores(), fetchRecipes(), fetchExpenses(), fetchShopping()]);
     setRefreshing(false);
-  }, [fetchChores, fetchRecipes, fetchShopping]);
+  }, [fetchChores, fetchRecipes, fetchExpenses, fetchShopping]);
 
   const todayReminders = useMemo(
     () => reminders.filter((r) => recurrenceMatchesToday(r.recurrence)),
@@ -56,6 +58,12 @@ export default function HomeScreen() {
     () => ALL_TABS.filter((tab) => !enabledTabs.includes(tab.key) && tab.key !== "home"),
     [enabledTabs]
   );
+
+  const myBalance = useMemo(() => {
+    if (!profile?.id) return 0;
+    const balances = computeBalances(expenses, members);
+    return balances[profile.id] ?? 0;
+  }, [expenses, members, profile?.id]);
 
   const uncheckedShoppingCount = useMemo(
     () => shoppingItems.filter((i) => !i.checked).length,
@@ -127,17 +135,29 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        {/* Contexte rapide : courses */}
-        <Pressable
-          style={[styles.contextCard, { backgroundColor: t.card, borderColor: t.cardBorder }]}
-          onPress={() => router.push("/(app)/shopping" as any)}
-        >
-          <Ionicons name="cart-outline" size={18} color={t.accent} />
-          <Text style={[styles.contextLabel, { color: t.textSecondary }]}>Courses</Text>
-          <Text style={[styles.contextValue, { color: t.text }]}>
-            {uncheckedShoppingCount > 0 ? `${uncheckedShoppingCount} article${uncheckedShoppingCount > 1 ? "s" : ""}` : "Liste vide"}
-          </Text>
-        </Pressable>
+        {/* Contexte rapide : solde + courses */}
+        <View style={styles.contextRow}>
+          <Pressable
+            style={[styles.contextCard, { backgroundColor: t.card, borderColor: t.cardBorder }]}
+            onPress={() => router.push("/(app)/expenses" as any)}
+          >
+            <Ionicons name="wallet-outline" size={18} color={myBalance >= 0 ? t.success : t.danger} />
+            <Text style={[styles.contextLabel, { color: t.textSecondary }]}>Mon solde</Text>
+            <Text style={[styles.contextValue, { color: myBalance >= 0 ? t.success : t.danger }]}>
+              {myBalance >= 0 ? "+" : ""}{myBalance.toFixed(2)} €
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.contextCard, { backgroundColor: t.card, borderColor: t.cardBorder }]}
+            onPress={() => router.push("/(app)/shopping" as any)}
+          >
+            <Ionicons name="cart-outline" size={18} color={t.accent} />
+            <Text style={[styles.contextLabel, { color: t.textSecondary }]}>Courses</Text>
+            <Text style={[styles.contextValue, { color: t.text }]}>
+              {uncheckedShoppingCount > 0 ? `${uncheckedShoppingCount} article${uncheckedShoppingCount > 1 ? "s" : ""}` : "Liste vide"}
+            </Text>
+          </Pressable>
+        </View>
 
         {/* Notifications */}
         {visibleNotifs.length > 0 && (
@@ -224,12 +244,17 @@ const styles = StyleSheet.create({
   appName: { fontSize: 22, fontWeight: "800" },
   houseName: { fontSize: 13 },
   profileButton: { padding: 4 },
+  contextRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 16,
+  },
   contextCard: {
+    flex: 1,
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
     gap: 4,
-    marginBottom: 16,
   },
   contextLabel: { fontSize: 11 },
   contextValue: { fontSize: 17, fontWeight: "700" },
