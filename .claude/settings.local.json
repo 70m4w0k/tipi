@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git rm *)",
+      "Bash(npx tsc *)",
+      "Bash(npx expo *)",
+      "Bash(git checkout *)",
+      "Bash(npm install *)",
+      "Bash(npx jest *)",
+      "Bash(npm ls *)",
+      "Bash(git status *)",
+      "Bash(git stash *)",
+      "Bash(git merge *)",
+      "PowerShell(git add \"app/\\(app\\)/_layout.tsx\" \"app/\\(app\\)/home.tsx\" \"app/\\(app\\)/recipes.tsx\")",
+      "Bash(git push *)",
+      "PowerShell(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\Tom\\\\code\\\\tipi\\\\.github\\\\workflows\")",
+      "PowerShell(git add \".github/workflows/eas-build.yml\")",
+      "PowerShell(git add package-lock.json \".github/workflows/eas-build.yml\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8082)",
+      "mcp__Claude_in_Chrome__navigate",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(npm test *)",
+      "Bash(npm list *)"
+    ]
+  }
+}

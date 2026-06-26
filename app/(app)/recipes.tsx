@@ -331,11 +331,6 @@ export default function RecipesScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: t.background }]} edges={["top"]}>
       <View style={[styles.header, { backgroundColor: t.card, borderBottomColor: t.cardBorder }]}>
         <Text style={[styles.headerTitle, { color: t.text }]}>Recettes</Text>
-        {tab === "recipes" && (
-          <Pressable onPress={() => setShowForm(true)} hitSlop={8}>
-            <Ionicons name="add" size={24} color={t.accent} />
-          </Pressable>
-        )}
       </View>
 
       <View style={[styles.tabRow, { backgroundColor: t.tabBg }]}>
@@ -598,6 +593,16 @@ export default function RecipesScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+      {/* FAB — Ajouter une recette */}
+      {tab === "recipes" && !showForm && (
+        <Pressable
+          style={[styles.fab, { backgroundColor: t.accent }]}
+          onPress={() => setShowForm(true)}
+        >
+          <Ionicons name="add" size={28} color="#FFFFFF" />
+        </Pressable>
+      )}
+
       {/* Cooking mode modal */}
       <Modal visible={!!cookingInstanceId} animationType="slide" statusBarTranslucent>
         {(() => {
@@ -745,11 +750,23 @@ const styles = StyleSheet.create({
     borderBottomColor: "#E5E7EB",
     paddingHorizontal: 20,
     paddingVertical: 12,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
   },
   headerTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
+  fab: {
+    position: "absolute",
+    right: 20,
+    bottom: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+  },
   tabRow: {
     flexDirection: "row",
     marginHorizontal: 16,
@@ -767,7 +784,7 @@ const styles = StyleSheet.create({
   tabButtonActive: { backgroundColor: "#1D4ED8" },
   tabText: { fontSize: 13, fontWeight: "600", color: "#6B7280" },
   tabTextActive: { color: "#FFFFFF" },
-  list: { paddingHorizontal: 16, paddingBottom: 24 },
+  list: { paddingHorizontal: 16, paddingBottom: 100 },
   emptyContainer: { alignItems: "center", paddingTop: 60, gap: 12 },
   emptyText: { fontSize: 15, color: "#9CA3AF" },
 

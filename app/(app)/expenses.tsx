@@ -169,7 +169,7 @@ export default function ExpensesScreen() {
       </ScrollView>
 
       {/* FAB — Ajouter une dépense */}
-      {view === "list" && expenses.length > 0 && (
+      {view !== "add" && (
         <Pressable
           style={[styles.fab, { backgroundColor: t.accent }]}
           onPress={() => setView("add")}
