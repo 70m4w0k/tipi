@@ -93,9 +93,6 @@ export default function DocumentsScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: t.background }]} edges={["top"]}>
       <View style={[styles.header, { backgroundColor: t.card, borderBottomColor: t.cardBorder }]}>
         <Text style={[styles.headerTitle, { color: t.text }]}>Documents</Text>
-        <Pressable onPress={() => void handleUploadFile()} hitSlop={8}>
-          <Ionicons name="add" size={24} color={t.accent} />
-        </Pressable>
       </View>
 
       <FlatList
@@ -115,6 +112,14 @@ export default function DocumentsScreen() {
           )
         }
       />
+
+      {/* FAB — Importer un document */}
+      <Pressable
+        style={[styles.fab, { backgroundColor: t.accent }]}
+        onPress={() => void handleUploadFile()}
+      >
+        <Ionicons name="add" size={28} color="#FFFFFF" />
+      </Pressable>
     </SafeAreaView>
   );
 }
@@ -127,12 +132,24 @@ const styles = StyleSheet.create({
     borderBottomColor: "#E5E7EB",
     paddingHorizontal: 20,
     paddingVertical: 12,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
   },
   headerTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
-  list: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24 },
+  list: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 100 },
+  fab: {
+    position: "absolute",
+    right: 20,
+    bottom: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+  },
   card: {
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
