@@ -167,6 +167,13 @@ export default function CalendarScreen() {
           });
         }
       } else if (!inst.target_date && filters.recipe_active) {
+        const allSteps: CalendarStepInfo[] = recipe.steps.map((step, i) => ({
+          index: i,
+          title: step.title,
+          status: i < inst.current_step ? "completed" as const : i === inst.current_step ? "current" as const : "upcoming" as const,
+          date: inst.started_at.split("T")[0],
+          duration: formatDuration(step),
+        }));
         items.push({
           id: `ra-${inst.id}`,
           type: "recipe_active",
@@ -175,6 +182,7 @@ export default function CalendarScreen() {
           date: inst.started_at.split("T")[0],
           color: FILTER_COLORS.recipe_active,
           instanceId: inst.id,
+          recipeSteps: allSteps,
         });
       }
     }

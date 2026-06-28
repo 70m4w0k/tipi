@@ -26,7 +26,7 @@ export const FILTER_COLORS: Record<CalendarItemType, string> = {
   event: "#2563EB",
   birthday: "#EC4899",
   recipe_planned: "#F97316",
-  recipe_active: "#FDBA74",
+  recipe_active: "#F97316",
 };
 
 export const FILTER_LABELS: Record<CalendarItemType, string> = {

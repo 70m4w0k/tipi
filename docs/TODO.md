@@ -22,6 +22,10 @@
 - [x] Refactoring durée : duration_value/duration_unit remplace duration_hint/rest_days
 - [x] Champ anniversaire dans le profil utilisateur
 
+- [x] Couleur unifiée pour toutes les recettes dans le calendrier
+- [x] Étapes affichées pour les recettes actives (sans planification) dans le calendrier
+- [x] Bouton "Vérifier les mises à jour" dans les paramètres du profil
+
 ## En cours
 
 ## Backlog

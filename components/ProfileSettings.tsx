@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   Alert,
+  Linking,
   Pressable,
   ScrollView,
   Share,
@@ -456,6 +457,16 @@ export function ProfileSettings({
       >
         <Ionicons name="help-circle-outline" size={20} color={t.accent} />
         <Text style={[styles.tutorialButtonText, { color: t.accent }]}>Revoir le tutoriel</Text>
+      </Pressable>
+
+      <Pressable
+        style={[styles.tutorialButton, { borderColor: t.accent }]}
+        onPress={() => {
+          void Linking.openURL("https://expo.dev/accounts/tomawok/projects/tipi/builds");
+        }}
+      >
+        <Ionicons name="download-outline" size={20} color={t.accent} />
+        <Text style={[styles.tutorialButtonText, { color: t.accent }]}>Vérifier les mises à jour</Text>
       </Pressable>
 
       <Pressable style={styles.logoutButton} onPress={onSignOut}>
