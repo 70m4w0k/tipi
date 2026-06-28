@@ -30,10 +30,10 @@ describe("Recipes integration", () => {
         description: "Pain au levain",
         ingredients: ["farine", "eau", "sel", "levain"],
         steps: [
-          { title: "Mélanger", description: "Mélanger les ingrédients", duration_hint: "10min" },
-          { title: "Pétrir", description: "Pétrir la pâte", duration_hint: "15min" },
-          { title: "Repos", description: "Laisser lever", duration_hint: "4h" },
-          { title: "Cuisson", description: "Enfourner à 240°", duration_hint: "35min" },
+          { title: "Mélanger", description: "Mélanger les ingrédients", duration_value: 10, duration_unit: "minutes" },
+          { title: "Pétrir", description: "Pétrir la pâte", duration_value: 15, duration_unit: "minutes" },
+          { title: "Repos", description: "Laisser lever", duration_value: 4, duration_unit: "hours" },
+          { title: "Cuisson", description: "Enfourner à 240°", duration_value: 35, duration_unit: "minutes" },
         ],
       })
       .select()

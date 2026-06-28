@@ -6,6 +6,7 @@ export type Profile = {
   avatar_url: string | null;
   household_id: string | null;
   role: "admin" | "member";
+  birthday: string | null;
   created_at: string;
 };
 
@@ -117,10 +118,13 @@ export type ShoppingItem = {
   created_at: string;
 };
 
+export type DurationUnit = "minutes" | "hours" | "days";
+
 export type RecipeStep = {
   title: string;
   description: string;
-  duration_hint: string;
+  duration_value: number;
+  duration_unit: DurationUnit;
 };
 
 export type Recipe = {
@@ -141,6 +145,8 @@ export type RecipeInstance = {
   label: string;
   current_step: number;
   notes: string;
+  target_date: string | null;
+  step_completions: string[];
   started_at: string;
   step_started_at: string;
   created_at: string;

@@ -55,7 +55,8 @@
 - Extraire la logique testable dans des modules séparés (`lib/*-logic.ts`)
 
 ## Workflow
-- Vérifier qu'il n'y a pas d'erreurs de compilation avec `npx expo start`
+- Vérifier qu'il n'y a pas d'erreurs de compilation avec `npx tsc --noEmit`
+- **Toujours vérifier le bundling** avec `npx expo export --platform web 2>&1 | head -20` après ajout de dépendances ou nouveaux imports (`tsc` ne détecte pas les erreurs de résolution de modules Metro)
 - Quand l'utilisateur dit "push", "pusher" ou "pousser" :
   1. Mettre à jour les fichiers du dossier `docs/` si les changements impactent l'architecture ou les features
   2. Commiter tous les changements (`git add -A && git commit`)

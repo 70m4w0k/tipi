@@ -20,12 +20,13 @@ import { useAuth } from "../../lib/hooks/useAuth";
 import { useRecipes } from "../../lib/hooks/useRecipes";
 import { useTheme } from "../../lib/theme";
 import { useTimer } from "../../lib/timer-context";
-import { Recipe, RecipeInstance, RecipeStep } from "../../lib/types";
+import { Recipe, RecipeInstance, RecipeStep, DurationUnit } from "../../lib/types";
 import { haptic } from "../../lib/haptics";
+import { formatDuration } from "../../lib/calendar-logic";
 
 type Tab = "recipes" | "active";
 
-function formatDuration(startDate: string): string {
+function formatElapsed(startDate: string): string {
   const start = new Date(startDate).getTime();
   const now = Date.now();
   const diffMs = now - start;
@@ -41,11 +42,11 @@ function formatDuration(startDate: string): string {
 export default function RecipesScreen() {
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
-  const searchParams = useLocalSearchParams<{ tab?: string; instanceId?: string }>();
+  const searchParams = useLocalSearchParams<{ tab?: string; instanceId?: string; cook?: string }>();
   const {
     recipes, instances, loading,
     addRecipe, updateRecipe, deleteRecipe,
-    startInstance, advanceStep, goBackStep, updateInstanceNotes, deleteInstance, completeInstance,
+    startInstance, advanceStep, goBackStep, activatePlannedInstance, updateInstanceNotes, deleteInstance, completeInstance,
     fetchAll,
   } = useRecipes(profile?.household_id);
   const t = useTheme();
@@ -60,14 +61,23 @@ export default function RecipesScreen() {
   const [deepLinkHandled, setDeepLinkHandled] = useState(false);
 
   useEffect(() => {
-    if (deepLinkHandled || !searchParams.instanceId || instances.length === 0) return;
-    const inst = instances.find((i) => i.id === searchParams.instanceId);
-    if (inst) {
-      setSelectedInstance(inst.id);
-      setEditingNotes(inst.notes);
-      setDeepLinkHandled(true);
+    if (deepLinkHandled || instances.length === 0) return;
+    if (searchParams.cook) {
+      const inst = instances.find((i) => i.id === searchParams.cook);
+      if (inst) {
+        setTab("active");
+        openCookingMode(inst.id);
+        setDeepLinkHandled(true);
+      }
+    } else if (searchParams.instanceId) {
+      const inst = instances.find((i) => i.id === searchParams.instanceId);
+      if (inst) {
+        setSelectedInstance(inst.id);
+        setEditingNotes(inst.notes);
+        setDeepLinkHandled(true);
+      }
     }
-  }, [searchParams.instanceId, instances, deepLinkHandled]);
+  }, [searchParams.instanceId, searchParams.cook, instances, deepLinkHandled]);
 
   // Recipe form
   const [showForm, setShowForm] = useState(false);
@@ -78,7 +88,8 @@ export default function RecipesScreen() {
   const [formSteps, setFormSteps] = useState<RecipeStep[]>([]);
   const [newStepTitle, setNewStepTitle] = useState("");
   const [newStepDesc, setNewStepDesc] = useState("");
-  const [newStepDuration, setNewStepDuration] = useState("");
+  const [newStepDurationValue, setNewStepDurationValue] = useState("");
+  const [newStepDurationUnit, setNewStepDurationUnit] = useState<DurationUnit>("minutes");
 
   // Start instance
   const [showStartModal, setShowStartModal] = useState(false);
@@ -107,7 +118,8 @@ export default function RecipesScreen() {
     setFormSteps([]);
     setNewStepTitle("");
     setNewStepDesc("");
-    setNewStepDuration("");
+    setNewStepDurationValue("");
+    setNewStepDurationUnit("minutes");
     setEditingRecipe(null);
     setShowForm(false);
   };
@@ -141,11 +153,13 @@ export default function RecipesScreen() {
     setFormSteps([...formSteps, {
       title: newStepTitle.trim(),
       description: newStepDesc.trim(),
-      duration_hint: newStepDuration.trim(),
+      duration_value: parseInt(newStepDurationValue, 10) || 0,
+      duration_unit: newStepDurationUnit,
     }]);
     setNewStepTitle("");
     setNewStepDesc("");
-    setNewStepDuration("");
+    setNewStepDurationValue("");
+    setNewStepDurationUnit("minutes");
   };
 
   const handleDeleteRecipe = (id: string, title: string) => {
@@ -216,6 +230,52 @@ export default function RecipesScreen() {
   const renderInstance = ({ item }: { item: RecipeInstance }) => {
     const recipe = recipes.find((r) => r.id === item.recipe_id);
     if (!recipe) return null;
+
+    const isPlannedOnly = !!item.target_date && item.current_step === 0 && (item.step_completions ?? []).length === 0;
+
+    if (isPlannedOnly) {
+      const targetLabel = new Date(item.target_date! + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+      return (
+        <View style={[styles.instanceCard, { backgroundColor: t.separator, borderColor: t.cardBorder, opacity: 0.75 }]}>
+          <View style={styles.instanceHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.instanceLabel, { color: t.textSecondary }]}>{item.label}</Text>
+              <Text style={[styles.instanceRecipe, { color: t.textMuted }]}>{recipe.title}</Text>
+            </View>
+            <View style={[styles.instanceBadge, { backgroundColor: "#FFF7ED" }]}>
+              <Ionicons name="calendar-outline" size={12} color="#EA580C" style={{ marginRight: 4 }} />
+              <Text style={[styles.instanceBadgeText, { color: "#EA580C" }]}>Planifié</Text>
+            </View>
+          </View>
+          <View style={styles.plannedInfo}>
+            <Ionicons name="time-outline" size={16} color={t.textMuted} />
+            <Text style={[styles.plannedInfoText, { color: t.textSecondary }]}>
+              Planifiée pour le {targetLabel}
+            </Text>
+          </View>
+          <View style={styles.instanceActions}>
+            <Pressable
+              style={[styles.nextStepBtn, { backgroundColor: t.accent }]}
+              onPress={async () => {
+                void haptic.medium();
+                await activatePlannedInstance(item.id);
+                openCookingMode(item.id);
+              }}
+            >
+              <Ionicons name="play" size={16} color="#FFFFFF" />
+              <Text style={styles.nextStepText}>Démarrer</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.deleteInstanceBtn, { borderColor: t.danger }]}
+              onPress={() => handleDeleteInstance(item.id, item.label)}
+            >
+              <Ionicons name="close" size={18} color={t.danger} />
+            </Pressable>
+          </View>
+        </View>
+      );
+    }
+
     const currentStep = recipe.steps[item.current_step];
     const isLastStep = item.current_step >= recipe.steps.length - 1;
     const progress = recipe.steps.length > 0
@@ -276,10 +336,10 @@ export default function RecipesScreen() {
             <View style={styles.timerRow}>
               <Ionicons name="time-outline" size={14} color={t.textSecondary} />
               <Text style={[styles.timerText, { color: t.textSecondary }]}>
-                Depuis {formatDuration(item.step_started_at)}
+                Depuis {formatElapsed(item.step_started_at)}
               </Text>
-              {currentStep.duration_hint ? (
-                <Text style={[styles.timerHint, { color: t.textMuted }]}> · prévu : {currentStep.duration_hint}</Text>
+              {formatDuration(currentStep) ? (
+                <Text style={[styles.timerHint, { color: t.textMuted }]}> · prévu : {formatDuration(currentStep)}</Text>
               ) : null}
             </View>
           </View>
@@ -313,7 +373,7 @@ export default function RecipesScreen() {
 
         <View style={styles.instanceFooter}>
           <Text style={[styles.startedAt, { color: t.textMuted }]}>
-            Début : {new Date(item.started_at).toLocaleDateString("fr-FR")} · Total : {formatDuration(item.started_at)}
+            Début : {new Date(item.started_at).toLocaleDateString("fr-FR")} · Total : {formatElapsed(item.started_at)}
           </Text>
           <Pressable
             style={[styles.cookingModeBtn, { backgroundColor: t.warningLight, borderColor: t.warning }]}
@@ -432,8 +492,8 @@ export default function RecipesScreen() {
                     </Pressable>
                   </View>
                   {step.description ? <Text style={[styles.stepCardDesc, { color: t.textSecondary }]}>{step.description}</Text> : null}
-                  {step.duration_hint ? (
-                    <Text style={[styles.stepCardDuration, { color: t.textMuted }]}>Durée : {step.duration_hint}</Text>
+                  {formatDuration(step) ? (
+                    <Text style={[styles.stepCardDuration, { color: t.textMuted }]}>Durée : {formatDuration(step)}</Text>
                   ) : null}
                 </View>
               ))}
@@ -453,13 +513,38 @@ export default function RecipesScreen() {
                   value={newStepDesc}
                   onChangeText={setNewStepDesc}
                 />
-                <TextInput
-                  style={[styles.modalInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
-                  placeholder="Durée estimée (ex: 48h, 3 jours)"
-                  placeholderTextColor={t.textMuted}
-                  value={newStepDuration}
-                  onChangeText={setNewStepDuration}
-                />
+                <View style={styles.durationRow}>
+                  <TextInput
+                    style={[styles.modalInput, { flex: 1, borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
+                    placeholder="Durée"
+                    placeholderTextColor={t.textMuted}
+                    value={newStepDurationValue}
+                    onChangeText={setNewStepDurationValue}
+                    keyboardType="numeric"
+                  />
+                  {(["minutes", "hours", "days"] as DurationUnit[]).map((unit) => (
+                    <Pressable
+                      key={unit}
+                      style={[
+                        styles.unitChip,
+                        {
+                          backgroundColor: newStepDurationUnit === unit ? t.accent : t.inputBg,
+                          borderColor: newStepDurationUnit === unit ? t.accent : t.inputBorder,
+                        },
+                      ]}
+                      onPress={() => setNewStepDurationUnit(unit)}
+                    >
+                      <Text
+                        style={[
+                          styles.unitChipText,
+                          { color: newStepDurationUnit === unit ? "#FFFFFF" : t.textSecondary },
+                        ]}
+                      >
+                        {unit === "minutes" ? "min" : unit === "hours" ? "h" : "j"}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
                 <Pressable
                   style={[styles.addStepBtn, !newStepTitle.trim() && { opacity: 0.5 }]}
                   onPress={handleAddStep}
@@ -580,12 +665,12 @@ export default function RecipesScreen() {
                         </Text>
                       </View>
                       {step.description ? <Text style={[styles.stepCardDesc, { color: t.textSecondary }]}>{step.description}</Text> : null}
-                      {step.duration_hint ? <Text style={[styles.stepCardDuration, { color: t.textMuted }]}>Durée : {step.duration_hint}</Text> : null}
+                      {formatDuration(step) ? <Text style={[styles.stepCardDuration, { color: t.textMuted }]}>Durée : {formatDuration(step)}</Text> : null}
                     </View>
                   ))}
 
                   <Text style={[styles.startedAt, { marginTop: 12, color: t.textMuted }]}>
-                    Début : {new Date(inst.started_at).toLocaleDateString("fr-FR")} · Total : {formatDuration(inst.started_at)}
+                    Début : {new Date(inst.started_at).toLocaleDateString("fr-FR")} · Total : {formatElapsed(inst.started_at)}
                   </Text>
                 </>
               );
@@ -645,11 +730,11 @@ export default function RecipesScreen() {
                         {currentStep.description}
                       </Text>
                     ) : null}
-                    {currentStep.duration_hint ? (
+                    {formatDuration(currentStep) ? (
                       <View style={[styles.cookingHint, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
                         <Ionicons name="time-outline" size={16} color={t.textSecondary} />
                         <Text style={[styles.cookingHintText, { color: t.textSecondary }]}>
-                          Durée estimée : {currentStep.duration_hint}
+                          Durée estimée : {formatDuration(currentStep)}
                         </Text>
                       </View>
                     ) : null}
@@ -817,12 +902,21 @@ const styles = StyleSheet.create({
   instanceLabel: { fontSize: 16, fontWeight: "700", color: "#111827" },
   instanceRecipe: { fontSize: 13, color: "#6B7280", marginTop: 1 },
   instanceBadge: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#DBEAFE",
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   instanceBadgeText: { fontSize: 12, fontWeight: "700", color: "#1D4ED8" },
+  plannedInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
+  },
+  plannedInfoText: { fontSize: 13, fontWeight: "500" },
   progressBar: {
     height: 4,
     backgroundColor: "#E5E7EB",
@@ -912,6 +1006,19 @@ const styles = StyleSheet.create({
   stepCardDesc: { fontSize: 12, color: "#6B7280", marginTop: 2 },
   stepCardDuration: { fontSize: 11, color: "#9CA3AF", marginTop: 2 },
   addStepSection: { marginTop: 8 },
+  durationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  unitChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  unitChipText: { fontSize: 14, fontWeight: "600" },
   addStepBtn: {
     flexDirection: "row",
     alignItems: "center",

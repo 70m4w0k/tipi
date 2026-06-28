@@ -14,6 +14,7 @@ function makeProfile(id: string): Profile {
     avatar_url: null,
     household_id: "h1",
     role: "member",
+    birthday: null,
     created_at: "",
   };
 }

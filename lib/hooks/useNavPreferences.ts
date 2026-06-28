@@ -13,6 +13,7 @@ export const ALL_TABS: { key: NavTab; label: string; icon: string }[] = [
   { key: "chores", label: "Ménage", icon: "sparkles-outline" },
   { key: "shopping", label: "Courses", icon: "cart-outline" },
   { key: "recipes", label: "Recettes", icon: "restaurant-outline" },
+  { key: "calendar", label: "Calendrier", icon: "calendar-outline" },
   { key: "documents", label: "Documents", icon: "document-text-outline" },
 ];
 

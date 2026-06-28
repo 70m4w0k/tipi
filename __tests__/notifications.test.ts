@@ -49,7 +49,7 @@ function makeReminder(
   return { id, household_id: "h1", title, recurrence, last_done_date: lastDone };
 }
 
-const step: RecipeStep = { title: "Étape", description: "", duration_hint: "" };
+const step: RecipeStep = { title: "Étape", description: "", duration_value: 0, duration_unit: "minutes" };
 
 function makeRecipe(id: string, stepCount: number): Recipe {
   return {
@@ -77,6 +77,8 @@ function makeInstance(
     label,
     current_step: currentStep,
     notes: "",
+    target_date: null,
+    step_completions: [],
     started_at: "",
     step_started_at: "",
     created_at: "",

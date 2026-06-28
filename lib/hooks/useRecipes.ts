@@ -89,18 +89,22 @@ export function useRecipes(householdId: string | null | undefined) {
   );
 
   const startInstance = useCallback(
-    async (recipeId: string, label: string, notes = "") => {
-      if (!householdId) return;
+    async (recipeId: string, label: string, notes = "", targetDate?: string): Promise<string | null> => {
+      if (!householdId) return "Aucun foyer sélectionné";
       const now = new Date().toISOString();
-      await supabase.from("recipe_instances").insert({
+      const { error } = await supabase.from("recipe_instances").insert({
         household_id: householdId,
         recipe_id: recipeId,
         label: label.trim(),
         notes: notes.trim(),
+        target_date: targetDate ?? null,
+        step_completions: [],
         started_at: now,
         step_started_at: now,
       });
-      void fetchAll();
+      if (error) return error.message;
+      await fetchAll();
+      return null;
     },
     [householdId, fetchAll]
   );
@@ -113,9 +117,12 @@ export function useRecipes(householdId: string | null | undefined) {
       if (!recipe) return;
       const nextStep = inst.current_step + 1;
       if (nextStep >= recipe.steps.length) return;
+      const now = new Date().toISOString();
+      const completions = [...(inst.step_completions ?? [])];
+      completions[inst.current_step] = now;
       await supabase
         .from("recipe_instances")
-        .update({ current_step: nextStep, step_started_at: new Date().toISOString() })
+        .update({ current_step: nextStep, step_started_at: now, step_completions: completions })
         .eq("id", instanceId);
       void fetchAll();
     },
@@ -146,6 +153,30 @@ export function useRecipes(householdId: string | null | undefined) {
     [fetchAll]
   );
 
+  const activatePlannedInstance = useCallback(
+    async (instanceId: string) => {
+      const now = new Date().toISOString();
+      const dateLabel = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+      const entry = `[${dateLabel}] Recette démarrée`;
+      const { data } = await supabase
+        .from("recipe_instances")
+        .select("notes")
+        .eq("id", instanceId)
+        .single();
+      const prevNotes = data?.notes ? data.notes + "\n" : "";
+      await supabase
+        .from("recipe_instances")
+        .update({
+          started_at: now,
+          step_started_at: now,
+          notes: prevNotes + entry,
+        })
+        .eq("id", instanceId);
+      await fetchAll();
+    },
+    [fetchAll]
+  );
+
   const deleteInstance = useCallback(
     async (instanceId: string) => {
       await supabase.from("recipe_instances").delete().eq("id", instanceId);
@@ -172,6 +203,7 @@ export function useRecipes(householdId: string | null | undefined) {
     startInstance,
     advanceStep,
     goBackStep,
+    activatePlannedInstance,
     updateInstanceNotes,
     deleteInstance,
     completeInstance,

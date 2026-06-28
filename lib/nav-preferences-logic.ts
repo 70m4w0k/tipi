@@ -1,4 +1,4 @@
-export type NavTab = "home" | "chat" | "expenses" | "chores" | "shopping" | "recipes" | "documents";
+export type NavTab = "home" | "chat" | "expenses" | "chores" | "shopping" | "recipes" | "documents" | "calendar";
 
 export const DEFAULT_TABS: NavTab[] = ["home", "chores", "shopping", "recipes"];
 

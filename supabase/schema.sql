@@ -20,6 +20,7 @@ CREATE TABLE profiles (
   avatar_url text,
   household_id uuid REFERENCES households(id),
   role text NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+  birthday date,
   created_at timestamptz DEFAULT now()
 );
 
@@ -134,6 +135,8 @@ CREATE TABLE recipe_instances (
   label text NOT NULL,
   current_step int NOT NULL DEFAULT 0,
   notes text DEFAULT '',
+  target_date date,
+  step_completions jsonb NOT NULL DEFAULT '[]'::jsonb,
   started_at timestamptz DEFAULT now(),
   step_started_at timestamptz DEFAULT now(),
   created_at timestamptz DEFAULT now()

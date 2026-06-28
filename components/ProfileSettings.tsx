@@ -53,6 +53,7 @@ export function ProfileSettings({
   const { resetOnboarding } = useOnboarding();
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [selectedColor, setSelectedColor] = useState(profile.color);
+  const [birthday, setBirthday] = useState(profile.birthday ?? "");
   const [saving, setSaving] = useState(false);
   const [editingHouseName, setEditingHouseName] = useState(false);
   const [houseName, setHouseName] = useState(household?.name ?? "");
@@ -72,7 +73,7 @@ export function ProfileSettings({
   };
 
   const hasChanges =
-    displayName !== profile.display_name || selectedColor !== profile.color;
+    displayName !== profile.display_name || selectedColor !== profile.color || birthday !== (profile.birthday ?? "");
 
   const handleSave = async () => {
     if (!displayName.trim()) {
@@ -80,9 +81,12 @@ export function ProfileSettings({
       return;
     }
     setSaving(true);
+    const updates: Record<string, unknown> = { display_name: displayName.trim(), color: selectedColor };
+    if (birthday.trim()) updates.birthday = birthday.trim();
+    else updates.birthday = null;
     const { error } = await supabase
       .from("profiles")
-      .update({ display_name: displayName.trim(), color: selectedColor })
+      .update(updates)
       .eq("id", profile.id);
     if (error) {
       Alert.alert("Erreur", error.message);
@@ -224,6 +228,15 @@ export function ProfileSettings({
           style={[styles.input, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
           value={displayName}
           onChangeText={setDisplayName}
+        />
+
+        <Text style={[styles.label, { color: t.text }]}>Date de naissance</Text>
+        <TextInput
+          style={[styles.input, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
+          placeholder="AAAA-MM-JJ"
+          placeholderTextColor={t.textMuted}
+          value={birthday}
+          onChangeText={setBirthday}
         />
 
         <Text style={[styles.label, { color: t.text }]}>Couleur</Text>

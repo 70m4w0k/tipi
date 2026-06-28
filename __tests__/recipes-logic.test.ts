@@ -1,7 +1,7 @@
 import { canAdvanceStep, isLastStep, getInstanceProgress } from "../lib/recipes-logic";
 import { Recipe, RecipeInstance, RecipeStep } from "../lib/types";
 
-const step: RecipeStep = { title: "Étape", description: "", duration_hint: "" };
+const step: RecipeStep = { title: "Étape", description: "", duration_value: 0, duration_unit: "minutes" };
 
 function makeRecipe(id: string, stepCount: number): Recipe {
   return {
@@ -27,6 +27,8 @@ function makeInstance(id: string, recipeId: string, currentStep: number): Recipe
     label: "Mon batch",
     current_step: currentStep,
     notes: "",
+    target_date: null,
+    step_completions: [],
     started_at: "",
     step_started_at: "",
     created_at: "",
