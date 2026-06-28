@@ -25,6 +25,8 @@
 - [x] Couleur unifiée pour toutes les recettes dans le calendrier
 - [x] Étapes affichées pour les recettes actives (sans planification) dans le calendrier
 - [x] Bouton "Vérifier les mises à jour" dans les paramètres du profil
+- [x] Ajuster la hauteur des menus flottants (safe area insets Android)
+- [x] Fermer les menus flottants au clic extérieur (overlay transparent)
 
 ## En cours
 
