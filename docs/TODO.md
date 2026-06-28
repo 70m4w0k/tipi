@@ -11,8 +11,18 @@
 - [x] Onboarding scrollable
 - [x] Tâches ménage par défaut (14 tâches)
 
+## Fait récemment (suite)
+- [x] Page Calendrier avec vue mensuelle et dots multi-couleurs par type
+- [x] Filtres calendrier (événements, anniversaires, recettes)
+- [x] Planification de recettes avec validation de faisabilité
+- [x] Étapes groupées par recette dans le détail du jour
+- [x] Lien direct calendrier → mode Cuisine
+- [x] Recettes planifiées dans l'onglet En cours (card grisée + bouton Démarrer)
+- [x] Historique de démarrage dans les notes de recette
+- [x] Refactoring durée : duration_value/duration_unit remplace duration_hint/rest_days
+- [x] Champ anniversaire dans le profil utilisateur
+
 ## En cours
-- [ ] Ajouter une page Calendrier (événements, anniversaires, planification recettes)
 
 ## Backlog
 - [ ] Améliorer l'UI du chat (prévisualisation liens, messages épinglés)
