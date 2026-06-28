@@ -12,7 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Calendar, DateData, LocaleConfig } from "react-native-calendars";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -34,6 +34,7 @@ import {
   getAge,
   getDelayDays,
   formatDuration,
+  stepDurationInDays,
 } from "../../lib/calendar-logic";
 
 LocaleConfig.locales["fr"] = {
@@ -54,7 +55,6 @@ LocaleConfig.defaultLocale = "fr";
 type AddMode = "event" | "plan_recipe" | null;
 
 export default function CalendarScreen() {
-  const insets = useSafeAreaInsets();
   const { profile } = useAuth();
   const { members } = useHousehold(profile);
   const { events, addEvent, deleteEvent, fetchEvents } = useEvents(profile?.household_id);
@@ -166,6 +166,27 @@ export default function CalendarScreen() {
             recipeSteps: allSteps,
             delay: delay > 0 ? delay : undefined,
           });
+        }
+
+        const lastStep = recipe.steps[recipe.steps.length - 1];
+        const lastStepDate = stepDates[stepDates.length - 1];
+        if (lastStep && lastStepDate) {
+          const lastDays = stepDurationInDays(lastStep);
+          const readyDate = new Date(lastStepDate);
+          readyDate.setDate(readyDate.getDate() + Math.max(lastDays, 1));
+          const readyDateStr = formatDateISO(readyDate);
+          if (!uniqueDates.includes(readyDateStr)) {
+            items.push({
+              id: `rp-ready-${inst.id}`,
+              type: "recipe_planned",
+              title: `${inst.label} — Prêt`,
+              subtitle: "Recette terminée",
+              date: readyDateStr,
+              color: "#22C55E",
+              instanceId: inst.id,
+              recipeSteps: allSteps,
+            });
+          }
         }
       } else if (!inst.target_date && filters.recipe_active) {
         const allSteps: CalendarStepInfo[] = recipe.steps.map((step, i) => ({
@@ -417,7 +438,7 @@ export default function CalendarScreen() {
       )}
 
       {/* FAB */}
-      <View style={[styles.fabContainer, { bottom: Math.max(24, insets.bottom + 8) }]}>
+      <View style={styles.fabContainer}>
         {showFabMenu && (
           <View style={[styles.fabMenu, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
             <Pressable
@@ -662,7 +683,7 @@ const styles = StyleSheet.create({
   stepDuration: { fontSize: 11 },
   recipeLink: { flexDirection: "row", alignItems: "center", gap: 2, marginTop: 8 },
   recipeLinkText: { fontSize: 12, fontWeight: "600" },
-  fabContainer: { position: "absolute", right: 20, alignItems: "flex-end" },
+  fabContainer: { position: "absolute", right: 20, bottom: 24, alignItems: "flex-end" },
   fabMenu: {
     borderRadius: 12,
     borderWidth: 1,

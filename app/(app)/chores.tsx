@@ -195,8 +195,8 @@ export default function ChoresScreen() {
 
       {/* Add task modal */}
       <Modal visible={showAddTask} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: t.card }]}>
+        <Pressable style={styles.modalOverlay} onPress={() => { setShowAddTask(false); setNewTaskName(""); setIsRecurrent(false); setSelectedDays([]); setShowInGrid(true); }}>
+          <Pressable style={[styles.modalContent, { backgroundColor: t.card }]} onPress={() => {}}>
             <Text style={[styles.modalTitle, { color: t.text }]}>Nouvelle tâche</Text>
             <TextInput
               style={[styles.modalInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
@@ -259,8 +259,8 @@ export default function ChoresScreen() {
                 <Text style={styles.modalSubmitText}>Ajouter</Text>
               </Pressable>
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* Task action modal */}

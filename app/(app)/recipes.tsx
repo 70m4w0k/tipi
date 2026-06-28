@@ -444,8 +444,8 @@ export default function RecipesScreen() {
 
       {/* Recipe form modal */}
       <Modal visible={showForm} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: t.card }]}>
+        <Pressable style={styles.modalOverlay} onPress={() => { setShowForm(false); setEditingRecipe(null); }}>
+          <Pressable style={[styles.modalContent, { backgroundColor: t.card }]} onPress={() => {}}>
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={[styles.modalTitle, { color: t.text }]}>
                 {editingRecipe ? "Modifier la recette" : "Nouvelle recette"}
@@ -568,14 +568,14 @@ export default function RecipesScreen() {
                 </Pressable>
               </View>
             </ScrollView>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* Start instance modal */}
       <Modal visible={showStartModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: t.card }]}>
+        <Pressable style={styles.modalOverlay} onPress={() => { setShowStartModal(false); setInstanceLabel(""); setInstanceNotes(""); }}>
+          <Pressable style={[styles.modalContent, { backgroundColor: t.card }]} onPress={() => {}}>
             <Text style={[styles.modalTitle, { color: t.text }]}>Lancer une préparation</Text>
             <Text style={[styles.modalHint, { color: t.textSecondary }]}>
               {recipes.find((r) => r.id === startRecipeId)?.title}
@@ -611,8 +611,8 @@ export default function RecipesScreen() {
                 <Text style={styles.modalSubmitText}>Lancer</Text>
               </Pressable>
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* Instance detail modal */}
