@@ -373,7 +373,7 @@ export default function CalendarScreen() {
                     isRecipe && styles.itemCardRecipe,
                   ]}
                   onPress={isRecipe && item.instanceId ? () => {
-                    router.push({ pathname: "/(app)/recipes", params: { tab: "active", cook: item.instanceId } });
+                    router.push(`/(app)/recipes/instance/${item.instanceId}`);
                   } : undefined}
                   disabled={!isRecipe}
                 >
@@ -413,7 +413,7 @@ export default function CalendarScreen() {
                     {isRecipe && item.instanceId ? (
                       <View style={styles.recipeLink}>
                         <Ionicons name="flame-outline" size={14} color={t.accent} />
-                        <Text style={[styles.recipeLinkText, { color: t.accent }]}>Ouvrir en mode Cuisine</Text>
+                        <Text style={[styles.recipeLinkText, { color: t.accent }]}>Voir le détail</Text>
                         <Ionicons name="chevron-forward" size={14} color={t.accent} />
                       </View>
                     ) : null}

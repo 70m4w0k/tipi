@@ -27,6 +27,18 @@
 - [x] Bouton "Vérifier les mises à jour" dans les paramètres du profil
 - [x] Fermer les modaux et menus flottants au clic extérieur (overlay transparent)
 - [x] Marqueur "Prêt" dans le calendrier (jour de fin de recette)
+- [x] Refactoring recettes : page unique → routes imbriquées (index, [id], instance/[id])
+- [x] Icône personnalisable par recette (sélecteur Ionicons)
+- [x] Modaux custom (remplacement Alert.alert) pour recettes
+- [x] Feedback visuel de complétion d'étape (banner animée)
+- [x] Description de recette visible sur la page détail
+- [x] Drag & drop pour réorganiser les étapes (DraggableStepList)
+- [x] Date cible dans le modal de démarrage de recette
+- [x] Synchronisation des notes en temps réel
+- [x] Feedback "Sauvegardé" sur les notes
+- [x] Empty state avec CTA sur la liste de recettes
+- [x] Progress bar corrigée (0% pour étapes sans durée, auto-height LiquidProgress)
+- [x] Stepper horizontal scrollable avec labels sur 2 lignes
 
 ## En cours
 

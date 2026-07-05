@@ -37,6 +37,14 @@ Propositions pour rendre l'app intuitive et sans friction.
 - [x] Mode cuisine (plein écran, grandes polices, pas de veille)
 - [x] Minuteur intégré (un par recette, persistant entre pages)
 - [x] Navigation étape précédente en mode cuisine
+- [x] Drag & drop pour réorganiser les étapes
+- [x] Icône personnalisable par recette
+- [x] Modaux custom (remplacement Alert.alert)
+- [x] Description visible sur la page détail
+- [x] Feedback complétion + sauvegarde notes
+- [x] Empty state avec CTA
+- [x] Stepper scrollable avec labels lisibles
+- [x] LiquidProgress auto-height (plus de gap blanc)
 
 ### Navigation & global
 - [ ] Quick actions (long press icône app)

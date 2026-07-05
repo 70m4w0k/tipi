@@ -132,6 +132,7 @@ export type Recipe = {
   household_id: string;
   title: string;
   description: string;
+  icon: string | null;
   ingredients: string[];
   steps: RecipeStep[];
   created_by: string | null;
@@ -149,6 +150,7 @@ export type RecipeInstance = {
   step_completions: string[];
   started_at: string;
   step_started_at: string;
+  completed_at: string | null;
   created_at: string;
 };
 

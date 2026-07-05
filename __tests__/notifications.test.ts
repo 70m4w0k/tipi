@@ -59,6 +59,7 @@ function makeRecipe(id: string, stepCount: number): Recipe {
     description: "",
     ingredients: [],
     steps: Array.from({ length: stepCount }, () => step),
+    icon: null,
     created_by: null,
     created_at: "",
   };
@@ -81,6 +82,7 @@ function makeInstance(
     step_completions: [],
     started_at: "",
     step_started_at: "",
+    completed_at: null,
     created_at: "",
   };
 }

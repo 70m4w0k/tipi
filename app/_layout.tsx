@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Slot } from "expo-router";
 import { ActivityIndicator, Platform, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationBar } from "expo-navigation-bar";
 import "react-native-url-polyfill/auto";
 import { AuthProvider, useAuth } from "../lib/AuthContext";
@@ -31,17 +32,19 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <SafeAreaProvider>
-      {Platform.OS === "android" && <NavigationBar style="dark" />}
-      <ThemeProvider>
-        <AuthProvider>
-          <TimerProvider>
-            <OnboardingProvider>
-              <RootGate />
-            </OnboardingProvider>
-          </TimerProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        {Platform.OS === "android" && <NavigationBar style="dark" />}
+        <ThemeProvider>
+          <AuthProvider>
+            <TimerProvider>
+              <OnboardingProvider>
+                <RootGate />
+              </OnboardingProvider>
+            </TimerProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

@@ -41,7 +41,13 @@ app/                        # Routes Expo Router
     ├── chat.tsx            # Messagerie
     ├── expenses.tsx        # Dépenses
     ├── chores.tsx          # Ménage
-    └── other.tsx           # Événements + Documents
+    ├── other.tsx           # Événements + Documents
+    └── recipes/            # Recettes (routes imbriquées)
+        ├── _layout.tsx     # Stack navigator recettes
+        ├── index.tsx       # Liste des recettes
+        ├── [id].tsx        # Détail recette (édition, démarrage)
+        └── instance/
+            └── [id].tsx    # Instance en cours (mode cuisine)
 
 components/                 # Composants UI réutilisables
 ├── MessageBubble.tsx
@@ -52,7 +58,9 @@ components/                 # Composants UI réutilisables
 ├── BalancesView.tsx
 ├── ChoreGrid.tsx
 ├── ChoreReminder.tsx
-└── ProfileSettings.tsx
+├── ProfileSettings.tsx
+├── DraggableStepList.tsx   # Drag & drop générique pour listes ordonnées
+└── LiquidProgress.tsx      # Barre de progression liquide avec vague animée
 
 lib/                        # Logique métier
 ├── supabase.ts             # Initialisation client Supabase

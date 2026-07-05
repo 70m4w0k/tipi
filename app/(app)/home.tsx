@@ -78,19 +78,23 @@ export default function HomeScreen() {
       }
     }
 
-    for (const inst of instances) {
+    const activeInstances = instances.filter((inst) => {
+      if (inst.completed_at) return false;
       const recipe = recipes.find((rc) => rc.id === inst.recipe_id);
-      if (!recipe) continue;
-      if (inst.current_step >= recipe.steps.length - 1) {
-        notifs.push({
-          id: `recipe-${inst.id}`,
-          text: `${inst.label} — dernière étape !`,
-          icon: "restaurant-outline",
-          color: t.success,
-          route: "/(app)/recipes",
-          params: { tab: "active", instanceId: inst.id },
-        });
-      }
+      return recipe && inst.current_step >= recipe.steps.length - 1;
+    });
+    if (activeInstances.length > 0) {
+      const label = activeInstances.length === 1
+        ? `${activeInstances[0].label} — dernière étape !`
+        : `${activeInstances.length} recettes à la dernière étape`;
+      notifs.push({
+        id: "recipe-last-step",
+        text: label,
+        icon: "restaurant-outline",
+        color: t.success,
+        route: "/(app)/recipes" as any,
+        params: {},
+      });
     }
 
     return notifs;

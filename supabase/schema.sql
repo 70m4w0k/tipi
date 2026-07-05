@@ -122,6 +122,7 @@ CREATE TABLE recipes (
   household_id uuid NOT NULL REFERENCES households(id),
   title text NOT NULL,
   description text DEFAULT '',
+  icon text,
   ingredients jsonb NOT NULL DEFAULT '[]'::jsonb,
   steps jsonb NOT NULL DEFAULT '[]'::jsonb,
   created_by uuid REFERENCES profiles(id),
@@ -139,6 +140,7 @@ CREATE TABLE recipe_instances (
   step_completions jsonb NOT NULL DEFAULT '[]'::jsonb,
   started_at timestamptz DEFAULT now(),
   step_started_at timestamptz DEFAULT now(),
+  completed_at timestamptz,
   created_at timestamptz DEFAULT now()
 );
 

@@ -55,12 +55,13 @@ export function useRecipes(householdId: string | null | undefined) {
   }, [householdId]);
 
   const addRecipe = useCallback(
-    async (title: string, description: string, ingredients: string[], steps: RecipeStep[]) => {
+    async (title: string, description: string, ingredients: string[], steps: RecipeStep[], icon?: string) => {
       if (!householdId || !title.trim()) return;
       await supabase.from("recipes").insert({
         household_id: householdId,
         title: title.trim(),
         description: description.trim(),
+        icon: icon ?? null,
         ingredients,
         steps,
       });
@@ -70,10 +71,10 @@ export function useRecipes(householdId: string | null | undefined) {
   );
 
   const updateRecipe = useCallback(
-    async (id: string, title: string, description: string, ingredients: string[], steps: RecipeStep[]) => {
+    async (id: string, title: string, description: string, ingredients: string[], steps: RecipeStep[], icon?: string) => {
       await supabase
         .from("recipes")
-        .update({ title: title.trim(), description: description.trim(), ingredients, steps })
+        .update({ title: title.trim(), description: description.trim(), icon: icon ?? null, ingredients, steps })
         .eq("id", id);
       void fetchAll();
     },
@@ -89,16 +90,19 @@ export function useRecipes(householdId: string | null | undefined) {
   );
 
   const startInstance = useCallback(
-    async (recipeId: string, label: string, notes = "", targetDate?: string): Promise<string | null> => {
+    async (recipeId: string, label: string, notes = "", targetDate?: string, startingStep = 0): Promise<string | null> => {
       if (!householdId) return "Aucun foyer sélectionné";
       const now = new Date().toISOString();
+      const completions: string[] = [];
+      for (let i = 0; i < startingStep; i++) completions.push(now);
       const { error } = await supabase.from("recipe_instances").insert({
         household_id: householdId,
         recipe_id: recipeId,
         label: label.trim(),
         notes: notes.trim(),
         target_date: targetDate ?? null,
-        step_completions: [],
+        current_step: startingStep,
+        step_completions: completions,
         started_at: now,
         step_started_at: now,
       });
@@ -187,10 +191,17 @@ export function useRecipes(householdId: string | null | undefined) {
 
   const completeInstance = useCallback(
     async (instanceId: string) => {
-      await supabase.from("recipe_instances").delete().eq("id", instanceId);
+      const inst = instances.find((i) => i.id === instanceId);
+      const now = new Date().toISOString();
+      const completions = [...(inst?.step_completions ?? [])];
+      if (inst) completions[inst.current_step] = now;
+      await supabase
+        .from("recipe_instances")
+        .update({ completed_at: now, step_completions: completions })
+        .eq("id", instanceId);
       void fetchAll();
     },
-    [fetchAll]
+    [instances, fetchAll]
   );
 
   return {

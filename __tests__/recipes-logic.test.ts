@@ -14,6 +14,7 @@ function makeRecipe(id: string, stepCount: number): Recipe {
       ...step,
       title: `Étape ${i + 1}`,
     })),
+    icon: null,
     created_by: null,
     created_at: "",
   };
@@ -31,6 +32,7 @@ function makeInstance(id: string, recipeId: string, currentStep: number): Recipe
     step_completions: [],
     started_at: "",
     step_started_at: "",
+    completed_at: null,
     created_at: "",
   };
 }

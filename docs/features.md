@@ -155,11 +155,27 @@ L'app utilise exclusivement Ionicons (via `@expo/vector-icons`) pour toutes les 
 
 ## 13. Mode cuisine (Recettes)
 
+### Gestion des recettes
+- **Routes imbriquées** — Liste (`recipes/index`), détail (`recipes/[id]`), instance en cours (`recipes/instance/[id]`)
+- **Icône personnalisable** — Sélecteur d'icônes Ionicons par recette
+- **Description** — Affichée sur la page détail de la recette
+- **Drag & drop** — Réorganisation des étapes par glisser-déposer (DraggableStepList avec `react-native-gesture-handler`)
+- **Date cible** — Champ optionnel au démarrage d'une recette planifiée
+- **Empty state** — CTA "Créer une recette" quand la liste est vide
+- **Modaux custom** — Confirmation/édition sans `Alert.alert` (compatibilité web mobile)
+
 ### Mode plein écran
 - **Grandes polices** — Titre 28px, description 20px pour lisibilité en cuisine
 - **Écran toujours allumé** — `expo-keep-awake` empêche la mise en veille
-- **Barre de progression** — Avancement visuel dans la recette
+- **Barre de progression** — LiquidProgress avec vague animée, auto-mesure de hauteur via `onLayout`
+- **Stepper horizontal** — Étapes scrollables avec labels sur 2 lignes, progression visuelle par couleur
 - **Navigation d'étapes** — Boutons suivant/précédent pour naviguer entre les étapes
+- **Feedback de complétion** — Banner animée à la fin d'une étape
+
+### Notes & suivi
+- **Notes par instance** — Texte libre synchronisé en temps réel
+- **Feedback "Sauvegardé"** — Confirmation visuelle (checkmark + texte) après sauvegarde des notes
+- **Progression correcte** — 0% pour les étapes sans durée (pas de valeur arbitraire)
 
 ### Minuteur intégré
 - **Un timer par recette** — Chaque recette en cours a son propre minuteur indépendant
