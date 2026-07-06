@@ -7,9 +7,10 @@ import { ProfileSettings } from "../../components/ProfileSettings";
 export default function ProfileScreen() {
   const { profile, signOut, refreshProfile } = useAuth();
   const {
-    household, members, isAdmin,
+    household, members, pendingMembers, isAdmin,
     renameHousehold, regenerateInviteCode,
     kickMember, promoteMember, demoteMember, deleteHousehold,
+    addPendingMember, removePendingMember,
     refreshHousehold,
   } = useHousehold(profile);
   const t = useTheme();
@@ -36,6 +37,9 @@ export default function ProfileScreen() {
         onPromoteMember={promoteMember}
         onDemoteMember={demoteMember}
         onDeleteHousehold={deleteHousehold}
+        pendingMembers={pendingMembers}
+        onAddPendingMember={addPendingMember}
+        onRemovePendingMember={removePendingMember}
       />
     </SafeAreaView>
   );

@@ -154,6 +154,14 @@ export type RecipeInstance = {
   created_at: string;
 };
 
+export type PendingMember = {
+  id: string;
+  household_id: string;
+  display_name: string;
+  claimed_by: string | null;
+  created_at: string;
+};
+
 export type SharedFile = {
   id: string;
   household_id: string;

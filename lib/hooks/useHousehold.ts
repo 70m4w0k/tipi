@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabase";
-import { Household, Profile } from "../types";
+import { Household, PendingMember, Profile } from "../types";
 import { pickAvailableColor as pickColor } from "../household-logic";
 
 let channelCounter = 0;
@@ -8,6 +8,7 @@ let channelCounter = 0;
 export function useHousehold(profile: Profile | null) {
   const [household, setHousehold] = useState<Household | null>(null);
   const [members, setMembers] = useState<Profile[]>([]);
+  const [pendingMembers, setPendingMembers] = useState<PendingMember[]>([]);
   const [loading, setLoading] = useState(false);
   const channelId = useRef(++channelCounter);
 
@@ -35,6 +36,14 @@ export function useHousehold(profile: Profile | null) {
       .select("*")
       .eq("household_id", householdId);
     setMembers(m ?? []);
+
+    const { data: pm } = await supabase
+      .from("pending_members")
+      .select("*")
+      .eq("household_id", householdId)
+      .is("claimed_by", null)
+      .order("created_at");
+    setPendingMembers(pm ?? []);
     setLoading(false);
   }, [householdId, profileVersion]);
 
@@ -103,14 +112,25 @@ export function useHousehold(profile: Profile | null) {
       .eq("id", profile!.id);
     if (updateError) return { error: updateError };
 
-    const color = await pickAvailableColor(data.id);
-    await supabase
-      .from("profiles")
-      .update({ color })
-      .eq("id", profile!.id);
-
     setHousehold(data);
-    return { error: null, household: data };
+
+    const { data: pm } = await supabase
+      .from("pending_members")
+      .select("*")
+      .eq("household_id", data.id)
+      .is("claimed_by", null);
+    const hasPending = (pm ?? []).length > 0;
+    setPendingMembers(pm ?? []);
+
+    if (!hasPending) {
+      const color = await pickAvailableColor(data.id);
+      await supabase
+        .from("profiles")
+        .update({ color })
+        .eq("id", profile!.id);
+    }
+
+    return { error: null, household: data, hasPending };
   };
 
   const renameHousehold = async (newName: string) => {
@@ -167,6 +187,44 @@ export function useHousehold(profile: Profile | null) {
     return { error };
   };
 
+  const addPendingMember = async (displayName: string) => {
+    if (!household) return { error: new Error("Pas de coloc") };
+    const { data, error } = await supabase
+      .from("pending_members")
+      .insert({ household_id: household.id, display_name: displayName.trim() })
+      .select()
+      .single();
+    if (!error && data) setPendingMembers((prev) => [...prev, data]);
+    return { error };
+  };
+
+  const removePendingMember = async (id: string) => {
+    const { error } = await supabase.from("pending_members").delete().eq("id", id);
+    if (!error) setPendingMembers((prev) => prev.filter((m) => m.id !== id));
+    return { error };
+  };
+
+  const claimPendingMember = async (pendingId: string) => {
+    if (!profile) return { error: new Error("Non connecté") };
+    const pending = pendingMembers.find((m) => m.id === pendingId);
+    if (!pending) return { error: new Error("Membre introuvable") };
+
+    const { error: claimErr } = await supabase
+      .from("pending_members")
+      .update({ claimed_by: profile.id })
+      .eq("id", pendingId);
+    if (claimErr) return { error: claimErr };
+
+    const { error: nameErr } = await supabase
+      .from("profiles")
+      .update({ display_name: pending.display_name })
+      .eq("id", profile.id);
+    if (nameErr) return { error: nameErr };
+
+    setPendingMembers((prev) => prev.filter((m) => m.id !== pendingId));
+    return { error: null };
+  };
+
   const deleteHousehold = async () => {
     if (!household) return { error: new Error("Pas de coloc") };
     for (const m of members) {
@@ -183,6 +241,7 @@ export function useHousehold(profile: Profile | null) {
   return {
     household,
     members,
+    pendingMembers,
     loading,
     isAdmin,
     createHousehold,
@@ -193,6 +252,9 @@ export function useHousehold(profile: Profile | null) {
     promoteMember,
     demoteMember,
     deleteHousehold,
+    addPendingMember,
+    removePendingMember,
+    claimPendingMember,
     refreshHousehold: fetchHousehold,
   };
 }

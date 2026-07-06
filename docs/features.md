@@ -8,7 +8,9 @@
 
 ### Gestion de colocation
 - **Créer une coloc** — L'utilisateur donne un nom, un code d'invitation à 6 caractères est généré. Le créateur devient admin.
-- **Rejoindre une coloc** — Saisir le code d'invitation d'une coloc existante
+- **Rejoindre une coloc** — Saisir le code d'invitation ou cliquer un lien d'invitation web
+- **Lien d'invitation** — URL partageable `tipi-tau.vercel.app/invite?code=XXX` qui pré-remplit le code
+- **Membres pré-ajoutés** — L'admin peut ajouter des noms à l'avance ; le nouveau membre choisit "Qui es-tu ?" à l'arrivée (style Tricount)
 - **Quitter une coloc** — Possible depuis les paramètres du profil
 
 ### Administration (admin uniquement)
@@ -200,6 +202,14 @@ Tutoriel interactif au premier lancement pour guider les nouveaux utilisateurs.
 - **Skip** — Bouton "Passer" accessible à tout moment
 - **Replay** — Bouton "Revoir le tutoriel" dans les paramètres profil
 
+## 16. Page d'installation
+
+Page dédiée (`/install`) pour guider les nouveaux utilisateurs vers la bonne plateforme.
+
+- **Application mobile** — Lien vers le projet Expo (téléchargement APK)
+- **Application web (PWA)** — Instructions pour "Ajouter à l'écran d'accueil"
+- **Continuer sur le web** — Lien direct vers tipi-tau.vercel.app
+
 ## État d'avancement
 
 | Feature | Status |
@@ -226,4 +236,6 @@ Tutoriel interactif au premier lancement pour guider les nouveaux utilisateurs.
 | Onboarding tutoriel (3 slides) | ✅ Implémenté |
 | Tests unitaires (124) | ✅ Implémenté |
 | Tests d'intégration Supabase (24) | ✅ Implémenté |
+| Lien d'invitation web + membres pré-ajoutés | ✅ Implémenté |
+| Page d'installation (/install) | ✅ Implémenté |
 | Push notifications | ❌ Pas encore |

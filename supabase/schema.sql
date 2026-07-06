@@ -144,6 +144,14 @@ CREATE TABLE recipe_instances (
   created_at timestamptz DEFAULT now()
 );
 
+CREATE TABLE pending_members (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  household_id uuid NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  display_name text NOT NULL,
+  claimed_by uuid REFERENCES profiles(id),
+  created_at timestamptz DEFAULT now()
+);
+
 -- ============================================================
 -- TRIGGER: auto-create profile on signup
 -- ============================================================
@@ -195,6 +203,7 @@ ALTER TABLE shared_files ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shopping_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipe_instances ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pending_members ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================
 -- RLS POLICIES
@@ -290,6 +299,12 @@ CREATE POLICY "insert" ON recipe_instances FOR INSERT WITH CHECK (household_id =
 CREATE POLICY "update" ON recipe_instances FOR UPDATE USING (household_id = my_household_id());
 CREATE POLICY "delete" ON recipe_instances FOR DELETE USING (household_id = my_household_id());
 
+-- pending_members
+CREATE POLICY "select" ON pending_members FOR SELECT USING (household_id = my_household_id());
+CREATE POLICY "insert" ON pending_members FOR INSERT WITH CHECK (household_id = my_household_id());
+CREATE POLICY "update" ON pending_members FOR UPDATE USING (household_id = my_household_id());
+CREATE POLICY "delete" ON pending_members FOR DELETE USING (household_id = my_household_id());
+
 -- ============================================================
 -- STORAGE BUCKETS
 -- ============================================================
@@ -314,4 +329,4 @@ CREATE POLICY "household_delete" ON storage.objects FOR DELETE USING (
 -- REALTIME
 -- ============================================================
 
-ALTER PUBLICATION supabase_realtime ADD TABLE messages, expenses, chores, chore_tasks, chore_reminders, events, shared_files, shopping_items, recipes, recipe_instances, profiles;
+ALTER PUBLICATION supabase_realtime ADD TABLE messages, expenses, chores, chore_tasks, chore_reminders, events, shared_files, shopping_items, recipes, recipe_instances, profiles, pending_members;

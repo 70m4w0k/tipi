@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useHousehold } from "../../lib/hooks/useHousehold";
 import { useTheme } from "../../lib/theme";
@@ -22,8 +22,9 @@ export default function JoinScreen() {
   const { createHousehold, joinHousehold } = useHousehold(profile);
   const router = useRouter();
   const t = useTheme();
+  const { code } = useLocalSearchParams<{ code?: string }>();
   const [houseName, setHouseName] = useState("");
-  const [inviteCode, setInviteCode] = useState("");
+  const [inviteCode, setInviteCode] = useState(code ?? "");
   const [createdCode, setCreatedCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -62,11 +63,15 @@ export default function JoinScreen() {
       return;
     }
     setLoading(true);
-    const { error } = await joinHousehold(inviteCode.trim());
-    if (error) {
-      setErrorMsg(String(error.message ?? error));
+    const result = await joinHousehold(inviteCode.trim());
+    if (result.error) {
+      setErrorMsg(String(result.error.message ?? result.error));
     } else {
       await refreshProfile();
+      if (result.hasPending) {
+        router.replace("/(auth)/claim");
+        return;
+      }
     }
     setLoading(false);
   };

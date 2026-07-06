@@ -32,10 +32,13 @@ Toutes les requêtes passent par le client Supabase (`lib/supabase.ts`). La séc
 app/                        # Routes Expo Router
 ├── _layout.tsx             # Layout racine (loading gate)
 ├── index.tsx               # Redirection selon état auth
+├── invite.tsx              # Redirection /invite?code=X → join
+├── install.tsx             # Page d'installation (APK, PWA, Web)
 ├── (auth)/                 # Groupe non-authentifié
 │   ├── _layout.tsx         # Stack navigator
 │   ├── login.tsx           # Écran de connexion
-│   └── join.tsx            # Créer/rejoindre une coloc
+│   ├── join.tsx            # Créer/rejoindre une coloc
+│   └── claim.tsx           # "Qui es-tu ?" — choix parmi membres pré-ajoutés
 └── (app)/                  # Groupe authentifié
     ├── _layout.tsx         # Tab navigator (4 onglets)
     ├── chat.tsx            # Messagerie
@@ -74,7 +77,7 @@ lib/                        # Logique métier
 ├── household-logic.ts      # Logique pure : permissions admin, gestion membres
 └── hooks/                  # Hooks React
     ├── useAuth.ts          # Session + profil utilisateur
-    ├── useHousehold.ts     # Gestion colocation + membres + admin (rename, kick, promote)
+    ├── useHousehold.ts     # Gestion colocation + membres + admin + pending members
     ├── useMessages.ts      # Chat temps réel
     ├── useExpenses.ts      # Dépenses + calcul soldes
     ├── useChores.ts        # Ménage + tâches + rappels
@@ -129,6 +132,7 @@ supabase/
 | `chore_reminders` | Rappels récurrents |
 | `events` | Événements du calendrier |
 | `shared_files` | Métadonnées des documents partagés |
+| `pending_members` | Membres pré-ajoutés par l'admin (avant inscription) |
 
 ### Rôles
 

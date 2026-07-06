@@ -15,6 +15,10 @@ Propositions pour rendre l'app intuitive et sans friction.
 ### Onboarding
 - [x] Tutoriel interactif au premier lancement (overlay 3 slides, persisté AsyncStorage)
 - [x] Bouton "Revoir le tutoriel" dans les paramètres profil
+- [x] Fix bouton "Suivant" (getItemLayout)
+- [x] Lien d'invitation web avec pré-remplissage du code
+- [x] Page d'installation (/install)
+- [x] Membres pré-ajoutés par l'admin + page "Qui es-tu ?"
 
 ### Chat
 - [ ] Prévisualisation des liens (titre + image)

@@ -39,6 +39,10 @@
 - [x] Empty state avec CTA sur la liste de recettes
 - [x] Progress bar corrigée (0% pour étapes sans durée, auto-height LiquidProgress)
 - [x] Stepper horizontal scrollable avec labels sur 2 lignes
+- [x] Fix bouton "Suivant" onboarding (getItemLayout manquant sur FlatList)
+- [x] Lien d'invitation avec URL web (tipi-tau.vercel.app/invite?code=XXX)
+- [x] Page d'installation (/install) : APK, PWA, Web
+- [x] Membres pré-ajoutés par l'admin (table pending_members, page claim)
 
 ## En cours
 

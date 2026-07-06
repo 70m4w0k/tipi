@@ -13,7 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { supabase } from "../lib/supabase";
-import { Profile, Household } from "../lib/types";
+import { Profile, Household, PendingMember } from "../lib/types";
 import { haptic } from "../lib/haptics";
 import { useNavPreferences, ALL_TABS, NavTab } from "../lib/hooks/useNavPreferences";
 import { useTheme, useThemeMode, ThemeMode } from "../lib/theme";
@@ -33,6 +33,9 @@ export function ProfileSettings({
   onPromoteMember,
   onDemoteMember,
   onDeleteHousehold,
+  pendingMembers,
+  onAddPendingMember,
+  onRemovePendingMember,
 }: {
   profile: Profile;
   household: Household | null;
@@ -46,6 +49,9 @@ export function ProfileSettings({
   onPromoteMember: (id: string) => Promise<{ error: any }>;
   onDemoteMember: (id: string) => Promise<{ error: any }>;
   onDeleteHousehold: () => Promise<{ error: any }>;
+  pendingMembers: PendingMember[];
+  onAddPendingMember: (name: string) => Promise<{ error: any }>;
+  onRemovePendingMember: (id: string) => Promise<{ error: any }>;
 }) {
   const router = useRouter();
   const { enabledTabs, setTabs } = useNavPreferences();
@@ -58,6 +64,7 @@ export function ProfileSettings({
   const [saving, setSaving] = useState(false);
   const [editingHouseName, setEditingHouseName] = useState(false);
   const [houseName, setHouseName] = useState(household?.name ?? "");
+  const [pendingName, setPendingName] = useState("");
 
   const MAX_NAV_TABS = 4;
   const toggleNavTab = async (key: NavTab) => {
@@ -322,8 +329,10 @@ export function ProfileSettings({
               style={[styles.shareButton, { backgroundColor: t.accent }]}
               onPress={async () => {
                 if (!household) return;
+                const inviteLink = `https://tipi-tau.vercel.app/invite?code=${household.invite_code}`;
+                const installLink = "https://tipi-tau.vercel.app/install";
                 await Share.share({
-                  message: `Rejoins notre coloc "${household.name}" sur Tipi ! Code d'invitation : ${household.invite_code}`,
+                  message: `Rejoins notre coloc "${household.name}" sur Tipi !\n\n👉 ${inviteLink}\n\n📲 Installer l'app : ${installLink}`,
                 });
               }}
             >
@@ -377,6 +386,56 @@ export function ProfileSettings({
               </View>
             ))}
           </View>
+
+          {/* Pending members (admin) */}
+          {isAdmin && (
+            <>
+              <Text style={[styles.sectionTitle, { color: t.text }]}>Membres en attente</Text>
+              <View style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+                <Text style={[styles.hint, { color: t.textSecondary }]}>
+                  Pré-ajoute des membres pour qu'ils puissent s'identifier en rejoignant la coloc.
+                </Text>
+                {pendingMembers.map((pm) => (
+                  <View key={pm.id} style={[styles.memberRow, { borderBottomColor: t.separator }]}>
+                    <View style={[styles.memberAvatar, { backgroundColor: t.textMuted }]}>
+                      <Ionicons name="time-outline" size={16} color="#FFF" />
+                    </View>
+                    <Text style={[styles.memberName, { color: t.text, flex: 1 }]}>{pm.display_name}</Text>
+                    <Pressable
+                      style={styles.memberActionBtn}
+                      onPress={async () => {
+                        void haptic.light();
+                        await onRemovePendingMember(pm.id);
+                      }}
+                    >
+                      <Ionicons name="close-circle-outline" size={22} color={t.danger} />
+                    </Pressable>
+                  </View>
+                ))}
+                <View style={styles.pendingAddRow}>
+                  <TextInput
+                    style={[styles.input, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text, flex: 1 }]}
+                    placeholder="Nom du membre"
+                    placeholderTextColor={t.textMuted}
+                    value={pendingName}
+                    onChangeText={setPendingName}
+                  />
+                  <Pressable
+                    style={[styles.pendingAddBtn, { backgroundColor: t.accent, opacity: pendingName.trim() ? 1 : 0.4 }]}
+                    onPress={async () => {
+                      if (!pendingName.trim()) return;
+                      void haptic.light();
+                      await onAddPendingMember(pendingName.trim());
+                      setPendingName("");
+                    }}
+                    disabled={!pendingName.trim()}
+                  >
+                    <Ionicons name="add" size={22} color="#FFF" />
+                  </Pressable>
+                </View>
+              </View>
+            </>
+          )}
 
           {/* Admin danger zone */}
           {isAdmin && (
@@ -603,6 +662,19 @@ const styles = StyleSheet.create({
   },
   memberActionBtn: {
     padding: 6,
+  },
+  pendingAddRow: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  pendingAddBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
   navConfigItem: {
     flexDirection: "row",
