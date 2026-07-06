@@ -46,7 +46,7 @@ function makeReminder(
   recurrence: string,
   lastDone: string | null = null
 ): ChoreReminder {
-  return { id, household_id: "h1", title, recurrence, last_done_date: lastDone };
+  return { id, household_id: "h1", title, recurrence, week_parity: null, last_done_date: lastDone };
 }
 
 const step: RecipeStep = { title: "Étape", description: "", duration_value: 0, duration_unit: "minutes" };

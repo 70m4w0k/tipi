@@ -43,6 +43,11 @@
 - [x] Lien d'invitation avec URL web (tipi-tau.vercel.app/invite?code=XXX)
 - [x] Page d'installation (/install) : APK, PWA, Web
 - [x] Membres pré-ajoutés par l'admin (table pending_members, page claim)
+- [x] Tâches ménage récurrentes interactives sur la page d'accueil (ChoreReminderCard)
+- [x] Récurrence bi-hebdomadaire "une semaine sur deux" (week_parity)
+- [x] Retrait du filtre "Moi" sur la page ménage (toujours vue "Tous")
+- [x] Auto-join invitation : le code est persisté via AsyncStorage à travers le signup
+- [x] Lien APK redirigé vers GitHub Releases (pas besoin de compte Expo)
 
 ## En cours
 

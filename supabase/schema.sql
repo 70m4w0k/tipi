@@ -85,6 +85,7 @@ CREATE TABLE chore_reminders (
   household_id uuid NOT NULL REFERENCES households(id),
   title text NOT NULL,
   recurrence text NOT NULL,
+  week_parity smallint CHECK (week_parity IN (0, 1)),
   last_done_date date
 );
 

@@ -9,7 +9,7 @@
 ### Gestion de colocation
 - **Créer une coloc** — L'utilisateur donne un nom, un code d'invitation à 6 caractères est généré. Le créateur devient admin.
 - **Rejoindre une coloc** — Saisir le code d'invitation ou cliquer un lien d'invitation web
-- **Lien d'invitation** — URL partageable `tipi-tau.vercel.app/invite?code=XXX` qui pré-remplit le code
+- **Lien d'invitation** — URL partageable `tipi-tau.vercel.app/invite?code=XXX` qui pré-remplit le code et auto-join après signup (code persisté via AsyncStorage)
 - **Membres pré-ajoutés** — L'admin peut ajouter des noms à l'avance ; le nouveau membre choisit "Qui es-tu ?" à l'arrivée (style Tricount)
 - **Quitter une coloc** — Possible depuis les paramètres du profil
 
@@ -67,7 +67,7 @@ Le système est **contribution-based, PAS assignment-based**. Chaque colocataire
   - Niveau 2 (partiel) — opacité 65%
   - Niveau 3 (complet) — opacité 100%
 - **Couleurs** — Chaque utilisateur a sa propre couleur (auto-assignée à l'inscription, configurable dans le profil, couleurs prises marquées comme indisponibles)
-- **Filtres** — "Moi" (ses contributions) ou "Tous" (vue d'ensemble)
+- **Vue d'ensemble** — Toutes les contributions sont visibles (pas de filtre par utilisateur)
 
 ### Tâches préremplies
 - **14 tâches par défaut** — Aspi haut/bas, Serp haut/bas, WC haut/bas, Cuisine, Véranda, Verre, SdB 1/2/3, Escalier, Poubelles
@@ -79,8 +79,10 @@ Le système est **contribution-based, PAS assignment-based**. Chaque colocataire
 
 ### Rappels
 - Un rappel configurable (ex: "Sortir les poubelles — Tous les lundis, mercredis et vendredis")
+- **Récurrence bi-hebdomadaire** — Option "une semaine sur deux" avec parité basée sur le numéro ISO de la semaine
 - Détection automatique du jour courant pour afficher si le rappel est dû
 - Bouton "Marquer fait" pour confirmer
+- **Affichage interactif sur la page d'accueil** — Les rappels du jour apparaissent comme des cartes cliquables (ChoreReminderCard) directement dans la section "Aujourd'hui"
 
 ## 5. Événements
 
@@ -206,7 +208,7 @@ Tutoriel interactif au premier lancement pour guider les nouveaux utilisateurs.
 
 Page dédiée (`/install`) pour guider les nouveaux utilisateurs vers la bonne plateforme.
 
-- **Application mobile** — Lien vers le projet Expo (téléchargement APK)
+- **Application mobile** — Lien vers GitHub Releases (téléchargement APK sans compte Expo)
 - **Application web (PWA)** — Instructions pour "Ajouter à l'écran d'accueil"
 - **Continuer sur le web** — Lien direct vers tipi-tau.vercel.app
 

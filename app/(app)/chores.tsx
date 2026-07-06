@@ -42,13 +42,12 @@ export default function ChoresScreen() {
     setRefreshing(false);
   }, [fetchAll]);
 
-  const [filterMode, setFilterMode] = useState<"me" | "all">("all");
-
   // Add task modal
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskName, setNewTaskName] = useState("");
   const [isRecurrent, setIsRecurrent] = useState(false);
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [isBiWeekly, setIsBiWeekly] = useState(false);
   const [showInGrid, setShowInGrid] = useState(true);
 
   // Task action modal
@@ -70,11 +69,15 @@ export default function ChoresScreen() {
     await addTask(newTaskName.trim(), showInGrid);
     if (isRecurrent && selectedDays.length > 0) {
       const recurrence = selectedDays.join(", ");
-      await addReminder(newTaskName.trim(), recurrence);
+      const now = new Date();
+      const start = new Date(now.getFullYear(), 0, 1);
+      const currentWeek = Math.ceil(((now.getTime() - start.getTime()) / 86400000 + start.getDay() + 1) / 7);
+      await addReminder(newTaskName.trim(), recurrence, isBiWeekly ? currentWeek % 2 : null);
     }
     setNewTaskName("");
     setIsRecurrent(false);
     setSelectedDays([]);
+    setIsBiWeekly(false);
     setShowInGrid(true);
     setShowAddTask(false);
   };
@@ -162,28 +165,12 @@ export default function ChoresScreen() {
           />
         ) : (
           <>
-        {/* Filter */}
-        <View style={styles.filterRow}>
-          <Pressable
-            style={[styles.filterBtn, { backgroundColor: t.card, borderColor: t.cardBorder }, filterMode === "me" && { backgroundColor: t.accent, borderColor: t.accent }]}
-            onPress={() => setFilterMode("me")}
-          >
-            <Text style={[styles.filterBtnText, { color: t.text }, filterMode === "me" && styles.filterBtnTextActive]}>Moi</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.filterBtn, { backgroundColor: t.card, borderColor: t.cardBorder }, filterMode === "all" && { backgroundColor: t.accent, borderColor: t.accent }]}
-            onPress={() => setFilterMode("all")}
-          >
-            <Text style={[styles.filterBtnText, { color: t.text }, filterMode === "all" && styles.filterBtnTextActive]}>Tous</Text>
-          </Pressable>
-        </View>
-
         <ChoreGrid
           chores={chores}
           tasks={tasks}
           currentUserId={profile.id}
           members={members}
-          filterMode={filterMode}
+          filterMode={"all"}
           onCellPress={handleCellPress}
           onTaskPress={handleTaskPress}
         />
@@ -195,7 +182,7 @@ export default function ChoresScreen() {
 
       {/* Add task modal */}
       <Modal visible={showAddTask} transparent animationType="slide">
-        <Pressable style={styles.modalOverlay} onPress={() => { setShowAddTask(false); setNewTaskName(""); setIsRecurrent(false); setSelectedDays([]); setShowInGrid(true); }}>
+        <Pressable style={styles.modalOverlay} onPress={() => { setShowAddTask(false); setNewTaskName(""); setIsRecurrent(false); setSelectedDays([]); setIsBiWeekly(false); setShowInGrid(true); }}>
           <Pressable style={[styles.modalContent, { backgroundColor: t.card }]} onPress={() => {}}>
             <Text style={[styles.modalTitle, { color: t.text }]}>Nouvelle tâche</Text>
             <TextInput
@@ -232,23 +219,36 @@ export default function ChoresScreen() {
             </Pressable>
 
             {isRecurrent && (
-              <View style={styles.daysRow}>
-                {DAYS.map((day) => (
-                  <Pressable
-                    key={day}
-                    style={[styles.dayChip, { backgroundColor: t.separator, borderColor: t.cardBorder }, selectedDays.includes(day) && { backgroundColor: t.accent, borderColor: t.accent }]}
-                    onPress={() => toggleDay(day)}
-                  >
-                    <Text style={[styles.dayChipText, { color: t.textSecondary }, selectedDays.includes(day) && styles.dayChipTextActive]}>
-                      {day.slice(0, 3)}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
+              <>
+                <View style={styles.daysRow}>
+                  {DAYS.map((day) => (
+                    <Pressable
+                      key={day}
+                      style={[styles.dayChip, { backgroundColor: t.separator, borderColor: t.cardBorder }, selectedDays.includes(day) && { backgroundColor: t.accent, borderColor: t.accent }]}
+                      onPress={() => toggleDay(day)}
+                    >
+                      <Text style={[styles.dayChipText, { color: t.textSecondary }, selectedDays.includes(day) && styles.dayChipTextActive]}>
+                        {day.slice(0, 3)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Pressable
+                  style={styles.checkRow}
+                  onPress={() => setIsBiWeekly(!isBiWeekly)}
+                >
+                  <Ionicons
+                    name={isBiWeekly ? "checkbox" : "square-outline"}
+                    size={22}
+                    color={isBiWeekly ? t.accent : t.textMuted}
+                  />
+                  <Text style={[styles.checkLabel, { color: t.text }]}>Une semaine sur deux</Text>
+                </Pressable>
+              </>
             )}
 
             <View style={styles.modalBtnRow}>
-              <Pressable style={[styles.modalCancelBtn, { backgroundColor: t.separator, borderColor: t.cardBorder }]} onPress={() => { setShowAddTask(false); setNewTaskName(""); setIsRecurrent(false); setSelectedDays([]); setShowInGrid(true); }}>
+              <Pressable style={[styles.modalCancelBtn, { backgroundColor: t.separator, borderColor: t.cardBorder }]} onPress={() => { setShowAddTask(false); setNewTaskName(""); setIsRecurrent(false); setSelectedDays([]); setIsBiWeekly(false); setShowInGrid(true); }}>
                 <Text style={[styles.modalCancelText, { color: t.textSecondary }]}>Annuler</Text>
               </Pressable>
               <Pressable
@@ -377,14 +377,6 @@ const styles = StyleSheet.create({
   content: { padding: 16 },
   centered: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 },
   emptyText: { fontSize: 15, textAlign: "center" },
-
-  filterRow: { flexDirection: "row", marginBottom: 12, gap: 8 },
-  filterBtn: {
-    flex: 1, paddingVertical: 8, borderRadius: 8,
-    borderWidth: 1, alignItems: "center",
-  },
-  filterBtnText: { fontSize: 13, fontWeight: "600" },
-  filterBtnTextActive: { color: "#FFFFFF" },
 
   // Modals
   modalOverlay: {

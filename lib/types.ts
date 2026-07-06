@@ -95,6 +95,7 @@ export type ChoreReminder = {
   household_id: string;
   title: string;
   recurrence: string;
+  week_parity: number | null;
   last_done_date: string | null;
 };
 

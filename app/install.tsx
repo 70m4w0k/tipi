@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../lib/theme";
 
-const EXPO_PROJECT_URL = "https://expo.dev/accounts/tomawok/projects/tipi";
+const APK_URL = "https://github.com/70m4w0k/tipi/releases/latest";
 const WEB_APP_URL = "https://tipi-tau.vercel.app";
 
 export default function InstallScreen() {
@@ -26,14 +26,14 @@ export default function InstallScreen() {
         <View style={styles.buttons}>
           <Pressable
             style={[styles.btn, { backgroundColor: t.accent }]}
-            onPress={() => openLink(EXPO_PROJECT_URL)}
+            onPress={() => openLink(APK_URL)}
           >
             <Ionicons name="phone-portrait-outline" size={22} color="#FFF" />
             <View style={styles.btnTextWrap}>
-              <Text style={styles.btnLabel}>Application mobile</Text>
+              <Text style={styles.btnLabel}>Application Android</Text>
               <Text style={styles.btnHint}>Télécharger le dernier APK</Text>
             </View>
-            <Ionicons name="open-outline" size={18} color="#FFF" />
+            <Ionicons name="download-outline" size={18} color="#FFF" />
           </Pressable>
 
           {Platform.OS === "web" && (

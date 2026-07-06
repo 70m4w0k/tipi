@@ -18,7 +18,7 @@ export default function ChoreReminderCard({ reminder, onToggleDone }: Props) {
   const t = useTheme();
   const today = new Date().toISOString().slice(0, 10);
   const isDoneToday = reminder.last_done_date === today;
-  const matchesToday = recurrenceMatchesToday(reminder.recurrence);
+  const matchesToday = recurrenceMatchesToday(reminder.recurrence, reminder.week_parity);
 
   if (!matchesToday && !isDoneToday) return null;
 
@@ -37,7 +37,9 @@ export default function ChoreReminderCard({ reminder, onToggleDone }: Props) {
           <Text style={[styles.title, { color: t.accent }, isDoneToday && { color: t.textMuted, textDecorationLine: "line-through" }]}>
             {reminder.title}
           </Text>
-          <Text style={[styles.recurrence, { color: t.textSecondary }]}>{reminder.recurrence}</Text>
+          <Text style={[styles.recurrence, { color: t.textSecondary }]}>
+            {reminder.recurrence}{reminder.week_parity != null ? " (1 sem. / 2)" : ""}
+          </Text>
         </View>
         {isDoneToday && (
           <Text style={[styles.doneLabel, { color: t.success }]}>Fait</Text>

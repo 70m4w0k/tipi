@@ -11,15 +11,19 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useTheme } from "../../lib/theme";
+import { savePendingInviteCode } from "../invite";
 
 export default function LoginScreen() {
   const { signUp, signIn, signInWithMagicLink } = useAuth();
   const router = useRouter();
+  const { code: inviteCode } = useLocalSearchParams<{ code?: string }>();
   const t = useTheme();
+
+  if (inviteCode) void savePendingInviteCode(inviteCode);
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

@@ -129,7 +129,7 @@ supabase/
 | `expense_participants` | Qui participe à chaque dépense |
 | `chores` | Contributions ménage (user × tâche × semaine) |
 | `chore_tasks` | Liste des tâches de ménage |
-| `chore_reminders` | Rappels récurrents |
+| `chore_reminders` | Rappels récurrents (avec `week_parity` pour bi-hebdomadaire) |
 | `events` | Événements du calendrier |
 | `shared_files` | Métadonnées des documents partagés |
 | `pending_members` | Membres pré-ajoutés par l'admin (avant inscription) |

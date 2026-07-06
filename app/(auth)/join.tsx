@@ -16,6 +16,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useHousehold } from "../../lib/hooks/useHousehold";
 import { useTheme } from "../../lib/theme";
+import { getPendingInviteCode, clearPendingInviteCode } from "../invite";
 
 export default function JoinScreen() {
   const { session, profile, signOut, refreshProfile } = useAuth();
@@ -25,6 +26,7 @@ export default function JoinScreen() {
   const { code } = useLocalSearchParams<{ code?: string }>();
   const [houseName, setHouseName] = useState("");
   const [inviteCode, setInviteCode] = useState(code ?? "");
+  const [autoJoining, setAutoJoining] = useState(false);
   const [createdCode, setCreatedCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -36,6 +38,28 @@ export default function JoinScreen() {
     }
     if (profile?.household_id) {
       router.replace("/(app)/home");
+      return;
+    }
+    // Auto-join if there's a pending invite code from a shared link
+    if (!code && !autoJoining) {
+      void (async () => {
+        const pending = await getPendingInviteCode();
+        if (pending) {
+          setInviteCode(pending);
+          setAutoJoining(true);
+          await clearPendingInviteCode();
+          const result = await joinHousehold(pending);
+          if (!result.error) {
+            await refreshProfile();
+            if (result.hasPending) {
+              router.replace("/(auth)/claim");
+            }
+            return;
+          }
+          setErrorMsg(String(result.error.message ?? result.error));
+          setAutoJoining(false);
+        }
+      })();
     }
   }, [session, profile?.household_id, router]);
 
@@ -63,6 +87,7 @@ export default function JoinScreen() {
       return;
     }
     setLoading(true);
+    await clearPendingInviteCode();
     const result = await joinHousehold(inviteCode.trim());
     if (result.error) {
       setErrorMsg(String(result.error.message ?? result.error));

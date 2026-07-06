@@ -212,11 +212,11 @@ export function useChores(householdId: string | null | undefined) {
   );
 
   const addReminder = useCallback(
-    async (title: string, recurrence: string) => {
+    async (title: string, recurrence: string, weekParity?: number | null) => {
       if (!householdId) return;
       await supabase
         .from("chore_reminders")
-        .insert({ household_id: householdId, title, recurrence });
+        .insert({ household_id: householdId, title, recurrence, week_parity: weekParity ?? null });
       void fetchAll();
     },
     [householdId, fetchAll]

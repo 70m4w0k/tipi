@@ -19,7 +19,7 @@ import { useShoppingList } from "../../lib/hooks/useShoppingList";
 import { useNavPreferences, ALL_TABS } from "../../lib/hooks/useNavPreferences";
 import { useTheme } from "../../lib/theme";
 import { OnboardingOverlay } from "../../components/OnboardingOverlay";
-import { recurrenceMatchesToday } from "../../components/ChoreReminder";
+import ChoreReminderCard, { recurrenceMatchesToday } from "../../components/ChoreReminder";
 
 type Notification = {
   id: string;
@@ -34,7 +34,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { profile } = useAuth();
   const { household, members } = useHousehold(profile);
-  const { reminders, fetchAll: fetchChores } = useChores(profile?.household_id);
+  const { reminders, toggleReminderDone, fetchAll: fetchChores } = useChores(profile?.household_id);
   const { instances, recipes, fetchAll: fetchRecipes } = useRecipes(profile?.household_id);
   const { items: shoppingItems, fetchItems: fetchShopping } = useShoppingList(profile?.household_id);
   const { enabledTabs } = useNavPreferences();
@@ -48,7 +48,7 @@ export default function HomeScreen() {
   }, [fetchChores, fetchRecipes, fetchShopping]);
 
   const todayReminders = useMemo(
-    () => reminders.filter((r) => recurrenceMatchesToday(r.recurrence)),
+    () => reminders.filter((r) => recurrenceMatchesToday(r.recurrence, r.week_parity)),
     [reminders]
   );
 
@@ -65,18 +65,6 @@ export default function HomeScreen() {
   const notifications = useMemo(() => {
     const notifs: Notification[] = [];
     const today = new Date().toISOString().slice(0, 10);
-
-    for (const r of todayReminders) {
-      if (r.last_done_date !== today) {
-        notifs.push({
-          id: `reminder-${r.id}`,
-          text: r.title,
-          icon: "alert-circle-outline",
-          color: t.warning,
-          route: "/(app)/chores",
-        });
-      }
-    }
 
     const activeInstances = instances.filter((inst) => {
       if (inst.completed_at) return false;
@@ -143,10 +131,18 @@ export default function HomeScreen() {
           </Text>
         </Pressable>
 
-        {/* Notifications */}
-        {visibleNotifs.length > 0 && (
+        {/* Aujourd'hui */}
+        {(todayReminders.length > 0 || visibleNotifs.length > 0) && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: t.text }]}>Aujourd'hui</Text>
+            {todayReminders.map((r) => (
+              <ChoreReminderCard
+                key={r.id}
+                reminder={r}
+                onToggleDone={toggleReminderDone}
+                onUpdateReminder={() => {}}
+              />
+            ))}
             {visibleNotifs.map((n) => (
               <Pressable
                 key={n.id}
@@ -167,7 +163,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {visibleNotifs.length === 0 && (
+        {todayReminders.length === 0 && visibleNotifs.length === 0 && (
           <View style={styles.emptyNotif}>
             <Ionicons name="checkmark-circle-outline" size={32} color={t.success} />
             <Text style={[styles.emptyNotifText, { color: t.textSecondary }]}>Rien de prévu pour aujourd'hui</Text>

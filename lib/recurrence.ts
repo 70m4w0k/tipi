@@ -16,6 +16,11 @@ export function recurrenceMatchesDay(recurrence: string, dayOfWeek: number): boo
   return dayNames.some((name) => lower.includes(name));
 }
 
-export function recurrenceMatchesToday(recurrence: string): boolean {
-  return recurrenceMatchesDay(recurrence, new Date().getDay());
+export function recurrenceMatchesToday(recurrence: string, weekParity?: number | null): boolean {
+  if (!recurrenceMatchesDay(recurrence, new Date().getDay())) return false;
+  if (weekParity == null) return true;
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+  const week = Math.ceil(((now.getTime() - start.getTime()) / 86400000 + start.getDay() + 1) / 7);
+  return week % 2 === weekParity;
 }
