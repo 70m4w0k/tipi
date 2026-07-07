@@ -20,6 +20,7 @@ import { useNavPreferences, ALL_TABS } from "../../lib/hooks/useNavPreferences";
 import { useTheme } from "../../lib/theme";
 import { OnboardingOverlay } from "../../components/OnboardingOverlay";
 import ChoreReminderCard, { recurrenceMatchesToday } from "../../components/ChoreReminder";
+import { buildRecipeNotifications } from "../../lib/notifications-logic";
 
 type Notification = {
   id: string;
@@ -66,29 +67,11 @@ export default function HomeScreen() {
   );
 
   const notifications = useMemo(() => {
-    const notifs: Notification[] = [];
-    const today = new Date().toISOString().slice(0, 10);
-
-    const activeInstances = instances.filter((inst) => {
-      if (inst.completed_at) return false;
-      const recipe = recipes.find((rc) => rc.id === inst.recipe_id);
-      return recipe && inst.current_step >= recipe.steps.length - 1;
-    });
-    if (activeInstances.length > 0) {
-      const label = activeInstances.length === 1
-        ? `${activeInstances[0].label} — dernière étape !`
-        : `${activeInstances.length} recettes à la dernière étape`;
-      notifs.push({
-        id: "recipe-last-step",
-        text: label,
-        icon: "restaurant-outline",
-        color: t.success,
-        route: "/(app)/recipes" as any,
-        params: {},
-      });
-    }
-
-    return notifs;
+    return buildRecipeNotifications(instances, recipes).map((n) => ({
+      ...n,
+      color: t.success,
+      params: {},
+    }));
   }, [todayReminders, instances, recipes, t]);
 
   const visibleNotifs = notifications.filter((n) => !dismissed.has(n.id));
