@@ -215,12 +215,6 @@ export function useHousehold(profile: Profile | null) {
       .eq("id", pendingId);
     if (claimErr) return { error: claimErr };
 
-    const { error: nameErr } = await supabase
-      .from("profiles")
-      .update({ display_name: pending.display_name })
-      .eq("id", profile.id);
-    if (nameErr) return { error: nameErr };
-
     setPendingMembers((prev) => prev.filter((m) => m.id !== pendingId));
     return { error: null };
   };

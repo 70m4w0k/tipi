@@ -219,6 +219,13 @@ CREATE POLICY "insert_any" ON households FOR INSERT WITH CHECK (true);
 CREATE POLICY "select_household" ON profiles FOR SELECT
   USING (household_id = my_household_id() OR id = auth.uid());
 CREATE POLICY "update_own" ON profiles FOR UPDATE USING (id = auth.uid());
+CREATE POLICY "admin_update_member" ON profiles FOR UPDATE
+  USING (
+    household_id = my_household_id()
+    AND EXISTS (
+      SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin' AND p.household_id = my_household_id()
+    )
+  );
 CREATE POLICY "insert_own" ON profiles FOR INSERT WITH CHECK (id = auth.uid());
 
 -- messages
