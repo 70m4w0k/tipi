@@ -11,6 +11,9 @@ export default defineConfig({
     screenshot: "only-on-failure",
     navigationTimeout: 15_000,
     actionTimeout: 10_000,
+    // Metro's dev-server gzip is pathologically slow (~30s for the 10MB bundle).
+    // Force identity encoding so the bundle downloads uncompressed in <1s.
+    extraHTTPHeaders: { "Accept-Encoding": "identity" },
   },
   projects: [
     {
