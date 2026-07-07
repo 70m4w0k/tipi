@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -13,6 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../lib/theme";
+import { ErrorBanner } from "./ErrorBanner";
 
 type Props = {
   onCreatePoll: (question: string, options: string[]) => void;
@@ -23,6 +23,7 @@ export default function PollCreator({ onCreatePoll, onClose }: Props) {
   const t = useTheme();
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState(["", ""]);
+  const [error, setError] = useState("");
 
   const updateOption = (index: number, value: string) => {
     setOptions((prev) => prev.map((o, i) => (i === index ? value : o)));
@@ -43,13 +44,14 @@ export default function PollCreator({ onCreatePoll, onClose }: Props) {
     const trimmedOptions = options.map((o) => o.trim()).filter((o) => o.length > 0);
 
     if (!trimmedQuestion) {
-      Alert.alert("Question requise", "Entre une question pour le sondage.");
+      setError("Entre une question pour le sondage.");
       return;
     }
     if (trimmedOptions.length < 2) {
-      Alert.alert("Options requises", "Il faut au moins 2 options.");
+      setError("Il faut au moins 2 options.");
       return;
     }
+    setError("");
 
     onCreatePoll(trimmedQuestion, trimmedOptions);
     onClose();
@@ -65,6 +67,7 @@ export default function PollCreator({ onCreatePoll, onClose }: Props) {
           <Text style={[styles.title, { color: t.text }]}>Nouveau sondage</Text>
 
           <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled">
+            <ErrorBanner message={error} onDismiss={() => setError("")} />
             <Text style={[styles.label, { color: t.textSecondary }]}>Question</Text>
             <TextInput
               style={[styles.input, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}

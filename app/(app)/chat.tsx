@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -24,6 +23,7 @@ import { supabase } from "../../lib/supabase";
 import { Message, Poll } from "../../lib/types";
 import MessageBubble from "../../components/MessageBubble";
 import PollCreator from "../../components/PollCreator";
+import { ErrorBanner } from "../../components/ErrorBanner";
 import { haptic } from "../../lib/haptics";
 
 export default function ChatScreen() {
@@ -45,6 +45,7 @@ export default function ChatScreen() {
   const [text, setText] = useState("");
   const [showPollCreator, setShowPollCreator] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const inputRef = useRef<TextInput>(null);
 
   const currentUserId = session?.user?.id ?? "";
@@ -62,7 +63,7 @@ export default function ChatScreen() {
 
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Permission requise", "Autorise l'accès aux photos pour envoyer une image.");
+      setErrorMsg("Autorise l'accès aux photos pour envoyer une image.");
       return;
     }
 
@@ -93,7 +94,7 @@ export default function ChatScreen() {
         });
 
       if (uploadError) {
-        Alert.alert("Erreur upload", uploadError.message);
+        setErrorMsg(`Erreur upload : ${uploadError.message}`);
         setUploading(false);
         return;
       }
@@ -105,7 +106,7 @@ export default function ChatScreen() {
       await sendMessage("image", urlData.publicUrl);
       void haptic.medium();
     } catch {
-      Alert.alert("Erreur", "Impossible d'envoyer l'image.");
+      setErrorMsg("Impossible d'envoyer l'image.");
     }
     setUploading(false);
   }, [profile?.household_id, sendMessage]);
@@ -181,6 +182,12 @@ export default function ChatScreen() {
           </Text>
         </View>
       </View>
+
+      {!!errorMsg && (
+        <View style={styles.bannerWrap}>
+          <ErrorBanner message={errorMsg} onDismiss={() => setErrorMsg("")} />
+        </View>
+      )}
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -284,6 +291,10 @@ const styles = StyleSheet.create({
   },
   flex: {
     flex: 1,
+  },
+  bannerWrap: {
+    paddingHorizontal: 12,
+    paddingTop: 8,
   },
   header: {
     borderBottomWidth: 1,

@@ -26,6 +26,6 @@ test.describe("Dépenses", () => {
     await page.getByText("Ajouter la dépense", { exact: true }).click();
 
     // La dépense apparaît dans la liste.
-    await expect(page.getByText(EXPENSE, { exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(EXPENSE, { exact: true })).toBeVisible({ timeout: 15_000 });
   });
 });

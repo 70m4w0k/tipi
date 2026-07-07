@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -19,6 +18,7 @@ import { useTheme } from "../../lib/theme";
 import { supabase } from "../../lib/supabase";
 import { haptic } from "../../lib/haptics";
 import { ShoppingItem } from "../../lib/types";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import {
   ShoppingAisle,
   AISLE_LABELS,
@@ -37,6 +37,9 @@ export default function ShoppingScreen() {
   const [newItem, setNewItem] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [shoppingMode, setShoppingMode] = useState(false);
+  const [confirm, setConfirm] = useState<
+    { title: string; message: string; confirmLabel: string; onConfirm: () => void } | null
+  >(null);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -74,18 +77,22 @@ export default function ShoppingScreen() {
 
   const handleDelete = (id: string, title: string) => {
     void haptic.warning();
-    Alert.alert("Supprimer", `Supprimer "${title}" ?`, [
-      { text: "Annuler", style: "cancel" },
-      { text: "Supprimer", style: "destructive", onPress: () => void deleteItem(id) },
-    ]);
+    setConfirm({
+      title: "Supprimer",
+      message: `Supprimer "${title}" ?`,
+      confirmLabel: "Supprimer",
+      onConfirm: () => void deleteItem(id),
+    });
   };
 
   const handleClearChecked = () => {
     void haptic.warning();
-    Alert.alert("Vider", "Supprimer tous les articles cochés ?", [
-      { text: "Annuler", style: "cancel" },
-      { text: "Vider", style: "destructive", onPress: () => void clearChecked() },
-    ]);
+    setConfirm({
+      title: "Vider",
+      message: "Supprimer tous les articles cochés ?",
+      confirmLabel: "Vider",
+      onConfirm: () => void clearChecked(),
+    });
   };
 
   const handleGoShopping = async () => {
@@ -253,6 +260,16 @@ export default function ShoppingScreen() {
         </Pressable>
       )}
       </KeyboardAvoidingView>
+
+      <ConfirmDialog
+        visible={!!confirm}
+        title={confirm?.title ?? ""}
+        message={confirm?.message}
+        confirmLabel={confirm?.confirmLabel}
+        destructive
+        onConfirm={() => { confirm?.onConfirm(); setConfirm(null); }}
+        onCancel={() => setConfirm(null)}
+      />
     </SafeAreaView>
   );
 }

@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Linking,
   Pressable,
@@ -18,6 +17,8 @@ import { useFiles } from "../../lib/hooks/useFiles";
 import { useTheme } from "../../lib/theme";
 import { SharedFile } from "../../lib/types";
 import { haptic } from "../../lib/haptics";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { ErrorBanner } from "../../components/ErrorBanner";
 
 export default function DocumentsScreen() {
   const { profile } = useAuth();
@@ -25,6 +26,8 @@ export default function DocumentsScreen() {
   const { files, loading, uploadFile, getFileUrl, deleteFile, fetchFiles } = useFiles(household?.id);
   const t = useTheme();
   const [refreshing, setRefreshing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; storagePath: string } | null>(null);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchFiles();
@@ -51,7 +54,7 @@ export default function DocumentsScreen() {
       await uploadFile();
       void haptic.medium();
     } catch {
-      Alert.alert("Erreur", "Impossible d'importer le document.");
+      setErrorMsg("Impossible d'importer le document.");
     }
   };
 
@@ -60,16 +63,13 @@ export default function DocumentsScreen() {
     if (url) {
       await Linking.openURL(url);
     } else {
-      Alert.alert("Erreur", "Impossible d'ouvrir le document.");
+      setErrorMsg("Impossible d'ouvrir le document.");
     }
   };
 
   const handleDeleteFile = (id: string, storagePath: string) => {
     void haptic.warning();
-    Alert.alert("Supprimer", "Supprimer ce document ?", [
-      { text: "Annuler", style: "cancel" },
-      { text: "Supprimer", style: "destructive", onPress: () => void deleteFile(id, storagePath) },
-    ]);
+    setDeleteTarget({ id, storagePath });
   };
 
   const renderFile = ({ item }: { item: SharedFile }) => (
@@ -94,6 +94,12 @@ export default function DocumentsScreen() {
       <View style={[styles.header, { backgroundColor: t.card, borderBottomColor: t.cardBorder }]}>
         <Text style={[styles.headerTitle, { color: t.text }]}>Documents</Text>
       </View>
+
+      {!!errorMsg && (
+        <View style={styles.bannerWrap}>
+          <ErrorBanner message={errorMsg} onDismiss={() => setErrorMsg("")} />
+        </View>
+      )}
 
       <FlatList
         data={files}
@@ -120,6 +126,19 @@ export default function DocumentsScreen() {
       >
         <Ionicons name="add" size={28} color="#FFFFFF" />
       </Pressable>
+
+      <ConfirmDialog
+        visible={!!deleteTarget}
+        title="Supprimer"
+        message="Supprimer ce document ?"
+        confirmLabel="Supprimer"
+        destructive
+        onConfirm={() => {
+          if (deleteTarget) void deleteFile(deleteTarget.id, deleteTarget.storagePath);
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -134,6 +153,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   headerTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
+  bannerWrap: { paddingHorizontal: 16, paddingTop: 12 },
   list: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 100 },
   fab: {
     position: "absolute",

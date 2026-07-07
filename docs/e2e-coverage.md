@@ -18,7 +18,7 @@ partage, fichiers, haptique).
 | `shopping.spec.ts` **(P1)** | Ajouter un article (Entrée) · cocher (barré) |
 | `chores.spec.ts` **(P1)** | Onglet présent · ajouter une tâche (FAB+modal) · renseigner une cellule |
 | `expenses.spec.ts` **(P1)** | Bascule Liste/Bilans · ajouter une dépense |
-| `recipes.spec.ts` **(P1)** | Créer une recette · lancer une instance · avancer les étapes — ⚠️ bloqué (voir bug ci-dessous) |
+| `recipes.spec.ts` **(P1)** | Créer une recette · lancer une instance · avancer les étapes |
 | `profile.spec.ts` **(P1)** | Changer le thème · configurer la barre de nav · se déconnecter |
 
 **Infra tests** : `e2e/helpers.ts` (login + neutralisation onboarding), `e2e/db.ts` (nettoyage
@@ -26,14 +26,14 @@ Supabase en teardown — nécessaire car certaines suppressions passent par `Ale
 `testID` ajoutés sur les éléments sans texte (FABs, bouton profil, cellules de grille, lignes de
 config nav, boutons du modal recette).
 
-### ⚠️ Bug trouvé par les tests P1
+### Bug trouvé par les tests P1 (corrigé)
 
-**Création de recette cassée en prod.** La table `recipes` déployée n'a pas la colonne `icon`
-(présente dans `schema.sql` mais migration jamais appliquée). `addRecipe` envoie `icon: null` →
-PostgREST rejette l'INSERT → la recette n'est jamais créée, **sans message d'erreur**. Correctif :
-exécuter `supabase/migration_recipes_icon.sql`. Le test `recipes.spec.ts` passera une fois la
-migration appliquée. (Amélioration secondaire à prévoir : faire remonter l'erreur dans l'UI au
-lieu d'un échec silencieux.)
+**Création de recette cassée en prod.** La table `recipes` déployée n'avait pas la colonne `icon`
+(présente dans `schema.sql` mais migration jamais appliquée). `addRecipe` envoyait `icon: null` →
+PostgREST rejetait l'INSERT → la recette n'était jamais créée, **sans message d'erreur**.
+✅ Corrigé le 2026-07-07 via `supabase/migration_recipes_icon.sql`. `recipes.spec.ts` passe.
+(Amélioration secondaire à prévoir : faire remonter l'erreur d'INSERT dans l'UI au lieu d'un échec
+silencieux — c'est justement ce que le remplacement de `Alert.alert` par des modaux permettra.)
 
 ---
 

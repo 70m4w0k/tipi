@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -21,6 +20,7 @@ import { ExpenseCard } from "../../components/ExpenseCard";
 import { ExpenseForm, ExpenseFormData } from "../../components/ExpenseForm";
 import { BalancesView } from "../../components/BalancesView";
 import { EmptyState } from "../../components/EmptyState";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { haptic } from "../../lib/haptics";
 
 type ActiveTab = "list" | "add" | "balances";
@@ -40,6 +40,7 @@ export default function ExpensesScreen() {
   const t = useTheme();
 
   const [view, setView] = useState<ActiveTab>("list");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const currentUserId = profile?.id ?? "";
 
@@ -59,18 +60,7 @@ export default function ExpensesScreen() {
 
   const handleDelete = (id: string) => {
     void haptic.warning();
-    Alert.alert(
-      "Supprimer ?",
-      "Cette dépense sera définitivement supprimée.",
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: () => void deleteExpense(id),
-        },
-      ]
-    );
+    setDeleteId(id);
   };
 
   if (loading && expenses.length === 0) {
@@ -185,6 +175,16 @@ export default function ExpensesScreen() {
           <Ionicons name="add" size={28} color="#FFFFFF" />
         </Pressable>
       )}
+
+      <ConfirmDialog
+        visible={!!deleteId}
+        title="Supprimer ?"
+        message="Cette dépense sera définitivement supprimée."
+        confirmLabel="Supprimer"
+        destructive
+        onConfirm={() => { if (deleteId) void deleteExpense(deleteId); setDeleteId(null); }}
+        onCancel={() => setDeleteId(null)}
+      />
     </SafeAreaView>
   );
 }

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,6 +12,7 @@ import { ExpenseCategory, Profile } from "../lib/types";
 import { useTheme } from "../lib/theme";
 import { CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_ICONS } from "../lib/expense-categories";
 import { haptic } from "../lib/haptics";
+import { ErrorBanner } from "./ErrorBanner";
 
 export type ExpenseFormData = {
   title: string;
@@ -39,6 +39,7 @@ export function ExpenseForm({ members, currentUserId, onSubmit }: Props) {
   );
   const [category, setCategory] = useState<ExpenseCategory>("autre");
   const [note, setNote] = useState("");
+  const [error, setError] = useState("");
 
   const toggleParticipant = (id: string) => {
     setParticipants((prev) =>
@@ -57,12 +58,10 @@ export function ExpenseForm({ members, currentUserId, onSubmit }: Props) {
       parsed <= 0 ||
       participants.length === 0
     ) {
-      Alert.alert(
-        "Dépense invalide",
-        "Remplis le titre, le montant et sélectionne au moins un participant."
-      );
+      setError("Remplis le titre, le montant et sélectionne au moins un participant.");
       return;
     }
+    setError("");
     onSubmit({
       title: title.trim(),
       amount: parsed,
@@ -84,6 +83,7 @@ export function ExpenseForm({ members, currentUserId, onSubmit }: Props) {
 
   return (
     <View style={styles.section}>
+      <ErrorBanner message={error} onDismiss={() => setError("")} />
       <Text style={[styles.formLabel, { color: t.text }]}>Titre *</Text>
       <TextInput
         style={[styles.input, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}

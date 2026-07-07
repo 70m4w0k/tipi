@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Alert } from "react-native";
 import { haptic } from "./haptics";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 
 interface InstanceTimer {
   seconds: number;
@@ -23,6 +23,7 @@ const TimerContext = createContext<TimerContextValue | null>(null);
 export function TimerProvider({ children }: { children: React.ReactNode }) {
   const [cookingInstanceId, setCookingInstanceId] = useState<string | null>(null);
   const [timers, setTimers] = useState<Record<string, InstanceTimer>>({});
+  const [timerFinished, setTimerFinished] = useState(false);
   const intervalsRef = useRef<Record<string, ReturnType<typeof setInterval>>>({});
 
   const clearTimerInterval = useCallback((id: string) => {
@@ -41,7 +42,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
         if (t.seconds <= 1) {
           clearTimerInterval(id);
           void haptic.success();
-          Alert.alert("Minuteur terminé !", "Le temps est écoulé.");
+          setTimerFinished(true);
           const { [id]: _, ...rest } = prev;
           return rest;
         }
@@ -117,6 +118,15 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
+      <ConfirmDialog
+        visible={timerFinished}
+        title="Minuteur terminé !"
+        message="Le temps est écoulé."
+        confirmLabel="OK"
+        hideCancel
+        onConfirm={() => setTimerFinished(false)}
+        onCancel={() => setTimerFinished(false)}
+      />
     </TimerContext.Provider>
   );
 }
