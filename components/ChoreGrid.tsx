@@ -79,18 +79,19 @@ type Props = {
   currentUserId: string;
   members: Profile[];
   filterMode: "me" | "all";
+  showHidden?: boolean;
   onCellPress: (taskName: string, week: number, year: number) => void;
   onTaskPress: (taskId: string, taskName: string) => void;
 };
 
 export default function ChoreGrid({
-  chores, tasks, currentUserId, members, filterMode, onCellPress, onTaskPress,
+  chores, tasks, currentUserId, members, filterMode, showHidden, onCellPress, onTaskPress,
 }: Props) {
   const t = useTheme();
   const scrollRef = useRef<ScrollView>(null);
   const weeks = useMemo(() => buildWeeksFromFirstEntry(chores), [chores]);
   const currentWeek = useMemo(() => getISOWeekYear(new Date()), []);
-  const visibleTasks = useMemo(() => tasks.filter((t) => t.show_in_grid), [tasks]);
+  const visibleTasks = useMemo(() => showHidden ? tasks : tasks.filter((tk) => tk.show_in_grid), [tasks, showHidden]);
 
   const cellMap = useMemo(() => {
     const map: Record<string, Array<{ userId: string; intensity: number; color: string }>> = {};

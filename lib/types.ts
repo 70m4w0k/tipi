@@ -96,6 +96,7 @@ export type ChoreReminder = {
   title: string;
   recurrence: string;
   week_parity: number | null;
+  start_date: string | null;
   last_done_date: string | null;
 };
 

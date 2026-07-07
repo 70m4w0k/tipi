@@ -48,6 +48,11 @@
 - [x] Retrait du filtre "Moi" sur la page ménage (toujours vue "Tous")
 - [x] Auto-join invitation : le code est persisté via AsyncStorage à travers le signup
 - [x] Lien APK redirigé vers GitHub Releases (pas besoin de compte Expo)
+- [x] Suppression de tâches récurrentes depuis le modal d'action du tableau
+- [x] Remplacement de tous les Alert.alert par des modaux (ProfileSettings, chores)
+- [x] Fix onboarding : auto-join + redirection vers page "Qui es-tu ?" (claim)
+- [x] Page claim : couleurs prises grisées, auto-assignation si aucune sélection
+- [x] Fix "Quitter la coloc" sur web mobile (Modal au lieu de Alert.alert)
 
 ## En cours
 

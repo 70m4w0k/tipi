@@ -44,12 +44,11 @@ export default function ClaimScreen() {
       }
     }
 
-    if (selectedColor) {
-      await supabase
-        .from("profiles")
-        .update({ color: selectedColor })
-        .eq("id", profile.id);
-    }
+    const color = selectedColor ?? availableColors[0] ?? COLOR_PRESETS[0];
+    await supabase
+      .from("profiles")
+      .update({ color })
+      .eq("id", profile.id);
 
     await refreshProfile();
     setLoading(false);
@@ -58,12 +57,11 @@ export default function ClaimScreen() {
 
   const skipClaim = async () => {
     if (!profile) return;
-    if (selectedColor) {
-      await supabase
-        .from("profiles")
-        .update({ color: selectedColor })
-        .eq("id", profile.id);
-    }
+    const color = selectedColor ?? availableColors[0] ?? COLOR_PRESETS[0];
+    await supabase
+      .from("profiles")
+      .update({ color })
+      .eq("id", profile.id);
     await refreshProfile();
     router.replace("/(app)/home");
   };

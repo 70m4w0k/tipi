@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
-  Alert,
   Linking,
+  Modal,
   Pressable,
   ScrollView,
   Share,
@@ -65,6 +65,8 @@ export function ProfileSettings({
   const [editingHouseName, setEditingHouseName] = useState(false);
   const [houseName, setHouseName] = useState(household?.name ?? "");
   const [pendingName, setPendingName] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [confirm, setConfirm] = useState<{ title: string; message: string; label: string; destructive?: boolean; onConfirm: () => void } | null>(null);
 
   const MAX_NAV_TABS = 4;
   const toggleNavTab = async (key: NavTab) => {
@@ -73,7 +75,7 @@ export function ProfileSettings({
       await setTabs(enabledTabs.filter((k) => k !== key));
     } else {
       if (enabledTabs.length >= MAX_NAV_TABS) {
-        Alert.alert("Maximum atteint", `Tu peux afficher ${MAX_NAV_TABS} pages maximum dans la barre de navigation.`);
+        setErrorMsg(`Tu peux afficher ${MAX_NAV_TABS} pages maximum dans la barre de navigation.`);
         return;
       }
       await setTabs([...enabledTabs, key]);
@@ -85,9 +87,10 @@ export function ProfileSettings({
 
   const handleSave = async () => {
     if (!displayName.trim()) {
-      Alert.alert("Nom requis", "Le nom d'affichage ne peut pas être vide.");
+      setErrorMsg("Le nom d'affichage ne peut pas être vide.");
       return;
     }
+    setErrorMsg("");
     setSaving(true);
     const updates: Record<string, unknown> = { display_name: displayName.trim(), color: selectedColor };
     if (birthday.trim()) updates.birthday = birthday.trim();
@@ -97,7 +100,7 @@ export function ProfileSettings({
       .update(updates)
       .eq("id", profile.id);
     if (error) {
-      Alert.alert("Erreur", error.message);
+      setErrorMsg(error.message);
     } else {
       onProfileUpdated();
     }
@@ -106,125 +109,103 @@ export function ProfileSettings({
 
   const handleLeaveHousehold = () => {
     void haptic.heavy();
-    Alert.alert(
-      "Quitter la coloc ?",
-      "Tu devras rejoindre une coloc avec un code d'invitation pour utiliser l'app.",
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Quitter",
-          style: "destructive",
-          onPress: async () => {
-            await supabase
-              .from("profiles")
-              .update({ household_id: null })
-              .eq("id", profile.id);
-            onProfileUpdated();
-            router.replace("/");
-          },
-        },
-      ],
-    );
+    setConfirm({
+      title: "Quitter la coloc ?",
+      message: "Tu devras rejoindre une coloc avec un code d'invitation pour utiliser l'app.",
+      label: "Quitter",
+      destructive: true,
+      onConfirm: async () => {
+        await supabase.from("profiles").update({ household_id: null }).eq("id", profile.id);
+        onProfileUpdated();
+        router.replace("/");
+      },
+    });
   };
 
   const handleRename = async () => {
     if (!houseName.trim()) return;
     const { error } = await onRenameHousehold(houseName);
-    if (error) Alert.alert("Erreur", error.message);
+    if (error) setErrorMsg(error.message);
     setEditingHouseName(false);
   };
 
   const handleRegenerateCode = () => {
-    Alert.alert(
-      "Régénérer le code ?",
-      "L'ancien code ne fonctionnera plus. Les membres actuels ne sont pas affectés.",
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Régénérer",
-          onPress: async () => {
-            const { error } = await onRegenerateCode();
-            if (error) Alert.alert("Erreur", error.message);
-          },
-        },
-      ],
-    );
+    setConfirm({
+      title: "Régénérer le code ?",
+      message: "L'ancien code ne fonctionnera plus. Les membres actuels ne sont pas affectés.",
+      label: "Régénérer",
+      onConfirm: async () => {
+        const { error } = await onRegenerateCode();
+        if (error) setErrorMsg(error.message);
+      },
+    });
   };
 
   const handleKick = (member: Profile) => {
-    Alert.alert(
-      "Exclure ce membre ?",
-      `${member.display_name} ne pourra plus accéder à la coloc. Son historique sera conservé.`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Exclure",
-          style: "destructive",
-          onPress: async () => {
-            const { error } = await onKickMember(member.id);
-            if (error) Alert.alert("Erreur", error.message);
-          },
-        },
-      ],
-    );
+    setConfirm({
+      title: "Exclure ce membre ?",
+      message: `${member.display_name} ne pourra plus accéder à la coloc. Son historique sera conservé.`,
+      label: "Exclure",
+      destructive: true,
+      onConfirm: async () => {
+        const { error } = await onKickMember(member.id);
+        if (error) setErrorMsg(error.message);
+      },
+    });
   };
 
   const handlePromote = (member: Profile) => {
-    Alert.alert(
-      "Promouvoir admin ?",
-      `${member.display_name} pourra gérer la coloc (renommer, exclure, etc.)`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Promouvoir",
-          onPress: async () => {
-            const { error } = await onPromoteMember(member.id);
-            if (error) Alert.alert("Erreur", error.message);
-          },
-        },
-      ],
-    );
+    setConfirm({
+      title: "Promouvoir admin ?",
+      message: `${member.display_name} pourra gérer la coloc (renommer, exclure, etc.)`,
+      label: "Promouvoir",
+      onConfirm: async () => {
+        const { error } = await onPromoteMember(member.id);
+        if (error) setErrorMsg(error.message);
+      },
+    });
   };
 
   const handleDemote = (member: Profile) => {
-    Alert.alert(
-      "Rétrograder ?",
-      `${member.display_name} ne pourra plus gérer la coloc.`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Rétrograder",
-          style: "destructive",
-          onPress: async () => {
-            const { error } = await onDemoteMember(member.id);
-            if (error) Alert.alert("Erreur", error.message);
-          },
-        },
-      ],
-    );
+    setConfirm({
+      title: "Rétrograder ?",
+      message: `${member.display_name} ne pourra plus gérer la coloc.`,
+      label: "Rétrograder",
+      destructive: true,
+      onConfirm: async () => {
+        const { error } = await onDemoteMember(member.id);
+        if (error) setErrorMsg(error.message);
+      },
+    });
   };
 
   const handleDeleteHousehold = () => {
-    Alert.alert(
-      "Supprimer la coloc ?",
-      "Tous les membres seront déconnectés. Cette action est irréversible.",
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: async () => {
-            const { error } = await onDeleteHousehold();
-            if (error) Alert.alert("Erreur", error.message);
-            else router.replace("/");
-          },
-        },
-      ],
-    );
+    setConfirm({
+      title: "Supprimer la coloc ?",
+      message: "Tous les membres seront déconnectés. Cette action est irréversible.",
+      label: "Supprimer",
+      destructive: true,
+      onConfirm: async () => {
+        const { error } = await onDeleteHousehold();
+        if (error) setErrorMsg(error.message);
+        else router.replace("/");
+      },
+    });
   };
 
   return (
+    <>
     <ScrollView contentContainerStyle={styles.container}>
+      {!!errorMsg && (
+        <Pressable
+          style={[styles.errorBanner, { backgroundColor: t.dangerLight, borderColor: t.danger }]}
+          onPress={() => setErrorMsg("")}
+        >
+          <Ionicons name="alert-circle" size={18} color={t.danger} />
+          <Text style={[styles.errorText, { color: t.danger }]}>{errorMsg}</Text>
+          <Ionicons name="close" size={16} color={t.danger} />
+        </Pressable>
+      )}
       <Text style={[styles.sectionTitle, { color: t.text }]}>Profil</Text>
 
       <View style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
@@ -532,6 +513,27 @@ export function ProfileSettings({
         <Text style={[styles.logoutText, { color: t.danger }]}>Se déconnecter</Text>
       </Pressable>
     </ScrollView>
+
+    <Modal visible={!!confirm} transparent animationType="fade">
+      <Pressable style={styles.modalOverlay} onPress={() => setConfirm(null)}>
+        <Pressable style={[styles.modalContent, { backgroundColor: t.card }]} onPress={() => {}}>
+          <Text style={[styles.modalTitle, { color: t.text }]}>{confirm?.title}</Text>
+          <Text style={[styles.modalMessage, { color: t.textSecondary }]}>{confirm?.message}</Text>
+          <View style={styles.modalBtnRow}>
+            <Pressable style={[styles.modalCancelBtn, { backgroundColor: t.separator }]} onPress={() => setConfirm(null)}>
+              <Text style={[styles.modalCancelText, { color: t.textSecondary }]}>Annuler</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.modalConfirmBtn, { backgroundColor: confirm?.destructive ? t.danger : t.accent }]}
+              onPress={() => { confirm?.onConfirm(); setConfirm(null); }}
+            >
+              <Text style={styles.modalConfirmText}>{confirm?.label}</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+    </>
   );
 }
 
@@ -703,4 +705,27 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   logoutText: { color: "#EF4444", fontWeight: "600", fontSize: 15 },
+  errorBanner: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    borderWidth: 1, borderRadius: 10, padding: 12,
+  },
+  errorText: { flex: 1, fontSize: 14, fontWeight: "500" },
+  modalOverlay: {
+    flex: 1, backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center", alignItems: "center", padding: 24,
+  },
+  modalContent: {
+    borderRadius: 16, padding: 20, width: "100%", maxWidth: 340,
+  },
+  modalTitle: { fontSize: 17, fontWeight: "700", marginBottom: 8 },
+  modalMessage: { fontSize: 14, lineHeight: 20, marginBottom: 20 },
+  modalBtnRow: { flexDirection: "row", gap: 10 },
+  modalCancelBtn: {
+    flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: "center",
+  },
+  modalCancelText: { fontWeight: "600", fontSize: 15 },
+  modalConfirmBtn: {
+    flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: "center",
+  },
+  modalConfirmText: { fontWeight: "600", color: "#FFFFFF", fontSize: 15 },
 });

@@ -36,14 +36,13 @@ export default function JoinScreen() {
       router.replace("/(auth)/login");
       return;
     }
-    if (profile?.household_id) {
+    if (profile?.household_id && !autoJoining) {
       router.replace("/(app)/home");
       return;
     }
-    // Auto-join if there's a pending invite code from a shared link
-    if (!code && !autoJoining) {
+    if (!autoJoining) {
       void (async () => {
-        const pending = await getPendingInviteCode();
+        const pending = code || (await getPendingInviteCode());
         if (pending) {
           setInviteCode(pending);
           setAutoJoining(true);
@@ -51,9 +50,7 @@ export default function JoinScreen() {
           const result = await joinHousehold(pending);
           if (!result.error) {
             await refreshProfile();
-            if (result.hasPending) {
-              router.replace("/(auth)/claim");
-            }
+            router.replace("/(auth)/claim");
             return;
           }
           setErrorMsg(String(result.error.message ?? result.error));
@@ -93,10 +90,8 @@ export default function JoinScreen() {
       setErrorMsg(String(result.error.message ?? result.error));
     } else {
       await refreshProfile();
-      if (result.hasPending) {
-        router.replace("/(auth)/claim");
-        return;
-      }
+      router.replace("/(auth)/claim");
+      return;
     }
     setLoading(false);
   };

@@ -1,4 +1,4 @@
-name: EAS Build Android APK
+name: EAS Build & GitHub Release
 
 on:
   push:
@@ -22,4 +22,29 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - run: eas build --platform android --profile preview --non-interactive
+      - name: Build APK
+        run: eas build --platform android --profile preview --non-interactive --json > build-result.json
+
+      - name: Download APK from EAS
+        run: |
+          APK_URL=$(node -e "const r=require('./build-result.json'); console.log(Array.isArray(r)?r[0].artifacts.buildUrl:r.artifacts.buildUrl)")
+          curl -L -o tipi.apk "$APK_URL"
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(node -e "console.log(require('./app.json').expo.version)")
+          SHORT_SHA=$(echo "$GITHUB_SHA" | cut -c1-7)
+          echo "tag=v${VERSION}-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "name=Tipi v${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.name }}
+          files: tipi.apk
+          generate_release_notes: true
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

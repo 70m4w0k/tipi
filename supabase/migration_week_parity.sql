@@ -2,3 +2,6 @@
 -- Run this in the Supabase SQL Editor
 
 ALTER TABLE chore_reminders ADD COLUMN IF NOT EXISTS week_parity smallint CHECK (week_parity IN (0, 1));
+
+-- Force PostgREST to reload its schema cache
+NOTIFY pgrst, 'reload schema';

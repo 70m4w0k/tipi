@@ -16,11 +16,27 @@ export function recurrenceMatchesDay(recurrence: string, dayOfWeek: number): boo
   return dayNames.some((name) => lower.includes(name));
 }
 
-export function recurrenceMatchesToday(recurrence: string, weekParity?: number | null): boolean {
+export function recurrenceMatchesToday(recurrence: string, weekParity?: number | null, startDate?: string | null): boolean {
   if (!recurrenceMatchesDay(recurrence, new Date().getDay())) return false;
+  if (startDate) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(startDate + "T00:00:00");
+    if (today < start) return false;
+  }
   if (weekParity == null) return true;
   const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 1);
-  const week = Math.ceil(((now.getTime() - start.getTime()) / 86400000 + start.getDay() + 1) / 7);
+  const yearStart = new Date(now.getFullYear(), 0, 1);
+  const week = Math.ceil(((now.getTime() - yearStart.getTime()) / 86400000 + yearStart.getDay() + 1) / 7);
   return week % 2 === weekParity;
+}
+
+const DAY_INDEX_TO_FRENCH: Record<number, string> = {
+  0: "Dimanche", 1: "Lundi", 2: "Mardi", 3: "Mercredi",
+  4: "Jeudi", 5: "Vendredi", 6: "Samedi",
+};
+
+export function dayNameFromDate(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  return DAY_INDEX_TO_FRENCH[d.getDay()] ?? "";
 }

@@ -212,14 +212,28 @@ export function useChores(householdId: string | null | undefined) {
   );
 
   const addReminder = useCallback(
-    async (title: string, recurrence: string, weekParity?: number | null) => {
+    async (title: string, recurrence: string, weekParity?: number | null, startDate?: string | null) => {
       if (!householdId) return;
-      await supabase
-        .from("chore_reminders")
-        .insert({ household_id: householdId, title, recurrence, week_parity: weekParity ?? null });
+      const row: Record<string, unknown> = { household_id: householdId, title, recurrence };
+      if (weekParity != null) row.week_parity = weekParity;
+      if (startDate != null) row.start_date = startDate;
+      const { error } = await supabase.from("chore_reminders").insert(row);
+      if (error?.message?.includes("schema cache")) {
+        const fallback: Record<string, unknown> = { household_id: householdId, title, recurrence };
+        if (startDate != null && !error.message.includes("start_date")) fallback.start_date = startDate;
+        await supabase.from("chore_reminders").insert(fallback);
+      }
       void fetchAll();
     },
     [householdId, fetchAll]
+  );
+
+  const deleteReminder = useCallback(
+    async (id: string) => {
+      await supabase.from("chore_reminders").delete().eq("id", id);
+      void fetchAll();
+    },
+    [fetchAll]
   );
 
   const seedDefaultTasks = useCallback(
@@ -255,6 +269,7 @@ export function useChores(householdId: string | null | undefined) {
     toggleReminderDone,
     updateReminder,
     addReminder,
+    deleteReminder,
     toggleTaskVisibility,
     fetchAll,
     seedDefaultTasks,

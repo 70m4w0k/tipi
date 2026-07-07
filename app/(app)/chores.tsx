@@ -6,13 +6,13 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
-  Alert,
   Modal,
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { Calendar, DateData, LocaleConfig } from "react-native-calendars";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useHousehold } from "../../lib/hooks/useHousehold";
 import { useChores } from "../../lib/hooks/useChores";
@@ -22,8 +22,22 @@ import ChoreReminderCard from "../../components/ChoreReminder";
 import { EmptyState } from "../../components/EmptyState";
 import { haptic } from "../../lib/haptics";
 import { getContextualSuggestions } from "../../lib/chores-logic";
+import { dayNameFromDate } from "../../lib/recurrence";
 
-const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+LocaleConfig.locales["fr"] = LocaleConfig.locales["fr"] ?? {
+  monthNames: [
+    "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+    "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+  ],
+  monthNamesShort: [
+    "Janv.", "Févr.", "Mars", "Avr.", "Mai", "Juin",
+    "Juil.", "Août", "Sept.", "Oct.", "Nov.", "Déc.",
+  ],
+  dayNames: ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"],
+  dayNamesShort: ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"],
+  today: "Aujourd'hui",
+};
+LocaleConfig.defaultLocale = "fr";
 
 export default function ChoresScreen() {
   const { profile } = useAuth();
@@ -31,7 +45,7 @@ export default function ChoresScreen() {
   const {
     chores, tasks, reminders, loading,
     setCellIntensity, addTask, editTask, removeTask,
-    toggleReminderDone, updateReminder, addReminder, toggleTaskVisibility,
+    toggleReminderDone, updateReminder, addReminder, deleteReminder, toggleTaskVisibility,
     fetchAll,
   } = useChores(profile?.household_id);
   const t = useTheme();
@@ -42,11 +56,13 @@ export default function ChoresScreen() {
     setRefreshing(false);
   }, [fetchAll]);
 
+  const [showHidden, setShowHidden] = useState(false);
+
   // Add task modal
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskName, setNewTaskName] = useState("");
   const [isRecurrent, setIsRecurrent] = useState(false);
-  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [startDate, setStartDate] = useState<string | null>(null);
   const [isBiWeekly, setIsBiWeekly] = useState(false);
   const [showInGrid, setShowInGrid] = useState(true);
 
@@ -63,29 +79,27 @@ export default function ChoresScreen() {
     );
   }
 
+  const resetModal = () => {
+    setShowAddTask(false);
+    setNewTaskName("");
+    setIsRecurrent(false);
+    setStartDate(null);
+    setIsBiWeekly(false);
+    setShowInGrid(true);
+  };
+
   const handleAddTask = async () => {
     if (!newTaskName.trim()) return;
     void haptic.medium();
     await addTask(newTaskName.trim(), showInGrid);
-    if (isRecurrent && selectedDays.length > 0) {
-      const recurrence = selectedDays.join(", ");
+    if (isRecurrent && startDate) {
+      const dayName = dayNameFromDate(startDate);
       const now = new Date();
-      const start = new Date(now.getFullYear(), 0, 1);
-      const currentWeek = Math.ceil(((now.getTime() - start.getTime()) / 86400000 + start.getDay() + 1) / 7);
-      await addReminder(newTaskName.trim(), recurrence, isBiWeekly ? currentWeek % 2 : null);
+      const yearStart = new Date(now.getFullYear(), 0, 1);
+      const currentWeek = Math.ceil(((now.getTime() - yearStart.getTime()) / 86400000 + yearStart.getDay() + 1) / 7);
+      await addReminder(newTaskName.trim(), dayName, isBiWeekly ? currentWeek % 2 : null, startDate);
     }
-    setNewTaskName("");
-    setIsRecurrent(false);
-    setSelectedDays([]);
-    setIsBiWeekly(false);
-    setShowInGrid(true);
-    setShowAddTask(false);
-  };
-
-  const toggleDay = (day: string) => {
-    setSelectedDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
-    );
+    resetModal();
   };
 
   const handleCellPress = (taskName: string, week: number, year: number) => {
@@ -108,22 +122,13 @@ export default function ChoresScreen() {
   const handleDeleteTask = () => {
     if (!actionTask) return;
     void haptic.warning();
-    Alert.alert(
-      "Supprimer",
-      `Supprimer "${actionTask.name}" et ses contributions ?`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: () => {
-            removeTask(actionTask.id, actionTask.name);
-            setActionTask(null);
-          },
-        },
-      ]
-    );
+    const matchingReminder = reminders.find((r) => r.title === actionTask.name);
+    if (matchingReminder) void deleteReminder(matchingReminder.id);
+    void removeTask(actionTask.id, actionTask.name);
+    setActionTask(null);
   };
+
+  const todayStr = new Date().toISOString().slice(0, 10);
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: t.background }]} edges={["top"]}>
@@ -171,9 +176,22 @@ export default function ChoresScreen() {
           currentUserId={profile.id}
           members={members}
           filterMode={"all"}
+          showHidden={showHidden}
           onCellPress={handleCellPress}
           onTaskPress={handleTaskPress}
         />
+
+        {tasks.some((tk) => !tk.show_in_grid) && (
+          <Pressable
+            style={[styles.toggleHiddenBtn, { backgroundColor: t.separator, borderColor: t.cardBorder }]}
+            onPress={() => setShowHidden(!showHidden)}
+          >
+            <Ionicons name={showHidden ? "eye-off-outline" : "eye-outline"} size={16} color={t.textSecondary} />
+            <Text style={[styles.toggleHiddenText, { color: t.textSecondary }]}>
+              {showHidden ? "Masquer les tâches cachées" : `Afficher ${tasks.filter((tk) => !tk.show_in_grid).length} tâche(s) cachée(s)`}
+            </Text>
+          </Pressable>
+        )}
 
         <View style={{ height: 100 }} />
           </>
@@ -182,83 +200,102 @@ export default function ChoresScreen() {
 
       {/* Add task modal */}
       <Modal visible={showAddTask} transparent animationType="slide">
-        <Pressable style={styles.modalOverlay} onPress={() => { setShowAddTask(false); setNewTaskName(""); setIsRecurrent(false); setSelectedDays([]); setIsBiWeekly(false); setShowInGrid(true); }}>
+        <Pressable style={styles.modalOverlay} onPress={resetModal}>
           <Pressable style={[styles.modalContent, { backgroundColor: t.card }]} onPress={() => {}}>
-            <Text style={[styles.modalTitle, { color: t.text }]}>Nouvelle tâche</Text>
-            <TextInput
-              style={[styles.modalInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
-              placeholder="Nom de la tâche"
-              placeholderTextColor={t.textMuted}
-              value={newTaskName}
-              onChangeText={setNewTaskName}
-              autoFocus
-            />
-
-            <Pressable
-              style={styles.checkRow}
-              onPress={() => setShowInGrid(!showInGrid)}
-            >
-              <Ionicons
-                name={showInGrid ? "checkbox" : "square-outline"}
-                size={22}
-                color={showInGrid ? t.accent : t.textMuted}
+            <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
+              <Text style={[styles.modalTitle, { color: t.text }]}>Nouvelle tâche</Text>
+              <TextInput
+                style={[styles.modalInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
+                placeholder="Nom de la tâche"
+                placeholderTextColor={t.textMuted}
+                value={newTaskName}
+                onChangeText={setNewTaskName}
+                autoFocus
               />
-              <Text style={[styles.checkLabel, { color: t.text }]}>Afficher dans le tableau</Text>
-            </Pressable>
 
-            <Pressable
-              style={styles.checkRow}
-              onPress={() => setIsRecurrent(!isRecurrent)}
-            >
-              <Ionicons
-                name={isRecurrent ? "checkbox" : "square-outline"}
-                size={22}
-                color={isRecurrent ? t.accent : t.textMuted}
-              />
-              <Text style={[styles.checkLabel, { color: t.text }]}>Tâche récurrente (rappel)</Text>
-            </Pressable>
-
-            {isRecurrent && (
-              <>
-                <View style={styles.daysRow}>
-                  {DAYS.map((day) => (
-                    <Pressable
-                      key={day}
-                      style={[styles.dayChip, { backgroundColor: t.separator, borderColor: t.cardBorder }, selectedDays.includes(day) && { backgroundColor: t.accent, borderColor: t.accent }]}
-                      onPress={() => toggleDay(day)}
-                    >
-                      <Text style={[styles.dayChipText, { color: t.textSecondary }, selectedDays.includes(day) && styles.dayChipTextActive]}>
-                        {day.slice(0, 3)}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <Pressable
-                  style={styles.checkRow}
-                  onPress={() => setIsBiWeekly(!isBiWeekly)}
-                >
-                  <Ionicons
-                    name={isBiWeekly ? "checkbox" : "square-outline"}
-                    size={22}
-                    color={isBiWeekly ? t.accent : t.textMuted}
-                  />
-                  <Text style={[styles.checkLabel, { color: t.text }]}>Une semaine sur deux</Text>
-                </Pressable>
-              </>
-            )}
-
-            <View style={styles.modalBtnRow}>
-              <Pressable style={[styles.modalCancelBtn, { backgroundColor: t.separator, borderColor: t.cardBorder }]} onPress={() => { setShowAddTask(false); setNewTaskName(""); setIsRecurrent(false); setSelectedDays([]); setIsBiWeekly(false); setShowInGrid(true); }}>
-                <Text style={[styles.modalCancelText, { color: t.textSecondary }]}>Annuler</Text>
-              </Pressable>
               <Pressable
-                style={[styles.modalSubmitBtn, { backgroundColor: t.accent }, !newTaskName.trim() && { opacity: 0.5 }]}
-                onPress={() => void handleAddTask()}
-                disabled={!newTaskName.trim()}
+                style={styles.checkRow}
+                onPress={() => setShowInGrid(!showInGrid)}
               >
-                <Text style={styles.modalSubmitText}>Ajouter</Text>
+                <Ionicons
+                  name={showInGrid ? "checkbox" : "square-outline"}
+                  size={22}
+                  color={showInGrid ? t.accent : t.textMuted}
+                />
+                <Text style={[styles.checkLabel, { color: t.text }]}>Afficher dans le tableau</Text>
               </Pressable>
-            </View>
+
+              <Pressable
+                style={styles.checkRow}
+                onPress={() => setIsRecurrent(!isRecurrent)}
+              >
+                <Ionicons
+                  name={isRecurrent ? "checkbox" : "square-outline"}
+                  size={22}
+                  color={isRecurrent ? t.accent : t.textMuted}
+                />
+                <Text style={[styles.checkLabel, { color: t.text }]}>Tâche récurrente (rappel)</Text>
+              </Pressable>
+
+              {isRecurrent && (
+                <>
+                  <Text style={[styles.calendarLabel, { color: t.textSecondary }]}>
+                    Choisir la date de début :
+                  </Text>
+                  <View style={[styles.calendarWrap, { borderColor: t.cardBorder }]}>
+                    <Calendar
+                      minDate={todayStr}
+                      onDayPress={(day: DateData) => setStartDate(day.dateString)}
+                      markedDates={startDate ? { [startDate]: { selected: true, selectedColor: t.accent } } : {}}
+                      theme={{
+                        backgroundColor: t.card,
+                        calendarBackground: t.card,
+                        textSectionTitleColor: t.textSecondary,
+                        selectedDayBackgroundColor: t.accent,
+                        selectedDayTextColor: "#FFFFFF",
+                        todayTextColor: t.accent,
+                        dayTextColor: t.text,
+                        textDisabledColor: t.textMuted,
+                        monthTextColor: t.text,
+                        arrowColor: t.accent,
+                      }}
+                    />
+                  </View>
+                  {startDate && (
+                    <Text style={[styles.selectedDateInfo, { color: t.accent }]}>
+                      {isBiWeekly ? "Un " : "Chaque "}
+                      {dayNameFromDate(startDate).toLowerCase()}
+                      {isBiWeekly ? " sur deux" : ""} à partir du{" "}
+                      {new Date(startDate + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+                    </Text>
+                  )}
+                  <Pressable
+                    style={styles.checkRow}
+                    onPress={() => setIsBiWeekly(!isBiWeekly)}
+                  >
+                    <Ionicons
+                      name={isBiWeekly ? "checkbox" : "square-outline"}
+                      size={22}
+                      color={isBiWeekly ? t.accent : t.textMuted}
+                    />
+                    <Text style={[styles.checkLabel, { color: t.text }]}>Une semaine sur deux</Text>
+                  </Pressable>
+                </>
+              )}
+
+              <View style={styles.modalBtnRow}>
+                <Pressable style={[styles.modalCancelBtn, { backgroundColor: t.separator, borderColor: t.cardBorder }]} onPress={resetModal}>
+                  <Text style={[styles.modalCancelText, { color: t.textSecondary }]}>Annuler</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.modalSubmitBtn, { backgroundColor: t.accent }, (!newTaskName.trim() || (isRecurrent && !startDate)) && { opacity: 0.5 }]}
+                  onPress={() => void handleAddTask()}
+                  disabled={!newTaskName.trim() || (isRecurrent && !startDate)}
+                >
+                  <Text style={styles.modalSubmitText}>Ajouter</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>
@@ -377,6 +414,12 @@ const styles = StyleSheet.create({
   content: { padding: 16 },
   centered: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 },
   emptyText: { fontSize: 15, textAlign: "center" },
+  toggleHiddenBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 6, marginTop: 12, paddingVertical: 10, borderRadius: 8,
+    borderWidth: 1,
+  },
+  toggleHiddenText: { fontSize: 13, fontWeight: "500" },
 
   // Modals
   modalOverlay: {
@@ -384,48 +427,41 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#FFFFFF", borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: 20, paddingBottom: 32,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: 20, paddingBottom: 32, maxHeight: "85%",
   },
-  modalTitle: { fontSize: 17, fontWeight: "700", color: "#111827", marginBottom: 16 },
+  modalTitle: { fontSize: 17, fontWeight: "700", marginBottom: 16 },
   modalInput: {
-    borderWidth: 1, borderColor: "#D1D5DB", borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#111827",
+    borderWidth: 1, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15,
     marginBottom: 12,
   },
   checkRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
-  checkLabel: { fontSize: 14, color: "#374151" },
-  daysRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 16 },
-  dayChip: {
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
-    backgroundColor: "#F3F4F6", borderWidth: 1, borderColor: "#E5E7EB",
-  },
-  dayChipActive: { backgroundColor: "#1D4ED8", borderColor: "#1D4ED8" },
-  dayChipText: { fontSize: 13, fontWeight: "500", color: "#374151" },
-  dayChipTextActive: { color: "#FFFFFF" },
+  checkLabel: { fontSize: 14 },
+  calendarLabel: { fontSize: 13, fontWeight: "600", marginBottom: 8 },
+  calendarWrap: { borderWidth: 1, borderRadius: 10, overflow: "hidden", marginBottom: 10 },
+  selectedDateInfo: { fontSize: 13, fontWeight: "600", marginBottom: 12 },
   modalBtnRow: { flexDirection: "row", gap: 10, marginTop: 4 },
   modalCancelBtn: {
     flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: "center",
-    backgroundColor: "#F3F4F6", borderWidth: 1, borderColor: "#E5E7EB",
+    borderWidth: 1,
   },
-  modalCancelText: { fontWeight: "600", color: "#6B7280", fontSize: 15 },
+  modalCancelText: { fontWeight: "600", fontSize: 15 },
   modalSubmitBtn: {
     flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: "center",
-    backgroundColor: "#1D4ED8",
   },
   modalSubmitText: { fontWeight: "600", color: "#FFFFFF", fontSize: 15 },
 
   actionList: { gap: 4 },
   actionItem: {
     flexDirection: "row", alignItems: "center", gap: 12,
-    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
+    paddingVertical: 14, borderBottomWidth: 1,
   },
-  actionText: { fontSize: 15, fontWeight: "500", color: "#1D4ED8" },
+  actionText: { fontSize: 15, fontWeight: "500" },
   loadingOverlay: {
     position: "absolute",
     top: 70,
     alignSelf: "center",
-    backgroundColor: "rgba(255,255,255,0.9)",
     borderRadius: 20,
     padding: 10,
     elevation: 4,

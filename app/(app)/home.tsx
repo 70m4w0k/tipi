@@ -48,7 +48,10 @@ export default function HomeScreen() {
   }, [fetchChores, fetchRecipes, fetchShopping]);
 
   const todayReminders = useMemo(
-    () => reminders.filter((r) => recurrenceMatchesToday(r.recurrence, r.week_parity)),
+    () => reminders.filter((r) => {
+      const today = new Date().toISOString().slice(0, 10);
+      return recurrenceMatchesToday(r.recurrence, r.week_parity, r.start_date) || r.last_done_date === today;
+    }),
     [reminders]
   );
 

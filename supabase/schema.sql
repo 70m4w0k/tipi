@@ -86,6 +86,7 @@ CREATE TABLE chore_reminders (
   title text NOT NULL,
   recurrence text NOT NULL,
   week_parity smallint CHECK (week_parity IN (0, 1)),
+  start_date date,
   last_done_date date
 );
 

@@ -18,13 +18,17 @@ export default function ChoreReminderCard({ reminder, onToggleDone }: Props) {
   const t = useTheme();
   const today = new Date().toISOString().slice(0, 10);
   const isDoneToday = reminder.last_done_date === today;
-  const matchesToday = recurrenceMatchesToday(reminder.recurrence, reminder.week_parity);
+  const matchesToday = recurrenceMatchesToday(reminder.recurrence, reminder.week_parity, reminder.start_date);
 
   if (!matchesToday && !isDoneToday) return null;
 
   return (
     <Pressable
-      style={[styles.card, { backgroundColor: t.accentLight, borderColor: t.accent }, isDoneToday && { backgroundColor: t.separator, borderColor: t.cardBorder }]}
+      style={[
+        styles.card,
+        { backgroundColor: t.accentLight, borderColor: t.accent },
+        isDoneToday && { backgroundColor: t.successLight, borderColor: t.success },
+      ]}
       onPress={() => { void haptic.success(); onToggleDone(reminder.id); }}
     >
       <View style={styles.row}>
@@ -34,11 +38,16 @@ export default function ChoreReminderCard({ reminder, onToggleDone }: Props) {
           color={isDoneToday ? t.success : t.accent}
         />
         <View style={styles.info}>
-          <Text style={[styles.title, { color: t.accent }, isDoneToday && { color: t.textMuted, textDecorationLine: "line-through" }]}>
+          <Text style={[
+            styles.title,
+            { color: t.accent },
+            isDoneToday && { color: t.success, textDecorationLine: "line-through" },
+          ]}>
             {reminder.title}
           </Text>
-          <Text style={[styles.recurrence, { color: t.textSecondary }]}>
-            {reminder.recurrence}{reminder.week_parity != null ? " (1 sem. / 2)" : ""}
+          <Text style={[styles.recurrence, { color: t.textMuted }]}>
+            {reminder.recurrence}
+            {reminder.week_parity != null ? " (1 sem. / 2)" : ""}
           </Text>
         </View>
         {isDoneToday && (
@@ -51,16 +60,10 @@ export default function ChoreReminderCard({ reminder, onToggleDone }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#EFF6FF",
     borderWidth: 1,
-    borderColor: "#BFDBFE",
     borderRadius: 10,
     padding: 12,
     marginBottom: 10,
-  },
-  cardDone: {
-    backgroundColor: "#F3F4F6",
-    borderColor: "#E5E7EB",
   },
   row: {
     flexDirection: "row",
@@ -68,8 +71,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   info: { flex: 1 },
-  title: { fontSize: 14, fontWeight: "600", color: "#1E40AF" },
-  titleDone: { color: "#9CA3AF", textDecorationLine: "line-through" },
-  recurrence: { fontSize: 11, color: "#6B7280", marginTop: 1 },
-  doneLabel: { fontSize: 12, fontWeight: "600", color: "#10B981" },
+  title: { fontSize: 14, fontWeight: "600" },
+  recurrence: { fontSize: 11, marginTop: 1 },
+  doneLabel: { fontSize: 12, fontWeight: "600" },
 });
