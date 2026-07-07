@@ -225,7 +225,8 @@ CREATE POLICY "admin_update_member" ON profiles FOR UPDATE
     AND EXISTS (
       SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin' AND p.household_id = my_household_id()
     )
-  );
+  )
+  WITH CHECK (true);
 CREATE POLICY "insert_own" ON profiles FOR INSERT WITH CHECK (id = auth.uid());
 
 -- messages
