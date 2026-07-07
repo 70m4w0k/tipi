@@ -22,9 +22,14 @@ partage, fichiers, haptique).
 | `profile.spec.ts` **(P1)** | Changer le thème · configurer la barre de nav · se déconnecter |
 
 **Infra tests** : `e2e/helpers.ts` (login + neutralisation onboarding), `e2e/db.ts` (nettoyage
-Supabase en teardown — nécessaire car certaines suppressions passent par `Alert`, no-op web).
-`testID` ajoutés sur les éléments sans texte (FABs, bouton profil, cellules de grille, lignes de
-config nav, boutons du modal recette).
+Supabase en teardown, robuste et indépendant de l'UI). `testID` ajoutés sur les éléments sans
+texte (FABs, bouton profil, cellules de grille, lignes de config nav, boutons du modal recette,
+`confirm-dialog-confirm` pour les confirmations).
+
+**`Alert.alert` supprimé** (2026-07-07) : toutes les confirmations passent désormais par le
+composant `ConfirmDialog` et les erreurs par `ErrorBanner` (inline). Les suppressions
+(courses/dépenses/documents), auparavant 🔒 car `Alert` est un no-op web, sont donc maintenant
+testables.
 
 ### Bug trouvé par les tests P1 (corrigé)
 
@@ -32,8 +37,6 @@ config nav, boutons du modal recette).
 (présente dans `schema.sql` mais migration jamais appliquée). `addRecipe` envoyait `icon: null` →
 PostgREST rejetait l'INSERT → la recette n'était jamais créée, **sans message d'erreur**.
 ✅ Corrigé le 2026-07-07 via `supabase/migration_recipes_icon.sql`. `recipes.spec.ts` passe.
-(Amélioration secondaire à prévoir : faire remonter l'erreur d'INSERT dans l'UI au lieu d'un échec
-silencieux — c'est justement ce que le remplacement de `Alert.alert` par des modaux permettra.)
 
 ---
 
@@ -95,8 +98,8 @@ silencieux — c'est justement ce que le remplacement de `Alert.alert` par des m
 | Aperçu de catégorie auto pendant la saisie | ⬜ |
 | Ajouter depuis une suggestion (chip) | ⬜ |
 | Cocher / décocher un article | ⬜ |
-| Supprimer un article (appui long → Alert) | 🔒 |
-| Vider les articles cochés (Alert) | 🔒 |
+| Supprimer un article (appui long → ConfirmDialog) | ⬜ |
+| Vider les articles cochés (ConfirmDialog) | ⬜ |
 | "J'y vais !" → poste un message dans le chat + mode courses | ⬜ |
 | "Courses terminées" | ⬜ |
 | État vide affiché | ⬜ |
@@ -127,7 +130,7 @@ silencieux — c'est justement ce que le remplacement de `Alert.alert` par des m
 | Onglets internes Liste / Bilans | ⬜ |
 | FAB → formulaire d'ajout | ⬜ |
 | Ajouter une dépense (montant, participants…) | ⬜ |
-| Supprimer une dépense (Alert) | 🔒 |
+| Supprimer une dépense (ConfirmDialog) | ⬜ |
 | Résumé "Total" + "Mon solde" corrects | ⬜ |
 | Vue Bilans (qui doit quoi) | ⬜ |
 | État vide + CTA | ⬜ |
@@ -203,7 +206,7 @@ silencieux — c'est justement ce que le remplacement de `Alert.alert` par des m
 |-------------|------|
 | FAB → importer un document | 🔒 |
 | Ouvrir un document (Linking) | 🔒 |
-| Supprimer un document (Alert) | 🔒 |
+| Supprimer un document (ConfirmDialog) | ⬜ |
 | État vide | ⬜ |
 
 ## 14. Profil / Paramètres — `components/ProfileSettings.tsx`
