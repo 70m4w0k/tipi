@@ -323,7 +323,7 @@ export default function RecipesListScreen() {
 
       {/* FAB */}
       {!showForm && (
-        <Pressable style={[styles.fab, { backgroundColor: t.accent }]} onPress={() => setShowForm(true)}>
+        <Pressable testID="recipes-fab" style={[styles.fab, { backgroundColor: t.accent }]} onPress={() => setShowForm(true)}>
           <Ionicons name="add" size={28} color="#FFFFFF" />
         </Pressable>
       )}

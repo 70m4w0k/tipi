@@ -98,6 +98,7 @@ export default function HomeScreen() {
             <Text style={[styles.houseName, { color: t.textSecondary }]}>{household?.name ?? ""}</Text>
           </View>
           <Pressable
+            testID="profile-button"
             style={styles.profileButton}
             onPress={() => router.push("/(app)/other" as any)}
           >

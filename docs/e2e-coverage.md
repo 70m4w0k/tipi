@@ -12,14 +12,28 @@ partage, fichiers, haptique).
 | Spec | Test |
 |------|------|
 | `auth.spec.ts` | Page login s'affiche · login valide · identifiants invalides · formulaire vide |
+| `login.spec.ts` **(P1)** | Bascule login↔inscription · inscription sans nom (erreur) · lien magique sans email (erreur) |
 | `navigation.spec.ts` | Barre d'onglets visible après login (Ménage, Courses, Recettes) |
-| `chores.spec.ts` | Onglet Ménage présent avec bon `href`/`role` |
 | `onboarding.spec.ts` | `/invite?code=` redirige vers login · `/join` redirige vers login |
-| `profile-settings.spec.ts` | Page settings se charge (assertion souple) |
+| `shopping.spec.ts` **(P1)** | Ajouter un article (Entrée) · cocher (barré) |
+| `chores.spec.ts` **(P1)** | Onglet présent · ajouter une tâche (FAB+modal) · renseigner une cellule |
+| `expenses.spec.ts` **(P1)** | Bascule Liste/Bilans · ajouter une dépense |
+| `recipes.spec.ts` **(P1)** | Créer une recette · lancer une instance · avancer les étapes — ⚠️ bloqué (voir bug ci-dessous) |
+| `profile.spec.ts` **(P1)** | Changer le thème · configurer la barre de nav · se déconnecter |
 
-**Constat** : les tests actuels vérifient l'auth et la *présence* des onglets, mais **aucune
-interaction de feature** (ajouter/supprimer/éditer/naviguer dans le contenu). C'est là que se
-cachent les régressions.
+**Infra tests** : `e2e/helpers.ts` (login + neutralisation onboarding), `e2e/db.ts` (nettoyage
+Supabase en teardown — nécessaire car certaines suppressions passent par `Alert`, no-op web).
+`testID` ajoutés sur les éléments sans texte (FABs, bouton profil, cellules de grille, lignes de
+config nav, boutons du modal recette).
+
+### ⚠️ Bug trouvé par les tests P1
+
+**Création de recette cassée en prod.** La table `recipes` déployée n'a pas la colonne `icon`
+(présente dans `schema.sql` mais migration jamais appliquée). `addRecipe` envoie `icon: null` →
+PostgREST rejette l'INSERT → la recette n'est jamais créée, **sans message d'erreur**. Correctif :
+exécuter `supabase/migration_recipes_icon.sql`. Le test `recipes.spec.ts` passera une fois la
+migration appliquée. (Amélioration secondaire à prévoir : faire remonter l'erreur dans l'UI au
+lieu d'un échec silencieux.)
 
 ---
 

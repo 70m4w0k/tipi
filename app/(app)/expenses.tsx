@@ -178,6 +178,7 @@ export default function ExpensesScreen() {
       {/* FAB — Ajouter une dépense */}
       {view !== "add" && (
         <Pressable
+          testID="expenses-fab"
           style={[styles.fab, { backgroundColor: t.accent }]}
           onPress={() => setView("add")}
         >

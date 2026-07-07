@@ -369,6 +369,7 @@ export default function ChoresScreen() {
 
       {/* FAB — Ajouter une tâche */}
       <Pressable
+        testID="chores-fab"
         style={[styles.fab, { backgroundColor: t.accent }]}
         onPress={() => setShowAddTask(true)}
       >

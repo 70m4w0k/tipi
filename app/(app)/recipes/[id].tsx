@@ -244,6 +244,7 @@ export default function RecipeDetailScreen() {
               En cours {activeInstances.length > 0 ? `(${activeInstances.length})` : ""}
             </Text>
             <Pressable
+              testID="recipe-launch"
               style={[styles.startBtn, { backgroundColor: t.accent }]}
               onPress={() => setShowStartModal(true)}
             >
@@ -345,6 +346,7 @@ export default function RecipeDetailScreen() {
                   <Text style={[styles.modalCancelText, { color: t.textSecondary }]}>Annuler</Text>
                 </Pressable>
                 <Pressable
+                  testID="recipe-start-submit"
                   style={[styles.modalSubmitBtn, { backgroundColor: t.accent }, !instanceLabel.trim() && { opacity: 0.5 }]}
                   onPress={() => void handleStart()} disabled={!instanceLabel.trim()}
                 >

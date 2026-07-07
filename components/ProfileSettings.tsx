@@ -480,6 +480,7 @@ export function ProfileSettings({
           return (
             <Pressable
               key={tab.key}
+              testID={`navtab-${tab.key}`}
               style={[styles.navConfigItem, { borderBottomColor: t.separator }]}
               onPress={() => void toggleNavTab(tab.key)}
             >

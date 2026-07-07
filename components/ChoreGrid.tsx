@@ -164,6 +164,7 @@ export default function ChoreGrid({
                 return (
                   <TouchableOpacity
                     key={key}
+                    testID={cur ? `chore-cell-current-${task.name}` : undefined}
                     style={[styles.cell, { borderColor: t.cardBorder, backgroundColor: t.card }, cur && { backgroundColor: t.accentLight }]}
                     onPress={() => onCellPress(task.name, w.week, w.year)}
                     activeOpacity={0.6}
