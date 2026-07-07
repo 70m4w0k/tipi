@@ -1,7 +1,9 @@
 import React, { useCallback, useState } from "react";
 import {
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -191,9 +193,10 @@ export default function RecipesListScreen() {
 
       {/* Recipe form modal */}
       <Modal visible={showForm} transparent animationType="slide">
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <Pressable style={styles.modalOverlay} onPress={resetForm}>
           <Pressable style={[styles.modalContent, { backgroundColor: t.card }]} onPress={() => {}}>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <Text style={[styles.modalTitle, { color: t.text }]}>
                 {editingRecipe ? "Modifier la recette" : "Nouvelle recette"}
               </Text>
@@ -291,6 +294,7 @@ export default function RecipesListScreen() {
             </ScrollView>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Confirm delete modal */}

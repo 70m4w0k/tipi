@@ -1,7 +1,9 @@
 import { useState } from "react";
 import {
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -55,7 +57,10 @@ export default function PollCreator({ onCreatePoll, onClose }: Props) {
 
   return (
     <Modal transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+      <KeyboardAvoidingView
+        style={styles.backdrop}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
         <View style={[styles.container, { backgroundColor: t.card }]}>
           <Text style={[styles.title, { color: t.text }]}>Nouveau sondage</Text>
 
@@ -107,7 +112,7 @@ export default function PollCreator({ onCreatePoll, onClose }: Props) {
             </Pressable>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

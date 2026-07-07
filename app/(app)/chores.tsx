@@ -8,6 +8,8 @@ import {
   ScrollView,
   Modal,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -200,9 +202,10 @@ export default function ChoresScreen() {
 
       {/* Add task modal */}
       <Modal visible={showAddTask} transparent animationType="slide">
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <Pressable style={styles.modalOverlay} onPress={resetModal}>
           <Pressable style={[styles.modalContent, { backgroundColor: t.card }]} onPress={() => {}}>
-            <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
+            <ScrollView bounces={false} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <Text style={[styles.modalTitle, { color: t.text }]}>Nouvelle tâche</Text>
               <TextInput
                 style={[styles.modalInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
@@ -298,10 +301,12 @@ export default function ChoresScreen() {
             </ScrollView>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Task action modal */}
       <Modal visible={!!actionTask} transparent animationType="fade">
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <Pressable style={styles.modalOverlay} onPress={() => setActionTask(null)}>
           <Pressable style={[styles.modalContent, { backgroundColor: t.card }]} onPress={() => {}}>
             <Text style={[styles.modalTitle, { color: t.text }]}>{actionTask?.name}</Text>
@@ -359,6 +364,7 @@ export default function ChoresScreen() {
             )}
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* FAB — Ajouter une tâche */}

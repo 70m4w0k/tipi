@@ -2,6 +2,8 @@ import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -122,7 +124,11 @@ export default function ExpensesScreen() {
         ))}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} colors={[t.accent]} />}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} colors={[t.accent]} />}>
         {/* Liste */}
         {view === "list" && (
           <View style={styles.section}>
@@ -167,6 +173,7 @@ export default function ExpensesScreen() {
           />
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* FAB — Ajouter une dépense */}
       {view !== "add" && (

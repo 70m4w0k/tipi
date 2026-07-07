@@ -1,7 +1,9 @@
 import { useState } from "react";
 import {
+  KeyboardAvoidingView,
   Linking,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -195,7 +197,11 @@ export function ProfileSettings({
 
   return (
     <>
-    <ScrollView contentContainerStyle={styles.container}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       {!!errorMsg && (
         <Pressable
           style={[styles.errorBanner, { backgroundColor: t.dangerLight, borderColor: t.danger }]}
@@ -513,6 +519,7 @@ export function ProfileSettings({
         <Text style={[styles.logoutText, { color: t.danger }]}>Se déconnecter</Text>
       </Pressable>
     </ScrollView>
+    </KeyboardAvoidingView>
 
     <Modal visible={!!confirm} transparent animationType="fade">
       <Pressable style={styles.modalOverlay} onPress={() => setConfirm(null)}>

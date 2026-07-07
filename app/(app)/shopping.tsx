@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -120,6 +122,10 @@ export default function ShoppingScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: t.background }]} edges={["top"]}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
       <View style={[styles.header, { backgroundColor: t.card, borderBottomColor: t.cardBorder }]}>
         <Text style={[styles.headerTitle, { color: t.text }]}>Liste de courses</Text>
         <View style={styles.headerActions}>
@@ -190,6 +196,7 @@ export default function ShoppingScreen() {
 
       <ScrollView
         contentContainerStyle={styles.list}
+        keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} colors={[t.accent]} />}
       >
         {items.length === 0 && !loading && (
@@ -245,6 +252,7 @@ export default function ShoppingScreen() {
           <Text style={styles.goButtonText}>Courses terminées</Text>
         </Pressable>
       )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

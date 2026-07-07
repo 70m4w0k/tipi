@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -478,6 +479,7 @@ export default function CalendarScreen() {
 
       {/* Add Event Modal */}
       <Modal visible={addMode === "event"} animationType="slide" transparent>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <Pressable style={styles.modalOverlay} onPress={() => setAddMode(null)}>
           <Pressable style={[styles.modalContent, { backgroundColor: t.card }]} onPress={(e) => e.stopPropagation()}>
             <Text style={[styles.modalTitle, { color: t.text }]}>Nouvel événement</Text>
@@ -512,13 +514,15 @@ export default function CalendarScreen() {
             </View>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Plan Recipe Modal */}
       <Modal visible={addMode === "plan_recipe"} animationType="slide" transparent>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <Pressable style={styles.modalOverlay} onPress={() => setAddMode(null)}>
           <Pressable style={[styles.modalContent, { backgroundColor: t.card }]} onPress={(e) => e.stopPropagation()}>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <Text style={[styles.modalTitle, { color: t.text }]}>Planifier une recette</Text>
 
               {!planRecipeId ? (
@@ -632,6 +636,7 @@ export default function CalendarScreen() {
             </ScrollView>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

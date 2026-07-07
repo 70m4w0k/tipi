@@ -1,7 +1,9 @@
 import React, { useCallback, useState } from "react";
 import {
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -271,9 +273,10 @@ export default function RecipeDetailScreen() {
 
       {/* Start modal */}
       <Modal visible={showStartModal} transparent animationType="slide">
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <Pressable style={styles.modalOverlay} onPress={() => { setShowStartModal(false); setInstanceLabel(""); setInstanceNotes(""); setBatchQty("1"); setStartingStep(0); setTargetDate(""); }}>
           <Pressable style={[styles.modalContent, { backgroundColor: t.card }]} onPress={() => {}}>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <Text style={[styles.modalTitle, { color: t.text }]}>Lancer une préparation</Text>
               <Text style={[styles.modalHint, { color: t.textSecondary }]}>{recipe.title}</Text>
               <TextInput
@@ -353,13 +356,15 @@ export default function RecipeDetailScreen() {
             </ScrollView>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Edit recipe modal */}
       <Modal visible={showEditModal} transparent animationType="slide">
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <Pressable style={styles.modalOverlay} onPress={() => setShowEditModal(false)}>
           <Pressable style={[styles.modalContent, { backgroundColor: t.card }]} onPress={() => {}}>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <Text style={[styles.modalTitle, { color: t.text }]}>Modifier la recette</Text>
               <TextInput
                 style={[styles.modalInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
@@ -455,6 +460,7 @@ export default function RecipeDetailScreen() {
             </ScrollView>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Confirm delete instance modal */}
