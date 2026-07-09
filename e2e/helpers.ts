@@ -1,9 +1,10 @@
 import { Page, expect } from "@playwright/test";
 
-// Compte de test réel (avec household). NB : ne PAS lire depuis process.env —
-// le .env contient des creds obsolètes que dotenv injecterait ici.
-export const TEST_EMAIL = "claude@test.com";
-export const TEST_PASSWORD = "azertyuiop";
+// Utilisateur principal des tests. Créé via signUp dans le global-setup (env-agnostique :
+// fonctionne sur Supabase local comme cloud, sans compte pré-existant).
+import { MAIN_EMAIL, FIX_PW } from "./fixtures";
+export const TEST_EMAIL = MAIN_EMAIL;
+export const TEST_PASSWORD = FIX_PW;
 
 // Expo dev server streams JS bundles — "load" never fires during dev.
 // Use "commit" and then wait for content.

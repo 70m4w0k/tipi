@@ -3,6 +3,9 @@ name: EAS Build & GitHub Release
 on:
   push:
     branches: [master]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
 
 jobs:
   # Garde-fou anti-régression : le build ne se lance que si les E2E passent.

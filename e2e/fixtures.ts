@@ -9,6 +9,7 @@ const ANON = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
 // Comptes de test dédiés (créés à la volée via signUp, auto-confirmés).
 export const FIX_PW = "azertyuiop";
+export const MAIN_EMAIL = "e2e-main@test.com";   // utilisateur principal (login par défaut), a un household
 export const SOLO_EMAIL = "e2e-solo@test.com";   // jamais de household
 export const ADMIN_EMAIL = "e2e-admin@test.com"; // admin du household fixture
 export const MEMBER_EMAIL = "e2e-member@test.com"; // membre du household fixture
@@ -25,6 +26,17 @@ async function clientFor(email: string): Promise<{ c: SupabaseClient; uid: strin
     if (r.error) throw new Error(`fixture login ${email}: ${r.error.message}`);
   }
   return { c, uid: r.data.user!.id };
+}
+
+/** Garantit que l'utilisateur principal existe et possède un household. */
+export async function ensureMainUser(): Promise<void> {
+  const { c, uid } = await clientFor(MAIN_EMAIL);
+  const { data } = await c.from("profiles").select("household_id").eq("id", uid).single();
+  if (!data?.household_id) {
+    const { data: h } = await c.from("households").insert({ name: "E2E-Main" }).select().single();
+    await c.from("profiles").update({ household_id: h!.id }).eq("id", uid);
+  }
+  await c.auth.signOut();
 }
 
 /** Remet l'utilisateur solo SANS household (et purge les colocs qu'il a créées). */

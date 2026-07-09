@@ -17,27 +17,31 @@ fois de production, de terrain de développement et de cible des tests E2E. Cons
 versionnée et reproductible, et des tests E2E qui ne touchent **jamais** la prod — au coût le
 plus bas possible.
 
-## 2. Architecture cible
+## 2. Architecture cible (2 environnements)
+
+Décision : **fusionner préprod et test** en un seul environnement local. Séparer une préprod
+cloud d'un environnement de test n'apporte rien tant que l'app n'a que quelques utilisateurs —
+le Supabase local sert à la fois de bac à sable de dev et de cible des tests/CI.
 
 | Environnement | Rôle | Cible Supabase | Données | Qui l'utilise |
 |---------------|------|----------------|---------|---------------|
-| **prod** | Utilisateurs réels | Projet `tipi-prod` (plan **Pro**) | Réelles, sauvegardées | App publiée (APK / web) |
-| **préprod / staging** | QA manuelle, démo, recette avant release | Projet `tipi-staging` | Copie/mock de prod | Testeurs, builds `preview` |
-| **test / CI** | Tests E2E automatisés | **Supabase local** (CLI/Docker) *ou* projet `tipi-test` | Jetables, recréées à chaque run | GitHub Actions, dev local |
+| **prod** | Utilisateurs réels (colocs) | Projet cloud `tipi-prod`, plan **Free** | Réelles | App publiée (APK / web) |
+| **test / préprod** | Dev local + tests E2E + CI | **Supabase local** (CLI + Docker) | Jetables, recréées à chaque `db reset` | Dev local, GitHub Actions |
 
-Principe : **prod fiable et payante**, préprod et test gratuites/éphémères. La CI cible en
-priorité un **Supabase local** (voir §5) → zéro coût, zéro contact avec la prod.
+Principe : la **prod reste sur le plan Free** (suffisant pour l'usage actuel) et n'est **jamais**
+touchée par les tests ; tout le dev/test se fait sur un **Supabase local** gratuit et éphémère.
 
 ## 3. Séparation technique
 
 ### 3.1 Variables d'environnement
 Chaque environnement a son couple `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
 
-- **App (EAS)** : définir les variables par profil dans `eas.json` via `eas env:create`
-  (cf. CLAUDE.md — `eas secret:create` est déprécié). Un profil `production` pointe sur
-  `tipi-prod`, un profil `preview` sur `tipi-staging`.
-- **CI E2E** : secrets GitHub pointant sur la cible de test (local ou `tipi-test`), jamais prod.
-- **Local dev** : `.env` (gitignoré) pointant sur `tipi-staging` ou le Supabase local.
+- **App (EAS)** : le profil `production` injecte les `EXPO_PUBLIC_*` de `tipi-prod` via
+  `eas env:create` (cf. CLAUDE.md — `eas secret:create` est déprécié).
+- **CI / tests E2E** : cible le **Supabase local** (`http://127.0.0.1:54321` + clé anon locale) ;
+  aucun accès prod.
+- **Local dev** : `.env` (gitignoré) pointant sur le Supabase local, ou sur `tipi-prod` pour
+  tester en conditions réelles ponctuellement.
 
 ### 3.2 Profils de build EAS (`eas.json`)
 ```jsonc
@@ -122,23 +126,53 @@ Classées de la plus économique à la plus confortable :
    Combinaison conseillée : `tipi-prod` en **Pro** (pas de pause, sauvegardes), `tipi-staging` en
    Free (org dédiée), test en **local**. Coût récurrent ≈ **25 $/mois** pour la seule prod.
 
-### Recommandation
-- **Prod** : `tipi-prod` en **Pro** (fiabilité + backups). ~25 $/mois.
-- **Préprod** : `tipi-staging` en **Free** dans une **org dédiée** (réveillée par un cron si besoin).
-- **Test/CI** : **Supabase local** via CLI → 0 $, aucun risque pour la prod.
-- **Migrations** : CLI + `supabase/migrations/` versionnées, appliquées par CI à chaque env.
+### Recommandation retenue
+- **Prod** : `tipi-prod` en **Free** (usage actuel = quelques colocs ; on migrera vers Pro quand
+  la pause après inactivité ou l'absence de backups deviendra un problème).
+- **Test/préprod** : **Supabase local** via CLI (`supabase start`) → **0 $**, aucun risque pour la prod.
+- **Migrations** : CLI + `supabase/migrations/` versionnées ; `supabase db reset` reconstruit la
+  base locale à l'identique, et les mêmes migrations sont poussées en prod (`supabase db push`).
+
+Coût récurrent : **0 $** (tant que la prod tient sur le Free). Passage à Pro (~25 $/mois) le jour
+où il faut la fiabilité (pas de pause, sauvegardes).
 
 ## 6. Plan de mise en place
 
-1. **CLI & migrations** : installer le Supabase CLI, `supabase init`, convertir les
-   `migration_*.sql` existantes en migrations versionnées, vérifier `supabase db reset` en local.
-2. **Test local en CI** : ajouter `supabase start` + `supabase db push` au workflow `_e2e.yml`,
-   basculer les secrets E2E sur l'URL/clé locales. Retirer l'accès prod des tests.
-3. **Préprod** : créer l'org dédiée + `tipi-staging`, y pousser les migrations, créer le profil
-   EAS `preview` pointant dessus.
-4. **Prod** : créer/isoler `tipi-prod` (Pro), migrer les données réelles, profil EAS `production`.
-5. **Nettoyage prod** : purger les comptes/données `e2e-*` créés pendant cette phase de mise au point.
-6. **Doc** : consigner les URLs/refs par environnement (hors secrets) et la procédure de migration.
+1. **CLI & migrations** : `supabase init` (config.toml), créer une migration initiale versionnée
+   depuis `schema.sql`, `seed.sql` bootstrappant les données de test. Vérifier `supabase db reset`.
+2. **Bootstrap tests env-agnostique** : l'utilisateur principal des tests est créé via `signUp`
+   (plus de dépendance à un `claude@test.com` pré-existant en cloud) → les tests tournent
+   identiquement sur local et cloud.
+3. **CI sur Supabase local** : `_e2e.yml` démarre `supabase start`, `db reset`, puis lance
+   Playwright avec `EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321` et la clé anon locale. Plus
+   aucun secret ni accès prod dans les tests.
+4. **Nettoyage prod** : purger les comptes/données `e2e-*` créés en prod pendant la mise au point.
+5. **Migrations prod** : lier le projet cloud (`supabase link`) et `supabase db push` pour aligner
+   la prod sur les migrations versionnées (fin du SQL à la main).
+6. **Doc** : consigner la procédure (`supabase start` / `db reset` / `db push`) et les refs.
+
+## 6bis. Utilisation locale (Docker requis)
+
+```bash
+# Démarre le Supabase local (applique supabase/migrations/ + seed)
+npx supabase start
+# Récupère l'URL + clé anon locales (à mettre dans .env, ou exportées)
+npx supabase status
+# Lance les tests E2E contre le local
+npx playwright test
+# Repartir d'une base propre
+npx supabase db reset
+# Nouvelle migration versionnée
+npx supabase migration new <nom>
+# Aligner la prod (une fois le projet lié via `supabase link`)
+npx supabase db push
+```
+
+`supabase/schema.sql` reste un **instantané** du schéma complet ; la source de vérité pour
+appliquer les changements devient `supabase/migrations/` (le fichier `20260101000000_init.sql`
+en est la première migration). Les anciens `migration_*.sql` à la racine de `supabase/` sont
+**hérités** (déjà appliqués en prod) et ignorés par le CLI — à archiver/supprimer une fois la
+prod alignée via `db push`.
 
 ## 7. Risques & notes
 
