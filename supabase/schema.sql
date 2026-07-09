@@ -229,6 +229,68 @@ CREATE POLICY "admin_update_member" ON profiles FOR UPDATE
   WITH CHECK (true);
 CREATE POLICY "insert_own" ON profiles FOR INSERT WITH CHECK (id = auth.uid());
 
+-- Exclusion d'un membre : le RLS applique le USING de admin_update_member à la nouvelle
+-- ligne, ce qui bloque household_id = null. On passe par une fonction SECURITY DEFINER.
+CREATE OR REPLACE FUNCTION kick_member(target uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM profiles admin_p
+    JOIN profiles target_p ON target_p.household_id = admin_p.household_id
+    WHERE admin_p.id = auth.uid()
+      AND admin_p.role = 'admin'
+      AND target_p.id = target
+      AND target_p.id <> admin_p.id
+  ) THEN
+    RAISE EXCEPTION 'not allowed: caller must be an admin of the member''s household';
+  END IF;
+  UPDATE profiles SET household_id = NULL WHERE id = target;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION kick_member(uuid) TO authenticated;
+
+-- Suppression de coloc : nuller les membres d'abord met my_household_id() à null, donc
+-- le DELETE RLS ne matche plus. Fonction SECURITY DEFINER pour l'admin.
+CREATE OR REPLACE FUNCTION delete_household()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  hid uuid;
+BEGIN
+  SELECT household_id INTO hid FROM profiles WHERE id = auth.uid();
+  IF hid IS NULL THEN
+    RAISE EXCEPTION 'no household';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin' AND household_id = hid
+  ) THEN
+    RAISE EXCEPTION 'not allowed: caller must be an admin of the household';
+  END IF;
+  DELETE FROM message_reads WHERE message_id IN (SELECT id FROM messages WHERE household_id = hid);
+  DELETE FROM messages WHERE household_id = hid;
+  DELETE FROM expenses WHERE household_id = hid;
+  DELETE FROM chores WHERE household_id = hid;
+  DELETE FROM chore_tasks WHERE household_id = hid;
+  DELETE FROM chore_reminders WHERE household_id = hid;
+  DELETE FROM events WHERE household_id = hid;
+  DELETE FROM shared_files WHERE household_id = hid;
+  DELETE FROM shopping_items WHERE household_id = hid;
+  DELETE FROM recipe_instances WHERE household_id = hid;
+  DELETE FROM recipes WHERE household_id = hid;
+  UPDATE profiles SET household_id = NULL WHERE household_id = hid;
+  DELETE FROM households WHERE id = hid;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION delete_household() TO authenticated;
+
 -- messages
 CREATE POLICY "select" ON messages FOR SELECT USING (household_id = my_household_id());
 CREATE POLICY "insert" ON messages FOR INSERT WITH CHECK (household_id = my_household_id());

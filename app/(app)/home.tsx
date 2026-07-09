@@ -108,6 +108,7 @@ export default function HomeScreen() {
 
         {/* Contexte rapide : courses */}
         <Pressable
+          testID="home-shopping-card"
           style={[styles.contextCard, { backgroundColor: t.card, borderColor: t.cardBorder }]}
           onPress={() => router.push("/(app)/shopping" as any)}
         >

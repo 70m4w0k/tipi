@@ -72,6 +72,7 @@ export function useHousehold(profile: Profile | null) {
   }, [householdId]);
 
   const createHousehold = async (name: string) => {
+    if (!profile) return { error: new Error("Profil non chargé") };
     const { data, error } = await supabase
       .from("households")
       .insert({ name })
@@ -82,7 +83,7 @@ export function useHousehold(profile: Profile | null) {
     const { error: updateError } = await supabase
       .from("profiles")
       .update({ household_id: data.id })
-      .eq("id", profile!.id);
+      .eq("id", profile.id);
     if (updateError) return { error: updateError };
 
     setHousehold(data);
@@ -98,6 +99,7 @@ export function useHousehold(profile: Profile | null) {
   };
 
   const joinHousehold = async (inviteCode: string) => {
+    if (!profile) return { error: new Error("Profil non chargé") };
     const { data, error } = await supabase
       .from("households")
       .select("*")
@@ -109,7 +111,7 @@ export function useHousehold(profile: Profile | null) {
     const { error: updateError } = await supabase
       .from("profiles")
       .update({ household_id: data.id })
-      .eq("id", profile!.id);
+      .eq("id", profile.id);
     if (updateError) return { error: updateError };
 
     setHousehold(data);
@@ -156,10 +158,9 @@ export function useHousehold(profile: Profile | null) {
 
   const kickMember = async (memberId: string) => {
     if (memberId === profile?.id) return { error: new Error("Tu ne peux pas t'exclure toi-même") };
-    const { error } = await supabase
-      .from("profiles")
-      .update({ household_id: null })
-      .eq("id", memberId);
+    // Passe par une fonction SECURITY DEFINER : le RLS empêche un UPDATE direct qui
+    // met household_id = null sur la ligne d'un autre membre (cf. migration_kick_member_rpc.sql).
+    const { error } = await supabase.rpc("kick_member", { target: memberId });
     if (!error) setMembers(members.filter((m) => m.id !== memberId));
     return { error };
   };
@@ -221,10 +222,9 @@ export function useHousehold(profile: Profile | null) {
 
   const deleteHousehold = async () => {
     if (!household) return { error: new Error("Pas de coloc") };
-    for (const m of members) {
-      await supabase.from("profiles").update({ household_id: null }).eq("id", m.id);
-    }
-    const { error } = await supabase.from("households").delete().eq("id", household.id);
+    // Fonction SECURITY DEFINER : un DELETE direct échoue (nuller les membres d'abord
+    // met my_household_id() à null → le RLS ne matche plus la coloc). Cf. schema.sql.
+    const { error } = await supabase.rpc("delete_household");
     if (!error) {
       setHousehold(null);
       setMembers([]);

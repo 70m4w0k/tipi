@@ -29,4 +29,7 @@ test.describe("Login — inscription & mode", () => {
     await page.getByText("Recevoir un lien de connexion").click();
     await expect(page.getByText("Entre ton email pour recevoir le lien.")).toBeVisible();
   });
+
+  // NB : l'envoi effectif du lien magique (avec email) n'est pas testé : Supabase
+  // limite le débit d'envoi d'emails -> test intrinsèquement instable.
 });

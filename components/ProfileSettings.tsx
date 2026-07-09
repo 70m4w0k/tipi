@@ -189,8 +189,14 @@ export function ProfileSettings({
       destructive: true,
       onConfirm: async () => {
         const { error } = await onDeleteHousehold();
-        if (error) setErrorMsg(error.message);
-        else router.replace("/");
+        if (error) {
+          setErrorMsg(error.message);
+        } else {
+          // Rafraîchit le profil (sinon l'index voit encore l'ancien household_id
+          // et redirige vers l'accueil au lieu de l'onboarding).
+          onProfileUpdated();
+          router.replace("/");
+        }
       },
     });
   };
@@ -280,12 +286,13 @@ export function ProfileSettings({
             {editingHouseName && isAdmin ? (
               <View style={styles.inlineEdit}>
                 <TextInput
+                  testID="household-name-input"
                   style={[styles.input, { flex: 1, borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
                   value={houseName}
                   onChangeText={setHouseName}
                   autoFocus
                 />
-                <Pressable style={styles.inlineBtn} onPress={() => void handleRename()}>
+                <Pressable testID="household-name-save" style={styles.inlineBtn} onPress={() => void handleRename()}>
                   <Ionicons name="checkmark" size={20} color="#10B981" />
                 </Pressable>
                 <Pressable style={styles.inlineBtn} onPress={() => { setEditingHouseName(false); setHouseName(household.name); }}>
@@ -294,8 +301,13 @@ export function ProfileSettings({
               </View>
             ) : (
               <Pressable
+                testID="household-name-row"
                 style={styles.editableRow}
-                onPress={() => isAdmin && setEditingHouseName(true)}
+                onPress={() => {
+                  if (!isAdmin) return;
+                  setHouseName(household.name); // pré-remplit avec le nom actuel
+                  setEditingHouseName(true);
+                }}
                 disabled={!isAdmin}
               >
                 <Text style={[styles.value, { color: t.textSecondary }]}>{household.name}</Text>
@@ -307,7 +319,7 @@ export function ProfileSettings({
             <View style={styles.codeRow}>
               <Text style={[styles.codeDisplay, { color: t.accent }]}>{household.invite_code}</Text>
               {isAdmin && (
-                <Pressable style={styles.inlineBtn} onPress={handleRegenerateCode}>
+                <Pressable testID="regen-code" style={styles.inlineBtn} onPress={handleRegenerateCode}>
                   <Ionicons name="refresh" size={20} color="#1D4ED8" />
                 </Pressable>
               )}
@@ -339,7 +351,7 @@ export function ProfileSettings({
           <Text style={[styles.sectionTitle, { color: t.text }]}>Membres</Text>
           <View style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
             {members.map((m) => (
-              <View key={m.id} style={[styles.memberRow, { borderBottomColor: t.separator }]}>
+              <View key={m.id} testID={`member-${m.id}`} style={[styles.memberRow, { borderBottomColor: t.separator }]}>
                 <View style={[styles.memberAvatar, { backgroundColor: m.color }]}>
                   <Text style={styles.memberAvatarText}>
                     {m.display_name.charAt(0).toUpperCase()}
@@ -357,15 +369,15 @@ export function ProfileSettings({
                 {isAdmin && m.id !== profile.id && (
                   <View style={styles.memberActions}>
                     {m.role === "member" ? (
-                      <Pressable style={styles.memberActionBtn} onPress={() => handlePromote(m)}>
+                      <Pressable testID={`member-promote-${m.id}`} style={styles.memberActionBtn} onPress={() => handlePromote(m)}>
                         <Ionicons name="arrow-up-circle-outline" size={22} color="#1D4ED8" />
                       </Pressable>
                     ) : (
-                      <Pressable style={styles.memberActionBtn} onPress={() => handleDemote(m)}>
+                      <Pressable testID={`member-demote-${m.id}`} style={styles.memberActionBtn} onPress={() => handleDemote(m)}>
                         <Ionicons name="arrow-down-circle-outline" size={22} color="#F59E0B" />
                       </Pressable>
                     )}
-                    <Pressable style={styles.memberActionBtn} onPress={() => handleKick(m)}>
+                    <Pressable testID={`member-kick-${m.id}`} style={styles.memberActionBtn} onPress={() => handleKick(m)}>
                       <Ionicons name="person-remove-outline" size={20} color="#EF4444" />
                     </Pressable>
                   </View>
@@ -389,6 +401,7 @@ export function ProfileSettings({
                     </View>
                     <Text style={[styles.memberName, { color: t.text, flex: 1 }]}>{pm.display_name}</Text>
                     <Pressable
+                      testID="pending-remove"
                       style={styles.memberActionBtn}
                       onPress={async () => {
                         void haptic.light();
@@ -408,6 +421,7 @@ export function ProfileSettings({
                     onChangeText={setPendingName}
                   />
                   <Pressable
+                    testID="pending-add"
                     style={[styles.pendingAddBtn, { backgroundColor: t.accent, opacity: pendingName.trim() ? 1 : 0.4 }]}
                     onPress={async () => {
                       if (!pendingName.trim()) return;

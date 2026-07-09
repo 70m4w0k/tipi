@@ -33,10 +33,35 @@ export async function cleanupByPrefix(prefix: string): Promise<void> {
   await c.from("shopping_items").delete().like("title", like);
   await c.from("chores").delete().like("task_name", like);
   await c.from("chore_tasks").delete().like("name", like);
+  await c.from("chore_reminders").delete().like("title", like);
   await c.from("expenses").delete().like("title", like);
   await c.from("recipes").delete().like("title", like);
+  await c.from("events").delete().like("title", like);
+  await c.from("pending_members").delete().like("display_name", like);
+  await c.from("messages").delete().like("content", like);
+  await c.from("messages").delete().filter("poll->>question", "like", like);
   await c.auth.signOut();
 }
 
-// Préfixe partagé par toutes les specs P1 pour reconnaître/purger les données de test.
+// Préfixe partagé par toutes les specs pour reconnaître/purger les données de test.
 export const TEST_PREFIX = "E2E-";
+
+/**
+ * Insère une recette (étapes sans durée -> planifiable à n'importe quelle date).
+ * Utile pour tester la planification calendrier sans dépendre de l'UI recettes.
+ * Nettoyée par cleanupByPrefix si le titre porte TEST_PREFIX.
+ */
+export async function seedRecipe(title: string): Promise<void> {
+  const c = await client();
+  const { data: u } = await c.auth.getUser();
+  const { data: prof } = await c.from("profiles").select("household_id").eq("id", u.user!.id).single();
+  await c.from("recipes").insert({
+    household_id: prof!.household_id,
+    title,
+    description: "",
+    icon: null,
+    ingredients: [],
+    steps: [{ title: "Etape", description: "", duration_value: 0, duration_unit: "minutes" }],
+  });
+  await c.auth.signOut();
+}

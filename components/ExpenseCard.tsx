@@ -44,7 +44,7 @@ export function ExpenseCard({
     .join(", ");
 
   return (
-    <View style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+    <View testID="expense-card" style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
       <View style={styles.cardHeader}>
         <View
           style={[
@@ -90,7 +90,7 @@ export function ExpenseCard({
               ? `Ta part : ${share.toFixed(2)} €`
               : "Non concerné"}
         </Text>
-        <Pressable onPress={() => onDelete(expense.id)} style={styles.deleteButton}>
+        <Pressable testID="expense-delete" onPress={() => onDelete(expense.id)} style={styles.deleteButton}>
           <Ionicons name="trash-outline" size={18} color={t.danger} />
         </Pressable>
       </View>

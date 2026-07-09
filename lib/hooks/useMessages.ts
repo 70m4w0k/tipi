@@ -102,8 +102,9 @@ export function useMessages(householdId: string | null | undefined) {
         poll: poll ?? null,
         reactions: {},
       });
+      void fetchMessages();
     },
-    [householdId]
+    [householdId, fetchMessages]
   );
 
   const addReaction = useCallback(

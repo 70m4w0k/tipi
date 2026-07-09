@@ -39,7 +39,11 @@ export function useEvents(householdId: string | null | undefined) {
           filter: `household_id=eq.${householdId}`,
         },
         (payload) => {
-          setEvents((prev) => [payload.new as HouseEvent, ...prev]);
+          setEvents((prev) => {
+            const ev = payload.new as HouseEvent;
+            if (prev.some((e) => e.id === ev.id)) return prev;
+            return [ev, ...prev];
+          });
         },
       )
       .on(
@@ -74,10 +78,12 @@ export function useEvents(householdId: string | null | undefined) {
       note,
       created_by: user.id,
     });
+    void fetchEvents();
   };
 
   const deleteEvent = async (id: string) => {
     await supabase.from("events").delete().eq("id", id);
+    void fetchEvents();
   };
 
   return { events, loading, addEvent, deleteEvent, fetchEvents };

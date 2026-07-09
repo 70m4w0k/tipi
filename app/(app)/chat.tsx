@@ -172,7 +172,7 @@ export default function ChatScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: t.background }]} edges={["top", "left", "right", "bottom"]}>
       <View style={[styles.header, { backgroundColor: t.card, borderBottomColor: t.cardBorder }]}>
-        <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={8}>
+        <Pressable testID="chat-back" style={styles.backBtn} onPress={() => router.back()} hitSlop={8}>
           <Ionicons name="chevron-back" size={24} color={t.accent} />
         </Pressable>
         <View style={{ flex: 1 }}>
@@ -243,6 +243,7 @@ export default function ChatScreen() {
             </Pressable>
 
             <Pressable
+              testID="chat-poll"
               style={styles.iconButton}
               onPress={() => setShowPollCreator(true)}
             >
@@ -261,6 +262,7 @@ export default function ChatScreen() {
             />
 
             <Pressable
+              testID="chat-send"
               style={[
                 styles.sendButton,
                 { backgroundColor: t.accent },

@@ -24,6 +24,7 @@ export default function ChoreReminderCard({ reminder, onToggleDone }: Props) {
 
   return (
     <Pressable
+      testID="chore-reminder"
       style={[
         styles.card,
         { backgroundColor: t.accentLight, borderColor: t.accent },

@@ -89,6 +89,9 @@ export default function JoinScreen() {
     if (result.error) {
       setErrorMsg(String(result.error.message ?? result.error));
     } else {
+      // Empêche le useEffect de rediriger vers l'accueil dès que household_id
+      // est renseigné : on veut passer par l'écran d'identité /claim.
+      setAutoJoining(true);
       await refreshProfile();
       router.replace("/(auth)/claim");
       return;

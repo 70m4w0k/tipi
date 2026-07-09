@@ -368,6 +368,7 @@ export default function CalendarScreen() {
               return (
                 <Pressable
                   key={item.id}
+                  testID="calendar-item"
                   style={[
                     styles.itemCard,
                     { backgroundColor: t.card, borderColor: isRecipe ? item.color : t.cardBorder },
@@ -420,7 +421,7 @@ export default function CalendarScreen() {
                     ) : null}
                   </View>
                   {item.type === "event" && (
-                    <Pressable onPress={() => void handleDeleteItem(item)} hitSlop={8}>
+                    <Pressable testID="event-delete" onPress={() => void handleDeleteItem(item)} hitSlop={8}>
                       <Ionicons name="trash-outline" size={18} color={t.danger} />
                     </Pressable>
                   )}
@@ -467,6 +468,7 @@ export default function CalendarScreen() {
           </View>
         )}
         <Pressable
+          testID="calendar-fab"
           style={[styles.fab, { backgroundColor: t.accent }]}
           onPress={() => {
             void haptic.light();

@@ -26,16 +26,19 @@ export async function clearSession(page: Page) {
   await page.waitForSelector("input, [role='textbox']", { timeout: 30_000 });
 }
 
-export async function login(page: Page, email = TEST_EMAIL, password = TEST_PASSWORD) {
+// Soumet le formulaire de login sans présumer de la destination (home OU join).
+export async function submitLogin(page: Page, email = TEST_EMAIL, password = TEST_PASSWORD) {
   await clearSession(page);
-
   const emailInput = page.getByPlaceholder("Email");
   await expect(emailInput).toBeVisible({ timeout: 15_000 });
-
   await emailInput.fill(email);
   await page.getByPlaceholder("Mot de passe").fill(password);
   await page.getByText("Se connecter", { exact: true }).click();
+}
 
+// Login d'un utilisateur AVEC household (atterrit sur l'accueil).
+export async function login(page: Page, email = TEST_EMAIL, password = TEST_PASSWORD) {
+  await submitLogin(page, email, password);
   await expect(page.getByText("Accueil")).toBeVisible({ timeout: 15_000 });
 }
 

@@ -248,6 +248,7 @@ export default function InstanceDetailScreen() {
               <>
                 {currentStep > 0 && (
                   <Pressable
+                    testID="recipe-step-back"
                     style={[styles.actionBtnSecondary, { borderColor: t.cardBorder, backgroundColor: t.card }]}
                     onPress={() => { void haptic.light(); void goBackStep(inst.id); }}
                   >

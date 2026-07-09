@@ -137,7 +137,7 @@ export default function ShoppingScreen() {
         <Text style={[styles.headerTitle, { color: t.text }]}>Liste de courses</Text>
         <View style={styles.headerActions}>
           {checkedCount > 0 && (
-            <Pressable onPress={handleClearChecked} hitSlop={8}>
+            <Pressable testID="shopping-clear" onPress={handleClearChecked} hitSlop={8}>
               <Ionicons name="trash-outline" size={20} color={t.danger} />
             </Pressable>
           )}

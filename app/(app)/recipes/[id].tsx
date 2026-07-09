@@ -185,8 +185,8 @@ export default function RecipeDetailScreen() {
         <Pressable onPress={() => router.back()} hitSlop={8}>
           <Ionicons name="chevron-back" size={24} color={t.text} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: t.text }]} numberOfLines={1}>{recipe.title}</Text>
-        <Pressable onPress={openEditModal} hitSlop={8}>
+        <Text testID="recipe-detail-title" style={[styles.headerTitle, { color: t.text }]} numberOfLines={1}>{recipe.title}</Text>
+        <Pressable testID="recipe-edit-header" onPress={openEditModal} hitSlop={8}>
           <Ionicons name="create-outline" size={22} color={t.textMuted} />
         </Pressable>
       </View>
@@ -453,6 +453,7 @@ export default function RecipeDetailScreen() {
                   <Text style={[styles.modalCancelText, { color: t.textSecondary }]}>Annuler</Text>
                 </Pressable>
                 <Pressable
+                  testID="recipe-edit-save"
                   style={[styles.modalSubmitBtn, { backgroundColor: t.accent }, !editTitle.trim() && { opacity: 0.5 }]}
                   onPress={() => void handleSaveEdit()} disabled={!editTitle.trim()}
                 >
