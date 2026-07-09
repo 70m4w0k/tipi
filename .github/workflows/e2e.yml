@@ -1,0 +1,13 @@
+name: E2E (Playwright)
+
+# Lance les tests E2E sur chaque PR vers master (garde-fou anti-régression avant merge).
+# Le déploiement (eas-build.yml) rejoue aussi ces tests et bloque le build si échec.
+on:
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    uses: ./.github/workflows/_e2e.yml
+    secrets: inherit

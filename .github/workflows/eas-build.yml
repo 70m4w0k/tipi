@@ -5,7 +5,13 @@ on:
     branches: [master]
 
 jobs:
+  # Garde-fou anti-régression : le build ne se lance que si les E2E passent.
+  e2e:
+    uses: ./.github/workflows/_e2e.yml
+    secrets: inherit
+
   build:
+    needs: e2e
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

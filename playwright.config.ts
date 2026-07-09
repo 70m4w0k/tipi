@@ -25,6 +25,6 @@ export default defineConfig({
     command: "npx expo start --web --port 8082",
     port: 8082,
     reuseExistingServer: true,
-    timeout: 60_000,
+    timeout: 120_000, // cold start plus lent en CI
   },
 });
