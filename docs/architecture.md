@@ -252,3 +252,26 @@ TEST_USER_PASSWORD=mot-de-passe-test
 ```
 
 L'utilisateur peut être créé depuis le dashboard Supabase (Authentication > Users > Add user, avec "Auto Confirm" coché). Les tests créent un household temporaire, exécutent les opérations CRUD, puis nettoient toutes les données créées.
+
+### Tests E2E (Playwright — 48 tests)
+
+Tests bout-en-bout de l'app rendue en **web** (Expo web), pilotés par Playwright (`e2e/`).
+
+```bash
+npm run test:e2e            # 48 tests contre le Supabase configuré (local en dev/CI)
+```
+
+- **Cible** : un **Supabase local** (`npx supabase start`) en dev et en CI — jamais la prod.
+- **Bootstrap** : `e2e/global-setup.ts` crée l'utilisateur principal + le household fixture via
+  `signUp` ; `e2e/fixtures.ts` gère les comptes dédiés (solo / admin / member / leaver / deleter) ;
+  `e2e/db.ts` nettoie les données préfixées `E2E-`.
+- **Particularités techniques** : `workers: 1` et `Accept-Encoding: identity` (contourne le gzip
+  lent du dev-server Metro), `testID` sur les éléments sans texte.
+- Détail de la couverture : voir [e2e-coverage.md](e2e-coverage.md).
+
+### Environnements & CI
+
+Deux environnements : **prod** (projet Supabase cloud, plan Free) et **test/préprod** (Supabase
+local via CLI). Schéma géré par migrations versionnées (`supabase/migrations/`). Workflows GitHub
+Actions : `e2e.yml` (E2E sur chaque PR), `eas-build.yml` (E2E puis build APK — le build dépend des
+tests), `_e2e.yml` (réutilisable). Détail complet : voir [environments-spec.md](environments-spec.md).

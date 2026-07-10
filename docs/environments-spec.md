@@ -1,21 +1,34 @@
-# Spécification — Séparation des environnements (prod / préprod / test)
+# Environnements & CI — architecture et workflows
 
-## 1. Contexte & problème
+> **Statut : implémenté** (voir §0). Ce document décrit l'architecture des environnements, la
+> gestion des migrations et les workflows CI en place, ainsi que le raisonnement coûts Supabase.
 
-Aujourd'hui il n'existe **qu'un seul projet Supabase** (`rlhkgrhgbnpbxjblyetw`) qui sert à la
-fois de production, de terrain de développement et de cible des tests E2E. Conséquences :
+## 0. État implémenté (résumé)
 
-- Les tests E2E (CI + local) **écrivent dans la base de prod** : comptes `e2e-*@test.com`,
-  colocs jetables, messages/dépenses/recettes créés puis supprimés. Risque de pollution, de
-  fausses données, et de casse si un teardown échoue.
-- Les migrations SQL sont appliquées **à la main** dans l'éditeur Supabase, sans versioning
-  reproductible → plusieurs bugs « migration jamais appliquée » (recipes.icon, admin_kick,
-  kick_member, delete_household).
-- Aucun filet : une manip de test qui tourne mal impacte directement les vrais utilisateurs.
+- **2 environnements** : **prod** = projet Supabase cloud (plan Free, `rlhkgrhgbnpbxjblyetw`) ;
+  **test / préprod** = **Supabase local** (CLI + Docker), utilisé pour le dev local et la CI.
+- **Migrations versionnées** via le CLI Supabase : `supabase/config.toml` +
+  `supabase/migrations/20260101000000_init.sql`. `supabase db reset` reconstruit la base locale.
+- **Tests E2E** (Playwright) : 48 tests, tournent contre le **Supabase local** — **aucun accès
+  à la prod**. Comptes de test créés à la volée (`signUp`) via un `global-setup`.
+- **Workflows GitHub Actions** :
+  - `e2e.yml` → lance les E2E sur chaque **PR vers master** (garde-fou avant merge).
+  - `eas-build.yml` → sur push `master`, exécute les E2E **puis** le build APK (`build` `needs: e2e`)
+    → pas de release si régression.
+  - `_e2e.yml` → workflow réutilisable partagé (Supabase local + Playwright).
+  - `paths-ignore` (`docs/**`, `*.md`) : les changements purement docs ne déclenchent rien.
 
-**Objectif** : trois environnements isolés (prod / préprod / test), une gestion des migrations
-versionnée et reproductible, et des tests E2E qui ne touchent **jamais** la prod — au coût le
-plus bas possible.
+## 1. Contexte & motivation
+
+Historiquement, un **seul projet Supabase** servait à la fois de prod, de bac à sable et de cible
+des tests E2E. Problèmes résolus par cette architecture :
+
+- Les tests E2E **écrivaient dans la base de prod** (comptes `e2e-*@test.com`, colocs jetables,
+  données créées/supprimées) → risque de pollution et de casse si un teardown échouait.
+- Les migrations SQL étaient appliquées **à la main** dans l'éditeur Supabase, sans versioning →
+  plusieurs bugs « migration jamais appliquée » (recipes.icon, admin_kick, kick_member,
+  delete_household).
+- Aucun filet : une manip de test ratée impactait directement les vrais utilisateurs.
 
 ## 2. Architecture cible (2 environnements)
 
@@ -55,23 +68,41 @@ Chaque environnement a son couple `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPA
 Les `EXPO_PUBLIC_*` sont injectées par `eas env` selon l'environnement (`production` / `preview`).
 
 ### 3.3 Migrations versionnées (fin du SQL à la main)
-Adopter le **Supabase CLI** et le dossier `supabase/migrations/` :
+Le **Supabase CLI** + le dossier `supabase/migrations/` pilotent le schéma :
 
-- `supabase migration new <nom>` → fichier horodaté versionné dans le repo.
-- `supabase db push` applique les migrations en attente à la cible (`--db-url` ou projet lié).
-- La CI applique les migrations à la base de test **avant** de lancer les E2E.
-- Les migrations manuelles actuelles (`migration_*.sql`) sont converties en migrations CLI.
+- `supabase/migrations/20260101000000_init.sql` : migration initiale = schéma complet, incluant
+  les **GRANT** `anon`/`authenticated` et le trigger « premier membre = admin » (deux éléments
+  présents en prod mais qui manquaient à `schema.sql`, découverts en montant le local).
+- `supabase migration new <nom>` → nouveau fichier horodaté versionné.
+- `supabase db reset` reconstruit la base locale (migrations + `seed.sql`).
+- `schema.sql` reste un **instantané** de référence ; la source de vérité des changements est
+  `supabase/migrations/`. Les anciens `migration_*.sql` à la racine de `supabase/` sont hérités
+  (déjà appliqués en prod) et **ignorés par le CLI**.
 
 Bénéfice : chaque environnement est reconstructible à l'identique → plus de « ça marche en prod
 mais pas ici » ni de policy oubliée.
 
-### 3.4 Pipeline CI
+### 3.4 Pipeline CI (implémenté)
 ```
-PR ─────────────► e2e.yml : supabase start (local) → db push → playwright test
-push master ────► eas-build.yml : e2e (local) ──✓──► build APK (prod) + release
+PR vers master ──► e2e.yml ──uses──► _e2e.yml
+push master ─────► eas-build.yml : job e2e (uses _e2e.yml) ──✓──► job build (needs: e2e) → APK + release
+
+_e2e.yml (réutilisable) :
+  checkout → setup-node 22 → npm ci → supabase/setup-cli
+  → supabase start (applique migrations + seed)
+  → export EXPO_PUBLIC_SUPABASE_URL/ANON_KEY depuis `supabase status -o json`
+  → playwright install chromium → npx playwright test → supabase stop
+  → upload du rapport Playwright en artefact
 ```
-Le job E2E démarre un Supabase local éphémère, y applique les migrations, seed les comptes
-fixtures, lance les tests, puis le détruit. La prod n'est jamais sollicitée.
+Le job E2E démarre un Supabase **local éphémère**, applique migrations + seed, crée les comptes de
+test via `signUp` (global-setup), lance les 48 tests, puis détruit la stack. La prod n'est **jamais**
+sollicitée. Les secrets GitHub `EXPO_PUBLIC_*` ne sont plus nécessaires côté tests.
+
+### 3.5 Bootstrap des tests (env-agnostique)
+`e2e/global-setup.ts` crée, avant toute la suite, l'utilisateur principal (`e2e-main`) et le
+household fixture (admin + membre) via `signUp` — donc **sans compte pré-existant**, à l'identique
+sur local et cloud. `e2e/fixtures.ts` gère les comptes dédiés (solo, admin, member, leaver,
+deleter) et les réinitialise en `beforeEach` ; `e2e/db.ts` nettoie les données préfixées `E2E-`.
 
 ## 4. Limites et coûts Supabase
 
