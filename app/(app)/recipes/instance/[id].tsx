@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -12,12 +12,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  Easing,
-} from "react-native-reanimated";
 import { useAuth } from "../../../../lib/hooks/useAuth";
 import { useRecipes } from "../../../../lib/hooks/useRecipes";
 import { useTheme } from "../../../../lib/theme";
@@ -45,103 +39,6 @@ function stepProgress(step: RecipeStep, stepStartedAt: string | null): number {
 
 const DOT_SIZE = 22;
 const LINE_WIDTH = 2;
-const STEP_W = 100;
-
-type StepperProps = {
-  steps: RecipeStep[];
-  currentStep: number;
-  isCompleted: boolean;
-  isPlannedOnly: boolean;
-  userColor: string;
-  mutedColor: string;
-  bgColor: string;
-  stepDateFn: (idx: number) => string;
-};
-
-// Label height (28) + marginBottom (4) = 32. Line sits at center of dot row: 32 + DOT_SIZE/2
-const LABEL_AREA = 32;
-
-function StepperAnimated({ steps, currentStep, isCompleted, isPlannedOnly, userColor, mutedColor, bgColor, stepDateFn }: StepperProps) {
-  const progressAnim = useSharedValue(0);
-  const targetStep = isCompleted ? steps.length - 1 : isPlannedOnly ? -1 : currentStep;
-
-  useEffect(() => {
-    const target = targetStep >= 0 && steps.length > 1 ? targetStep * STEP_W : 0;
-    progressAnim.value = withTiming(target, { duration: 400, easing: Easing.out(Easing.cubic) });
-  }, [targetStep, steps.length]);
-
-  const coloredLineStyle = useAnimatedStyle(() => ({
-    width: progressAnim.value,
-  }));
-
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={stepperStyles.container}>
-      <View style={stepperStyles.inner}>
-        {/* Single grey baseline from first dot center to last dot center */}
-        {steps.length > 1 && (
-          <View style={[stepperStyles.baseline, {
-            left: STEP_W / 2,
-            width: (steps.length - 1) * STEP_W,
-            top: LABEL_AREA + DOT_SIZE / 2 - LINE_WIDTH / 2,
-            backgroundColor: mutedColor,
-            opacity: 0.3,
-          }]} />
-        )}
-        {/* Animated colored line overlay */}
-        {steps.length > 1 && (
-          <Animated.View style={[stepperStyles.baseline, {
-            left: STEP_W / 2,
-            top: LABEL_AREA + DOT_SIZE / 2 - LINE_WIDTH / 2,
-            backgroundColor: userColor,
-          }, coloredLineStyle]} />
-        )}
-        {/* Steps (dots + labels) */}
-        <View style={stepperStyles.layer}>
-          {steps.map((step, idx) => {
-            const isDone = isCompleted || idx < currentStep;
-            const isCurrent = idx === currentStep && !isCompleted && !isPlannedOnly;
-            const isUpcoming = !isDone && !isCurrent;
-            const dotColor = isDone || isCurrent ? userColor : mutedColor;
-            const date = stepDateFn(idx);
-
-            return (
-              <View key={idx} style={stepperStyles.step}>
-                <Text
-                  style={[stepperStyles.label, { color: isUpcoming ? mutedColor : dotColor }]}
-                  numberOfLines={2}
-                >
-                  {step.title}
-                </Text>
-                <View style={stepperStyles.dotRow}>
-                  <View style={[
-                    stepperStyles.dot,
-                    { borderColor: dotColor, backgroundColor: bgColor },
-                    isDone && { backgroundColor: userColor },
-                    isCurrent && { borderWidth: 3 },
-                    isUpcoming && { opacity: 0.4, borderColor: mutedColor },
-                  ]} />
-                </View>
-                <Text style={[stepperStyles.date, { color: mutedColor }]}>{date}</Text>
-              </View>
-            );
-          })}
-        </View>
-      </View>
-    </ScrollView>
-  );
-}
-
-const stepperStyles = StyleSheet.create({
-  container: { flexGrow: 1, justifyContent: "center", paddingHorizontal: 8, paddingVertical: 12, marginBottom: 12 },
-  inner: { position: "relative" },
-  layer: { flexDirection: "row" },
-  baseline: { position: "absolute", height: LINE_WIDTH, zIndex: 0 },
-  step: { alignItems: "center", width: STEP_W, zIndex: 1 },
-  label: { fontSize: 10, fontWeight: "600", textAlign: "center", height: 28, marginBottom: 4 },
-  dotRow: { alignItems: "center", justifyContent: "center", height: DOT_SIZE },
-  dot: { width: DOT_SIZE, height: DOT_SIZE, borderRadius: DOT_SIZE / 2, borderWidth: 2 },
-  date: { fontSize: 9, marginTop: 4, height: 14 },
-});
 
 export default function InstanceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -161,10 +58,25 @@ export default function InstanceDetailScreen() {
   const [editingNotes, setEditingNotes] = useState(inst?.notes ?? "");
   const [notesChanged, setNotesChanged] = useState(false);
   const [notesSaved, setNotesSaved] = useState(false);
+  const [notesFocused, setNotesFocused] = useState(false);
+
+  // Auto-scroll de la timeline verticale vers l'étape en cours.
+  const contentScrollRef = useRef<ScrollView>(null);
+  const timelineTopY = useRef(0);
+  const currentStepY = useRef(0);
 
   useEffect(() => {
     if (!notesChanged && inst) setEditingNotes(inst.notes ?? "");
   }, [inst?.notes]);
+
+  useEffect(() => {
+    if (!inst) return;
+    const tid = setTimeout(() => {
+      const y = timelineTopY.current + currentStepY.current - 90;
+      contentScrollRef.current?.scrollTo({ y: Math.max(0, y), animated: true });
+    }, 250);
+    return () => clearTimeout(tid);
+  }, [inst?.current_step, inst?.id]);
 
   if (!inst || !recipe) {
     return (
@@ -215,68 +127,11 @@ export default function InstanceDetailScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {/* Horizontal stepper */}
-        <View>
-          <StepperAnimated
-            steps={steps}
-            currentStep={currentStep}
-            isCompleted={isCompleted}
-            isPlannedOnly={isPlannedOnly}
-            userColor={userColor}
-            mutedColor={t.textMuted}
-            bgColor={t.background}
-            stepDateFn={stepDate}
-          />
-        </View>
-
-        {/* Actions bar */}
-        {!isCompleted && (
-          <View style={styles.actionsRow}>
-            {isPlannedOnly ? (
-              <Pressable
-                style={[styles.actionBtn, { backgroundColor: t.accent, flex: 1 }]}
-                onPress={() => {
-                  void haptic.medium();
-                  void activatePlannedInstance(inst.id);
-                }}
-              >
-                <Ionicons name="play" size={16} color="#FFFFFF" />
-                <Text style={styles.actionBtnText}>Démarrer</Text>
-              </Pressable>
-            ) : (
-              <>
-                {currentStep > 0 && (
-                  <Pressable
-                    testID="recipe-step-back"
-                    style={[styles.actionBtnSecondary, { borderColor: t.cardBorder, backgroundColor: t.card }]}
-                    onPress={() => { void haptic.light(); void goBackStep(inst.id); }}
-                  >
-                    <Ionicons name="arrow-back" size={16} color={t.textSecondary} />
-                  </Pressable>
-                )}
-                {!isLast ? (
-                  <Pressable
-                    style={[styles.actionBtn, { backgroundColor: t.accent, flex: 1 }]}
-                    onPress={() => { void haptic.success(); void advanceStep(inst.id); }}
-                  >
-                    <Text style={styles.actionBtnText}>Étape suivante</Text>
-                    <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
-                  </Pressable>
-                ) : (
-                  <Pressable
-                    style={[styles.actionBtn, { backgroundColor: t.success, flex: 1 }]}
-                    onPress={() => { void haptic.success(); void completeInstance(inst.id); }}
-                  >
-                    <Text style={styles.actionBtnText}>Terminer</Text>
-                    <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                  </Pressable>
-                )}
-              </>
-            )}
-          </View>
-        )}
-
+      <ScrollView
+        ref={contentScrollRef}
+        contentContainerStyle={[styles.content, !isCompleted && styles.contentWithBar]}
+        keyboardShouldPersistTaps="handled"
+      >
         {isCompleted && (
           <View style={[styles.completedBanner, { backgroundColor: t.successLight }]}>
             <Ionicons name="checkmark-circle" size={20} color={t.success} />
@@ -285,7 +140,10 @@ export default function InstanceDetailScreen() {
         )}
 
         {/* Vertical timeline */}
-        <View style={styles.timeline}>
+        <View
+          style={styles.timeline}
+          onLayout={(e) => { timelineTopY.current = e.nativeEvent.layout.y; }}
+        >
           {steps.map((step, idx) => {
             const color = stepColor(idx);
             const isDone = isCompleted || idx < currentStep;
@@ -294,7 +152,11 @@ export default function InstanceDetailScreen() {
             const date = stepDate(idx);
 
             return (
-              <View key={idx} style={styles.timelineStep}>
+              <View
+                key={idx}
+                style={styles.timelineStep}
+                onLayout={isCurrent ? (e) => { currentStepY.current = e.nativeEvent.layout.y; } : undefined}
+              >
                 {/* Left column: line + dot */}
                 <View style={styles.timelineLeft}>
                   {idx > 0 ? (
@@ -364,6 +226,8 @@ export default function InstanceDetailScreen() {
             style={[styles.notesInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
             value={editingNotes}
             onChangeText={(v) => { setEditingNotes(v); setNotesChanged(true); }}
+            onFocus={() => setNotesFocused(true)}
+            onBlur={() => setNotesFocused(false)}
             multiline
             placeholder="Ajouter des notes..."
             placeholderTextColor={t.textMuted}
@@ -391,6 +255,50 @@ export default function InstanceDetailScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Barre d'actions fixe (masquée pendant l'édition des notes / clavier ouvert) */}
+      {!isCompleted && !notesFocused && (
+        <View style={[styles.actionBar, { backgroundColor: t.card, borderTopColor: t.cardBorder }]}>
+          {isPlannedOnly ? (
+            <Pressable
+              style={[styles.actionBtn, { backgroundColor: t.accent, flex: 1 }]}
+              onPress={() => { void haptic.medium(); void activatePlannedInstance(inst.id); }}
+            >
+              <Ionicons name="play" size={16} color="#FFFFFF" />
+              <Text style={styles.actionBtnText}>Démarrer</Text>
+            </Pressable>
+          ) : (
+            <>
+              {currentStep > 0 && (
+                <Pressable
+                  testID="recipe-step-back"
+                  style={[styles.actionBtnSecondary, { borderColor: t.cardBorder, backgroundColor: t.background }]}
+                  onPress={() => { void haptic.light(); void goBackStep(inst.id); }}
+                >
+                  <Ionicons name="arrow-back" size={16} color={t.textSecondary} />
+                </Pressable>
+              )}
+              {!isLast ? (
+                <Pressable
+                  style={[styles.actionBtn, { backgroundColor: t.accent, flex: 1 }]}
+                  onPress={() => { void haptic.success(); void advanceStep(inst.id); }}
+                >
+                  <Text style={styles.actionBtnText}>Étape suivante</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                </Pressable>
+              ) : (
+                <Pressable
+                  style={[styles.actionBtn, { backgroundColor: t.success, flex: 1 }]}
+                  onPress={() => { void haptic.success(); void completeInstance(inst.id); }}
+                >
+                  <Text style={styles.actionBtnText}>Terminer</Text>
+                  <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                </Pressable>
+              )}
+            </>
+          )}
+        </View>
+      )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -401,13 +309,14 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", borderBottomWidth: 1, paddingHorizontal: 16, paddingVertical: 12, gap: 12 },
   headerTitle: { fontSize: 18, fontWeight: "700", flex: 1 },
   content: { padding: 16 },
+  contentWithBar: { paddingBottom: 96 }, // place pour la barre d'actions fixe
   emptyContainer: { alignItems: "center", paddingTop: 60, gap: 12 },
   emptyText: { fontSize: 15 },
 
   // Actions
   completedBanner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 10, marginBottom: 16 },
   completedText: { fontSize: 15, fontWeight: "700" },
-  actionsRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
+  actionBar: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, borderTopWidth: 1 },
   actionBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 10 },
   actionBtnText: { color: "#FFFFFF", fontWeight: "700", fontSize: 15 },
   actionBtnSecondary: { width: 44, height: 44, borderRadius: 10, borderWidth: 1, alignItems: "center", justifyContent: "center" },
