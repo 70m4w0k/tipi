@@ -17,9 +17,11 @@ INSERT INTO chore_tasks (household_id, name) VALUES
   ('00000000-0000-0000-0000-000000000001', 'Salle de bain'),
   ('00000000-0000-0000-0000-000000000001', 'Toilettes');
 
--- Default chore reminder
-INSERT INTO chore_reminders (household_id, title, recurrence) VALUES
-  ('00000000-0000-0000-0000-000000000001', 'Sortir les poubelles', 'Tous les lundis, mercredis et vendredis');
+-- Rappel de démo, porté par une tâche cachée dédiée (un rappel est toujours lié à une tâche).
+INSERT INTO chore_tasks (id, household_id, name, show_in_grid) VALUES
+  ('00000000-0000-0000-0000-0000000000aa', '00000000-0000-0000-0000-000000000001', 'Sortir les poubelles', false);
+INSERT INTO chore_reminders (household_id, task_id, title, recurrence) VALUES
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-0000000000aa', 'Sortir les poubelles', 'Tous les lundis, mercredis et vendredis');
 
 -- Recettes de démo (cf. lib/recipe-seeds.md) — "recettes en cours" longue durée
 INSERT INTO recipes (household_id, title, description, ingredients, steps) VALUES

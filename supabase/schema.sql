@@ -83,6 +83,7 @@ CREATE TABLE chore_tasks (
 CREATE TABLE chore_reminders (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   household_id uuid NOT NULL REFERENCES households(id),
+  task_id uuid NOT NULL REFERENCES chore_tasks(id) ON DELETE CASCADE,
   title text NOT NULL,
   recurrence text NOT NULL,
   week_parity smallint CHECK (week_parity IN (0, 1)),

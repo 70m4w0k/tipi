@@ -116,14 +116,15 @@ export function useChores(householdId: string | null | undefined) {
   );
 
   const addTask = useCallback(
-    async (name: string, showInGrid = true) => {
-      if (!householdId || !name.trim()) return;
-      await supabase.from("chore_tasks").insert({
-        household_id: householdId,
-        name: name.trim(),
-        show_in_grid: showInGrid,
-      });
+    async (name: string, showInGrid = true): Promise<string | null> => {
+      if (!householdId || !name.trim()) return null;
+      const { data } = await supabase
+        .from("chore_tasks")
+        .insert({ household_id: householdId, name: name.trim(), show_in_grid: showInGrid })
+        .select("id")
+        .single();
       void fetchAll();
+      return (data?.id as string | undefined) ?? null;
     },
     [householdId, fetchAll]
   );
@@ -200,10 +201,16 @@ export function useChores(householdId: string | null | undefined) {
   );
 
   const updateReminder = useCallback(
-    async (id: string, title: string, recurrence: string) => {
+    async (
+      id: string,
+      title: string,
+      recurrence: string,
+      weekParity: number | null = null,
+      startDate: string | null = null,
+    ) => {
       await supabase
         .from("chore_reminders")
-        .update({ title, recurrence })
+        .update({ title, recurrence, week_parity: weekParity, start_date: startDate })
         .eq("id", id);
 
       void fetchAll();
@@ -212,17 +219,22 @@ export function useChores(householdId: string | null | undefined) {
   );
 
   const addReminder = useCallback(
-    async (title: string, recurrence: string, weekParity?: number | null, startDate?: string | null) => {
+    async (
+      taskId: string,
+      title: string,
+      recurrence: string,
+      weekParity: number | null = null,
+      startDate: string | null = null,
+    ) => {
       if (!householdId) return;
-      const row: Record<string, unknown> = { household_id: householdId, title, recurrence };
-      if (weekParity != null) row.week_parity = weekParity;
-      if (startDate != null) row.start_date = startDate;
-      const { error } = await supabase.from("chore_reminders").insert(row);
-      if (error?.message?.includes("schema cache")) {
-        const fallback: Record<string, unknown> = { household_id: householdId, title, recurrence };
-        if (startDate != null && !error.message.includes("start_date")) fallback.start_date = startDate;
-        await supabase.from("chore_reminders").insert(fallback);
-      }
+      await supabase.from("chore_reminders").insert({
+        household_id: householdId,
+        task_id: taskId,
+        title,
+        recurrence,
+        week_parity: weekParity,
+        start_date: startDate,
+      });
       void fetchAll();
     },
     [householdId, fetchAll]

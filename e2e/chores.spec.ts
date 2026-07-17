@@ -46,10 +46,8 @@ test.describe("Ménage", () => {
     await page.getByText("Ajouter", { exact: true }).click();
     await expect(page.getByText(name, { exact: true })).toBeVisible({ timeout: 10_000 });
 
-    // Tap la tâche -> modal d'action -> Renommer.
+    // Tap la tâche -> formulaire d'édition pré-rempli (nom dans le champ).
     await page.getByText(name, { exact: true }).click();
-    await page.getByText("Renommer", { exact: true }).click();
-    // Le champ de renommage est pré-rempli avec le nom actuel (cible non ambiguë).
     await page.locator(`input[value="${name}"]`).fill(renamed);
     await page.getByText("Enregistrer", { exact: true }).click();
     await expect(page.getByText(renamed, { exact: true })).toBeVisible({ timeout: 10_000 });
@@ -64,9 +62,10 @@ test.describe("Ménage", () => {
     await page.getByText("Ajouter", { exact: true }).click();
     await expect(page.getByText(name, { exact: true })).toBeVisible({ timeout: 10_000 });
 
-    // Masquer -> disparaît de la grille, bouton "Afficher ... cachée(s)" apparaît.
+    // Éditer -> décocher "Afficher dans le tableau" -> Enregistrer -> disparaît de la grille.
     await page.getByText(name, { exact: true }).click();
-    await page.getByText("Masquer du tableau", { exact: true }).click();
+    await page.getByText("Afficher dans le tableau", { exact: true }).click();
+    await page.getByText("Enregistrer", { exact: true }).click();
     await expect(page.getByText(name, { exact: true })).toHaveCount(0, { timeout: 10_000 });
     await page.getByText(/Afficher .* tâche/).click();
     await expect(page.getByText(name, { exact: true })).toBeVisible({ timeout: 10_000 });
@@ -90,6 +89,27 @@ test.describe("Ménage", () => {
     await expect(reminder.getByText("Fait", { exact: true })).toBeVisible({ timeout: 10_000 });
   });
 
+  test("éditer : ajouter une récurrence à une tâche existante", async ({ page }) => {
+    await login(page);
+    await page.getByRole("tab", { name: /Ménage/ }).click();
+    const name = `${TEST_PREFIX}editrecur-${Date.now()}`;
+    await page.getByTestId("chores-fab").click();
+    await page.getByPlaceholder("Nom de la tâche").fill(name);
+    await page.getByText("Ajouter", { exact: true }).click();
+    await expect(page.getByText(name, { exact: true })).toBeVisible({ timeout: 10_000 });
+
+    // Éditer -> activer la récurrence -> aujourd'hui -> Enregistrer.
+    await page.getByText(name, { exact: true }).click();
+    await page.getByText("Tâche récurrente (rappel)", { exact: true }).click();
+    await page.getByRole("button", { name: /Aujourd'hui/ }).click();
+    await page.getByText("Enregistrer", { exact: true }).click();
+
+    // Le rappel du jour apparaît désormais.
+    await expect(
+      page.locator('[data-testid="chore-reminder"]', { hasText: name })
+    ).toBeVisible({ timeout: 10_000 });
+  });
+
   test("supprimer une tâche", async ({ page }) => {
     await login(page);
     await page.getByRole("tab", { name: /Ménage/ }).click();
@@ -99,8 +119,9 @@ test.describe("Ménage", () => {
     await page.getByText("Ajouter", { exact: true }).click();
     await expect(page.getByText(name, { exact: true })).toBeVisible({ timeout: 10_000 });
 
+    // Tap la tâche -> formulaire d'édition -> Supprimer la tâche.
     await page.getByText(name, { exact: true }).click();
-    await page.getByText("Supprimer", { exact: true }).click();
+    await page.getByText("Supprimer la tâche", { exact: true }).click();
     await expect(page.getByText(name, { exact: true })).toHaveCount(0, { timeout: 10_000 });
   });
 });

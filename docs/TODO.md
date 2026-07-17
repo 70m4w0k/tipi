@@ -53,6 +53,9 @@
 - [x] Fix onboarding : auto-join + redirection vers page "Qui es-tu ?" (claim)
 - [x] Page claim : couleurs prises grisées, auto-assignation si aucune sélection
 - [x] Fix "Quitter la coloc" sur web mobile (Modal au lieu de Alert.alert)
+- [x] Recette en cours : retrait stepper horizontal redondant, auto-scroll timeline, barre d'actions fixe, masquée au clavier
+- [x] Édition complète des tâches ménage (formulaire pré-rempli : nom, affichage tableau, récurrence)
+- [x] Modèle unifié rappels-tâches (chore_reminders.task_id FK ON DELETE CASCADE, plus d'orphelins)
 
 ## En cours
 

@@ -60,18 +60,14 @@ export default function ChoresScreen() {
 
   const [showHidden, setShowHidden] = useState(false);
 
-  // Add task modal
+  // Task create/edit modal (editingTaskId = null -> création)
   const [showAddTask, setShowAddTask] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [newTaskName, setNewTaskName] = useState("");
   const [isRecurrent, setIsRecurrent] = useState(false);
   const [startDate, setStartDate] = useState<string | null>(null);
   const [isBiWeekly, setIsBiWeekly] = useState(false);
   const [showInGrid, setShowInGrid] = useState(true);
-
-  // Task action modal
-  const [actionTask, setActionTask] = useState<{ id: string; name: string } | null>(null);
-  const [editingName, setEditingName] = useState("");
-  const [showEditInput, setShowEditInput] = useState(false);
 
   if (!profile || !household) {
     return (
@@ -83,6 +79,7 @@ export default function ChoresScreen() {
 
   const resetModal = () => {
     setShowAddTask(false);
+    setEditingTaskId(null);
     setNewTaskName("");
     setIsRecurrent(false);
     setStartDate(null);
@@ -90,16 +87,45 @@ export default function ChoresScreen() {
     setShowInGrid(true);
   };
 
-  const handleAddTask = async () => {
+  const openCreateTask = () => {
+    setEditingTaskId(null);
+    setNewTaskName("");
+    setIsRecurrent(false);
+    setStartDate(null);
+    setIsBiWeekly(false);
+    setShowInGrid(true);
+    setShowAddTask(true);
+  };
+
+  const currentWeekParity = () => {
+    const now = new Date();
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    const currentWeek = Math.ceil(((now.getTime() - yearStart.getTime()) / 86400000 + yearStart.getDay() + 1) / 7);
+    return currentWeek % 2;
+  };
+
+  const handleSubmitTask = async () => {
     if (!newTaskName.trim()) return;
     void haptic.medium();
-    await addTask(newTaskName.trim(), showInGrid);
-    if (isRecurrent && startDate) {
-      const dayName = dayNameFromDate(startDate);
-      const now = new Date();
-      const yearStart = new Date(now.getFullYear(), 0, 1);
-      const currentWeek = Math.ceil(((now.getTime() - yearStart.getTime()) / 86400000 + yearStart.getDay() + 1) / 7);
-      await addReminder(newTaskName.trim(), dayName, isBiWeekly ? currentWeek % 2 : null, startDate);
+    const name = newTaskName.trim();
+    const dayName = startDate ? dayNameFromDate(startDate) : "";
+    const weekParity = isBiWeekly ? currentWeekParity() : null;
+
+    if (editingTaskId) {
+      const task = tasks.find((tk) => tk.id === editingTaskId);
+      const oldName = task?.name ?? name;
+      if (name !== oldName) await editTask(editingTaskId, oldName, name);
+      if (task && task.show_in_grid !== showInGrid) await toggleTaskVisibility(editingTaskId, showInGrid);
+      const reminder = reminders.find((r) => r.task_id === editingTaskId);
+      if (isRecurrent && startDate) {
+        if (reminder) await updateReminder(reminder.id, name, dayName, weekParity, startDate);
+        else await addReminder(editingTaskId, name, dayName, weekParity, startDate);
+      } else if (reminder) {
+        await deleteReminder(reminder.id);
+      }
+    } else {
+      const newId = await addTask(name, showInGrid);
+      if (isRecurrent && startDate && newId) await addReminder(newId, name, dayName, weekParity, startDate);
     }
     resetModal();
   };
@@ -109,25 +135,27 @@ export default function ChoresScreen() {
     setCellIntensity(taskName, week, year, profile.id);
   };
 
+  // Ouvre le formulaire en mode édition, pré-rempli depuis la tâche + son rappel.
   const handleTaskPress = (taskId: string, taskName: string) => {
-    setActionTask({ id: taskId, name: taskName });
-    setEditingName(taskName);
-    setShowEditInput(false);
-  };
-
-  const handleSaveEdit = async () => {
-    if (!actionTask || !editingName.trim()) return;
-    await editTask(actionTask.id, actionTask.name, editingName.trim());
-    setActionTask(null);
+    const task = tasks.find((tk) => tk.id === taskId);
+    const reminder = reminders.find((r) => r.task_id === taskId);
+    setEditingTaskId(taskId);
+    setNewTaskName(taskName);
+    setShowInGrid(task?.show_in_grid ?? true);
+    setIsRecurrent(!!reminder);
+    setStartDate(reminder?.start_date ?? null);
+    setIsBiWeekly(reminder?.week_parity != null);
+    setShowAddTask(true);
   };
 
   const handleDeleteTask = () => {
-    if (!actionTask) return;
+    if (!editingTaskId) return;
     void haptic.warning();
-    const matchingReminder = reminders.find((r) => r.title === actionTask.name);
-    if (matchingReminder) void deleteReminder(matchingReminder.id);
-    void removeTask(actionTask.id, actionTask.name);
-    setActionTask(null);
+    const task = tasks.find((tk) => tk.id === editingTaskId);
+    const name = task?.name ?? newTaskName.trim();
+    // Le rappel lié est supprimé en cascade (FK task_id ON DELETE CASCADE).
+    void removeTask(editingTaskId, name);
+    resetModal();
   };
 
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -168,7 +196,7 @@ export default function ChoresScreen() {
             title="Aucune tâche"
             subtitle="Ajoute des tâches ménagères pour suivre les contributions de chacun."
             actionLabel="Ajouter une tâche"
-            onAction={() => setShowAddTask(true)}
+            onAction={openCreateTask}
           />
         ) : (
           <>
@@ -206,14 +234,16 @@ export default function ChoresScreen() {
         <Pressable style={styles.modalOverlay} onPress={resetModal}>
           <Pressable style={[styles.modalContent, { backgroundColor: t.card }]} onPress={() => {}}>
             <ScrollView bounces={false} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              <Text style={[styles.modalTitle, { color: t.text }]}>Nouvelle tâche</Text>
+              <Text style={[styles.modalTitle, { color: t.text }]}>
+                {editingTaskId ? "Modifier la tâche" : "Nouvelle tâche"}
+              </Text>
               <TextInput
                 style={[styles.modalInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
                 placeholder="Nom de la tâche"
                 placeholderTextColor={t.textMuted}
                 value={newTaskName}
                 onChangeText={setNewTaskName}
-                autoFocus
+                autoFocus={!editingTaskId}
               />
 
               <Pressable
@@ -292,76 +322,20 @@ export default function ChoresScreen() {
                 </Pressable>
                 <Pressable
                   style={[styles.modalSubmitBtn, { backgroundColor: t.accent }, (!newTaskName.trim() || (isRecurrent && !startDate)) && { opacity: 0.5 }]}
-                  onPress={() => void handleAddTask()}
+                  onPress={() => void handleSubmitTask()}
                   disabled={!newTaskName.trim() || (isRecurrent && !startDate)}
                 >
-                  <Text style={styles.modalSubmitText}>Ajouter</Text>
+                  <Text style={styles.modalSubmitText}>{editingTaskId ? "Enregistrer" : "Ajouter"}</Text>
                 </Pressable>
               </View>
+
+              {editingTaskId && (
+                <Pressable style={styles.deleteTaskBtn} onPress={handleDeleteTask}>
+                  <Ionicons name="trash-outline" size={18} color={t.danger} />
+                  <Text style={[styles.deleteTaskText, { color: t.danger }]}>Supprimer la tâche</Text>
+                </Pressable>
+              )}
             </ScrollView>
-          </Pressable>
-        </Pressable>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* Task action modal */}
-      <Modal visible={!!actionTask} transparent animationType="fade">
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-        <Pressable style={styles.modalOverlay} onPress={() => setActionTask(null)}>
-          <Pressable style={[styles.modalContent, { backgroundColor: t.card }]} onPress={() => {}}>
-            <Text style={[styles.modalTitle, { color: t.text }]}>{actionTask?.name}</Text>
-
-            {showEditInput ? (
-              <>
-                <TextInput
-                  style={[styles.modalInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
-                  value={editingName}
-                  onChangeText={setEditingName}
-                  autoFocus
-                />
-                <View style={styles.modalBtnRow}>
-                  <Pressable style={[styles.modalCancelBtn, { backgroundColor: t.separator, borderColor: t.cardBorder }]} onPress={() => setShowEditInput(false)}>
-                    <Text style={[styles.modalCancelText, { color: t.textSecondary }]}>Annuler</Text>
-                  </Pressable>
-                  <Pressable style={[styles.modalSubmitBtn, { backgroundColor: t.accent }]} onPress={() => void handleSaveEdit()}>
-                    <Text style={styles.modalSubmitText}>Enregistrer</Text>
-                  </Pressable>
-                </View>
-              </>
-            ) : (
-              <View style={styles.actionList}>
-                <Pressable style={[styles.actionItem, { borderBottomColor: t.separator }]} onPress={() => setShowEditInput(true)}>
-                  <Ionicons name="pencil-outline" size={20} color={t.accent} />
-                  <Text style={[styles.actionText, { color: t.accent }]}>Renommer</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.actionItem, { borderBottomColor: t.separator }]}
-                  onPress={() => {
-                    if (!actionTask) return;
-                    const task = tasks.find((tk) => tk.id === actionTask.id);
-                    if (task) {
-                      void toggleTaskVisibility(task.id, !task.show_in_grid);
-                      setActionTask(null);
-                    }
-                  }}
-                >
-                  <Ionicons
-                    name={tasks.find((tk) => tk.id === actionTask?.id)?.show_in_grid ? "eye-off-outline" : "eye-outline"}
-                    size={20}
-                    color={t.accent}
-                  />
-                  <Text style={[styles.actionText, { color: t.accent }]}>
-                    {tasks.find((tk) => tk.id === actionTask?.id)?.show_in_grid
-                      ? "Masquer du tableau"
-                      : "Afficher dans le tableau"}
-                  </Text>
-                </Pressable>
-                <Pressable style={[styles.actionItem, { borderBottomColor: t.separator }]} onPress={handleDeleteTask}>
-                  <Ionicons name="trash-outline" size={20} color={t.danger} />
-                  <Text style={[styles.actionText, { color: t.danger }]}>Supprimer</Text>
-                </Pressable>
-              </View>
-            )}
           </Pressable>
         </Pressable>
         </KeyboardAvoidingView>
@@ -371,7 +345,7 @@ export default function ChoresScreen() {
       <Pressable
         testID="chores-fab"
         style={[styles.fab, { backgroundColor: t.accent }]}
-        onPress={() => setShowAddTask(true)}
+        onPress={openCreateTask}
       >
         <Ionicons name="add" size={28} color="#FFFFFF" />
       </Pressable>
@@ -458,13 +432,11 @@ const styles = StyleSheet.create({
     flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: "center",
   },
   modalSubmitText: { fontWeight: "600", color: "#FFFFFF", fontSize: 15 },
-
-  actionList: { gap: 4 },
-  actionItem: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    paddingVertical: 14, borderBottomWidth: 1,
+  deleteTaskBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 6, marginTop: 12, paddingVertical: 10,
   },
-  actionText: { fontSize: 15, fontWeight: "500" },
+  deleteTaskText: { fontSize: 14, fontWeight: "600" },
   loadingOverlay: {
     position: "absolute",
     top: 70,

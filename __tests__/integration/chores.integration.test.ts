@@ -86,10 +86,18 @@ describe("Chores integration", () => {
   });
 
   it("creates and reads a chore reminder", async () => {
+    // Un rappel est toujours porté par une tâche (FK task_id NOT NULL).
+    const { data: task } = await testSupabase
+      .from("chore_tasks")
+      .insert({ household_id: householdId, name: "Sortir poubelles" })
+      .select()
+      .single();
+
     const { data: created, error: createErr } = await testSupabase
       .from("chore_reminders")
       .insert({
         household_id: householdId,
+        task_id: task!.id,
         title: "Sortir poubelles",
         recurrence: "lundi, jeudi",
       })

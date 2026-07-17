@@ -93,6 +93,7 @@ export type ChoreTask = {
 export type ChoreReminder = {
   id: string;
   household_id: string;
+  task_id: string;
   title: string;
   recurrence: string;
   week_parity: number | null;
