@@ -32,7 +32,38 @@
 - Toutes les tables ont RLS activé, policies basées sur `my_household_id()`
 - Un utilisateur ne peut requêter que les données de son propre household
 - **Ordre des opérations** : un utilisateur doit d'abord rejoindre un household (`update household_id`) AVANT de pouvoir requêter les membres (RLS bloque sinon)
-- Toute modification de schéma doit être reflétée dans `supabase/schema.sql` ET `lib/types.ts`
+- Toute modification de schéma doit être reflétée dans `supabase/migrations/` (source de vérité), `supabase/schema.sql` (instantané) ET `lib/types.ts`
+- `kick_member(target)` et `delete_household()` sont des fonctions SECURITY DEFINER — le RLS empêche les UPDATE/DELETE directs qui nullifient `household_id` (le USING s'applique à la nouvelle ligne)
+
+## Environnements
+Deux environnements, zéro coût :
+
+| Env | Supabase | Données | Usage |
+|-----|----------|---------|-------|
+| **prod** | Projet cloud Free (`rlhkgrhgbnpblyetw`) | Réelles | App publiée (APK / web) |
+| **test / dev** | Supabase local (CLI + Docker) | Jetables, recréées par `db reset` | Dev local, E2E, CI |
+
+### Supabase local (dev / test)
+- Prérequis : Docker Desktop lancé
+- `npx supabase start` → stack complète (PostgreSQL, Auth, Storage, Realtime) sur `127.0.0.1:54321`
+- Migrations appliquées depuis `supabase/migrations/`, données de test depuis `supabase/seed.sql`
+- `npx supabase db reset` → repart d'une base propre
+- `npx supabase status` → affiche URL + clés (à mettre dans `.env`)
+- Auth : `signUp` auto-confirme les comptes (pas besoin de vérification email)
+- **Attention** : Expo Go sur mobile ne peut pas accéder à `127.0.0.1` → utiliser l'IP LAN dans `.env`
+
+### Migrations versionnées
+- Source de vérité : `supabase/migrations/` (fichiers horodatés, appliqués par le CLI)
+- `supabase/schema.sql` = instantané de référence (pas utilisé par le CLI)
+- `supabase/migration_*.sql` (racine) = migrations héritées, déjà appliquées en prod manuellement, ignorées par le CLI
+- Nouvelle migration : `npx supabase migration new <nom>`
+- Appliquer en prod : `npx supabase db push` (après `supabase link`)
+
+### CI (GitHub Actions)
+- `_e2e.yml` (réutilisable) : démarre Supabase local → exporte env → Playwright → stop
+- `e2e.yml` : lance `_e2e.yml` sur chaque PR vers master
+- `eas-build.yml` : sur push master → E2E d'abord (`needs: e2e`) → puis build APK
+- `paths-ignore` : les changements `docs/**` et `*.md` ne déclenchent pas les workflows
 
 ## Hooks
 - Pattern : fetch initial + subscription Realtime + fonctions de mutation
@@ -51,8 +82,11 @@
 - `process.env.EXPO_PUBLIC_*` doit utiliser `?? ""` (pas `!`) pour éviter les crashs si absent
 
 ## Tests
-- Tests unitaires dans `__tests__/`, lancer avec `npx jest`
+- Tests unitaires : `npx jest` (182 tests, `__tests__/`)
+- Tests E2E : `npx playwright test` (48 tests, `e2e/`) — nécessite Supabase local lancé
+- Tests d'intégration : `npx jest --testPathPattern integration` (`__tests__/integration/`)
 - Extraire la logique testable dans des modules séparés (`lib/*-logic.ts`)
+- E2E : comptes créés à la volée via `signUp` dans `e2e/global-setup.ts` + `e2e/fixtures.ts`
 
 ## Workflow
 - Vérifier qu'il n'y a pas d'erreurs de compilation avec `npx tsc --noEmit`
