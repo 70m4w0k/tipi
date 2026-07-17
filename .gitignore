@@ -45,3 +45,6 @@ yarn-error.*
 # Playwright
 test-results/
 playwright-report/
+
+# graphify
+graphify-out/
