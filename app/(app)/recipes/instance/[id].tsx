@@ -16,6 +16,7 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  withRepeat,
   runOnJS,
 } from "react-native-reanimated";
 import { useAuth } from "../../../../lib/hooks/useAuth";
@@ -81,12 +82,9 @@ function FlippableStepCard({
     isAnimating.value = true;
     const target = !isFlipped;
 
-    // Animate to edge-on (90°)
     rotateY.value = withTiming(90, { duration: 180 }, (finished) => {
       if (finished) {
-        // Swap content at midpoint via runOnJS
         runOnJS(setIsFlipped)(target);
-        // Animate back from edge-on to flat (0°)
         rotateY.value = withTiming(0, { duration: 180 }, (finished2) => {
           if (finished2) {
             isAnimating.value = false;
@@ -117,15 +115,49 @@ function FlippableStepCard({
     return formatDateShort(new Date(new Date(stepStartedAt).getTime() + totalMs).toISOString());
   }, [stepStartedAt, step.duration_value, step.duration_unit]);
 
-  // Countdown
+  // Pause / resume timer
+  const [isPaused, setIsPaused] = useState(false);
+  const pausedRemainingRef = useRef(0);
+
+  const togglePause = () => {
+    if (!isPaused) {
+      // Store current remaining time
+      const totalMs = durationToMs(step.duration_value ?? 0, step.duration_unit);
+      if (totalMs <= 0 || !stepStartedAt) return;
+      const end = new Date(stepStartedAt).getTime() + totalMs;
+      pausedRemainingRef.current = Math.max(0, end - Date.now());
+    }
+    setIsPaused((prev) => !prev);
+  };
+
+  // Pulsating opacity when paused
+  const pauseOpacity = useSharedValue(1);
+  useEffect(() => {
+    if (isPaused) {
+      pauseOpacity.value = withRepeat(
+        withTiming(0.35, { duration: 750 }),
+        -1,
+        true,
+      );
+    } else {
+      pauseOpacity.value = withTiming(1, { duration: 150 });
+    }
+  }, [isPaused]);
+
+  const pauseOpacityStyle = useAnimatedStyle(() => ({
+    opacity: pauseOpacity.value,
+  }));
+
+  // Countdown (respects pause)
   const remainingMs = useMemo(() => {
     if (!stepStartedAt) return 0;
     const totalMs = durationToMs(step.duration_value ?? 0, step.duration_unit);
     if (totalMs <= 0) return 0;
+    if (isPaused) return pausedRemainingRef.current;
     const end = new Date(stepStartedAt).getTime() + totalMs;
     return Math.max(0, end - Date.now());
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tick triggers recompute
-  }, [stepStartedAt, step.duration_value, step.duration_unit, tick]);
+  }, [stepStartedAt, step.duration_value, step.duration_unit, tick, isPaused]);
 
   const showCountdown = isCurrent && remainingMs > 0;
 
@@ -190,7 +222,16 @@ function FlippableStepCard({
             </View>
             <View style={styles.countdownCenter}>
               {showCountdown ? (
-                <Text style={[styles.countdownText, { color: t.text }]}>{formatCountdown(remainingMs)}</Text>
+                <Pressable onPress={() => { void haptic.light(); togglePause(); }}>
+                  <Animated.View style={pauseOpacityStyle}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Text style={[styles.countdownText, { color: t.text }]}>{formatCountdown(remainingMs)}</Text>
+                      {isPaused && (
+                        <Ionicons name="pause-circle" size={18} color={userColor} />
+                      )}
+                    </View>
+                  </Animated.View>
+                </Pressable>
               ) : (
                 <Text style={[styles.countdownPlaceholder, { color: t.textMuted }]}>—</Text>
               )}
