@@ -119,6 +119,18 @@ export function useSport(householdId: string | null | undefined) {
     [fetchAll]
   );
 
+  const updateLog = useCallback(
+    async (id: string, count: number) => {
+      if (count <= 0) {
+        await supabase.from("exercise_logs").delete().eq("id", id);
+      } else {
+        await supabase.from("exercise_logs").update({ count }).eq("id", id);
+      }
+      void fetchAll();
+    },
+    [fetchAll]
+  );
+
   const seedDefaultExercises = useCallback(
     async () => {
       if (!householdId) return;
@@ -148,6 +160,7 @@ export function useSport(householdId: string | null | undefined) {
     deleteExercise,
     logExercise,
     deleteLog,
+    updateLog,
     fetchAll,
   };
 }
