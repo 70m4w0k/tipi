@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -15,7 +15,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
+  withTiming,
+  runOnJS,
 } from "react-native-reanimated";
 import { useAuth } from "../../../../lib/hooks/useAuth";
 import { useRecipes } from "../../../../lib/hooks/useRecipes";
@@ -71,30 +72,40 @@ function FlippableStepCard({
   step, stepIdx, isCurrent, stepProgress: prog, userColor, t,
   stepStartedAt, tick, onFlip,
 }: FlippableStepCardProps) {
-  const flipRotate = useSharedValue(0);
-  const isFlipped = useSharedValue(false);
+  const [isFlipped, setIsFlipped] = useState(false);
+  const rotateY = useSharedValue(0);
+  const isAnimating = useSharedValue(false);
 
   const toggleFlip = () => {
-    const next = !isFlipped.value;
-    isFlipped.value = next;
-    flipRotate.value = withSpring(next ? 180 : 0, { damping: 15, stiffness: 150 });
-    onFlip();
+    if (isAnimating.value) return;
+    isAnimating.value = true;
+    const target = !isFlipped;
+
+    // Animate to edge-on (90°)
+    rotateY.value = withTiming(90, { duration: 180 }, (finished) => {
+      if (finished) {
+        // Swap content at midpoint via runOnJS
+        runOnJS(setIsFlipped)(target);
+        // Animate back from edge-on to flat (0°)
+        rotateY.value = withTiming(0, { duration: 180 }, (finished2) => {
+          if (finished2) {
+            isAnimating.value = false;
+            runOnJS(onFlip)();
+          } else {
+            isAnimating.value = false;
+          }
+        });
+      } else {
+        isAnimating.value = false;
+      }
+    });
   };
 
-  const frontStyle = useAnimatedStyle(() => ({
+  const animStyle = useAnimatedStyle(() => ({
     transform: [
       { perspective: 800 },
-      { rotateY: `${flipRotate.value}deg` },
+      { rotateY: `${rotateY.value}deg` },
     ],
-    backfaceVisibility: "hidden" as const,
-  }));
-
-  const backStyle = useAnimatedStyle(() => ({
-    transform: [
-      { perspective: 800 },
-      { rotateY: `${flipRotate.value + 180}deg` },
-    ],
-    backfaceVisibility: "hidden" as const,
   }));
 
   // Compute back-face dates
@@ -119,9 +130,9 @@ function FlippableStepCard({
   const showCountdown = isCurrent && remainingMs > 0;
 
   return (
-    <View style={[styles.flipContainer]}>
-      {/* Front face */}
-      <Animated.View style={[styles.flipFace, frontStyle]}>
+    <Animated.View style={[styles.flipContainer, animStyle]}>
+      {!isFlipped ? (
+        /* Front face */
         <View style={[
           styles.timelineCard,
           { backgroundColor: t.card, borderColor: t.cardBorder },
@@ -150,10 +161,8 @@ function FlippableStepCard({
             ) : null}
           </View>
         </View>
-      </Animated.View>
-
-      {/* Back face */}
-      <Animated.View style={[styles.flipFace, styles.flipFaceBack, backStyle]}>
+      ) : (
+        /* Back face */
         <View style={[
           styles.timelineCard,
           { backgroundColor: t.card, borderColor: t.cardBorder },
@@ -161,7 +170,6 @@ function FlippableStepCard({
         ]}>
           <LiquidProgress progress={prog} color={userColor} borderRadius={10} />
           <View style={{ zIndex: 1, flex: 1 }}>
-            {/* Header row */}
             <View style={styles.timelineCardHeader}>
               {startDate ? (
                 <Text style={[styles.backDate, { color: t.textSecondary }]}>Début : {startDate}</Text>
@@ -180,8 +188,6 @@ function FlippableStepCard({
                 </Pressable>
               </View>
             </View>
-
-            {/* Countdown center */}
             <View style={styles.countdownCenter}>
               {showCountdown ? (
                 <Text style={[styles.countdownText, { color: t.text }]}>{formatCountdown(remainingMs)}</Text>
@@ -191,8 +197,8 @@ function FlippableStepCard({
             </View>
           </View>
         </View>
-      </Animated.View>
-    </View>
+      )}
+    </Animated.View>
   );
 }
 
@@ -523,8 +529,6 @@ const styles = StyleSheet.create({
 
   // Flip card
   flipContainer: { flex: 1, marginBottom: 8 },
-  flipFace: { width: "100%" },
-  flipFaceBack: { position: "absolute", top: 0, left: 0, right: 0 },
   backDate: { fontSize: 11 },
   countdownCenter: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 12 },
   countdownText: { fontSize: 26, fontWeight: "700", fontVariant: ["tabular-nums"] as const },
