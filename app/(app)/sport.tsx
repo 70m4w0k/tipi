@@ -62,7 +62,7 @@ export default function SportScreen() {
   const [period, setPeriod] = useState<Period>("day");
   const [refreshing, setRefreshing] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
-  const [editModal, setEditModal] = useState<Exercise | null>(null);
+  const [editModal, setEditModal] = useState<Exercise | undefined>(undefined); // undefined=closed, null=new
   const [editName, setEditName] = useState("");
   const [editIcon, setEditIcon] = useState("barbell-outline");
   const [editUnit, setEditUnit] = useState("répétitions");
@@ -108,12 +108,12 @@ export default function SportScreen() {
   const handleSaveExercise = async () => {
     if (!editName.trim()) return;
     void haptic.light();
-    if (editModal) {
+    if (editModal?.id) {
       await updateExercise(editModal.id, editName, editIcon, editUnit);
     } else {
       await addExercise(editName, editIcon, editUnit);
     }
-    setEditModal(null);
+    setEditModal(undefined);
     setEditName("");
   };
 
@@ -135,7 +135,7 @@ export default function SportScreen() {
       setEditIcon(ex.icon);
       setEditUnit(ex.unit);
     } else {
-      setEditModal(null);
+      setEditModal(null!); // null = new exercise, distinct from undefined
       setEditName("");
       setEditIcon("barbell-outline");
       setEditUnit("répétitions");
@@ -325,8 +325,8 @@ export default function SportScreen() {
       </Modal>
 
       {/* Edit exercise modal */}
-      <Modal visible={editModal !== null} transparent animationType="fade">
-        <Pressable style={styles.modalOverlay} onPress={() => setEditModal(null)}>
+      <Modal visible={editModal !== undefined} transparent animationType="fade">
+        <Pressable style={styles.modalOverlay} onPress={() => setEditModal(undefined)}>
           <Pressable style={[styles.modalContent, { backgroundColor: t.card }]} onPress={() => {}}>
             <Text style={[styles.editTitle, { color: t.text }]}>
               {editModal?.id ? "Modifier l'exercice" : "Nouvel exercice"}
@@ -380,12 +380,12 @@ export default function SportScreen() {
               {editModal?.id && (
                 <Pressable
                   style={[styles.modalDelete, { backgroundColor: t.dangerLight }]}
-                  onPress={() => { setEditModal(null); handleDeleteExercise(editModal); }}
+                  onPress={() => { setEditModal(undefined); handleDeleteExercise(editModal); }}
                 >
                   <Ionicons name="trash-outline" size={16} color={t.danger} />
                 </Pressable>
               )}
-              <Pressable style={[styles.modalCancel, { borderColor: t.cardBorder, flex: 1 }]} onPress={() => setEditModal(null)}>
+              <Pressable style={[styles.modalCancel, { borderColor: t.cardBorder, flex: 1 }]} onPress={() => setEditModal(undefined)}>
                 <Text style={[styles.modalCancelText, { color: t.textSecondary }]}>Annuler</Text>
               </Pressable>
               <Pressable
