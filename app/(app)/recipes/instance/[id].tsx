@@ -37,13 +37,11 @@ function durationToMs(value: number, unit: DurationUnit): number {
   }
 }
 
-function stepProgress(step: RecipeStep, stepStartedAt: string | null, pausedRemainingMs?: number): number {
+function stepProgress(step: RecipeStep, stepStartedAt: string | null, pauseOffsetMs?: number): number {
   const totalMs = durationToMs(step.duration_value ?? 0, step.duration_unit);
   if (totalMs <= 0 || !stepStartedAt) return 0;
-  if (pausedRemainingMs !== undefined) {
-    return Math.min(Math.max(1 - pausedRemainingMs / totalMs, 0.02), 1);
-  }
-  const elapsed = Date.now() - new Date(stepStartedAt).getTime();
+  const now = Date.now() - (pauseOffsetMs ?? 0);
+  const elapsed = now - new Date(stepStartedAt).getTime();
   return Math.min(Math.max(elapsed / totalMs, 0.02), 1);
 }
 
@@ -70,13 +68,14 @@ type FlippableStepCardProps = {
   stepStartedAt: string | null;
   tick: number;
   isPaused: boolean;
+  pauseOffset: number;
   togglePause: () => void;
   onFlip: () => void;
 };
 
 function FlippableStepCard({
   step, stepIdx, isCurrent, stepProgress: prog, userColor, t,
-  stepStartedAt, tick, isPaused, togglePause, onFlip,
+  stepStartedAt, tick, isPaused, pauseOffset, togglePause, onFlip,
 }: FlippableStepCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const rotateY = useSharedValue(0);
@@ -138,18 +137,16 @@ function FlippableStepCard({
     opacity: pauseOpacity.value,
   }));
 
-  // Countdown (respects pause — frozen value computed by parent)
+  // Countdown (effective time excludes pause periods)
   const remainingMs = useMemo(() => {
     if (!stepStartedAt) return 0;
     const totalMs = durationToMs(step.duration_value ?? 0, step.duration_unit);
     if (totalMs <= 0) return 0;
-    // When paused, remaining is derived from the frozen progress bar value:
-    // prog = 1 - remaining/totalMs  →  remaining = (1 - prog) * totalMs
-    if (isPaused) return Math.round((1 - prog) * totalMs);
     const end = new Date(stepStartedAt).getTime() + totalMs;
-    return Math.max(0, end - Date.now());
+    const effectiveNow = Date.now() - pauseOffset;
+    return Math.max(0, end - effectiveNow);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tick triggers recompute
-  }, [stepStartedAt, step.duration_value, step.duration_unit, tick, isPaused, prog]);
+  }, [stepStartedAt, step.duration_value, step.duration_unit, tick, pauseOffset]);
 
   const showCountdown = isCurrent && remainingMs > 0;
 
@@ -265,23 +262,25 @@ export default function InstanceDetailScreen() {
     return () => clearInterval(id);
   }, []);
 
-  // Pause state for countdown + progress bar
+  // Pause state for countdown + progress bar (cumulative time offset)
   const [isPaused, setIsPaused] = useState(false);
-  const pausedRemainingRef = useRef(0);
+  const pauseStartRef = useRef(0);   // Date.now() when current pause began, 0 if not paused
+  const totalPausedRef = useRef(0);  // cumulative ms spent paused (past pauses)
+
   const togglePause = () => {
     if (!isPaused) {
-      // Capture remaining ms at pause moment
-      const step = recipe?.steps[currentStep];
-      if (step && inst?.step_started_at) {
-        const totalMs = durationToMs(step.duration_value ?? 0, step.duration_unit);
-        if (totalMs > 0) {
-          const end = new Date(inst.step_started_at).getTime() + totalMs;
-          pausedRemainingRef.current = Math.max(0, end - Date.now());
-        }
-      }
+      pauseStartRef.current = Date.now();
+    } else {
+      totalPausedRef.current += Date.now() - pauseStartRef.current;
+      pauseStartRef.current = 0;
     }
     setIsPaused((prev) => !prev);
   };
+
+  // Total pause offset: past pauses + current pause (if any)
+  const pauseOffset = totalPausedRef.current + (isPaused && pauseStartRef.current
+    ? Date.now() - pauseStartRef.current
+    : 0);
 
   // Auto-scroll de la timeline verticale vers l'étape en cours.
   const contentScrollRef = useRef<ScrollView>(null);
@@ -415,12 +414,13 @@ export default function InstanceDetailScreen() {
                     step={step}
                     stepIdx={idx}
                     isCurrent
-                    stepProgress={stepProgress(step, inst.step_started_at, isPaused ? pausedRemainingRef.current : undefined)}
+                    stepProgress={stepProgress(step, inst.step_started_at, pauseOffset)}
                     userColor={userColor}
                     t={t}
                     stepStartedAt={inst.step_started_at}
                     tick={tick}
                     isPaused={isPaused}
+                    pauseOffset={pauseOffset}
                     togglePause={togglePause}
                     onFlip={() => {}}
                   />
