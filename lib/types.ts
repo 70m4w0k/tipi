@@ -173,3 +173,23 @@ export type SharedFile = {
   uploaded_by: string | null;
   uploaded_at: string;
 };
+
+export type Exercise = {
+  id: string;
+  household_id: string;
+  name: string;
+  icon: string;
+  unit: string;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type ExerciseLog = {
+  id: string;
+  household_id: string;
+  exercise_id: string;
+  user_id: string;
+  count: number;
+  logged_at: string;
+  created_at: string;
+};

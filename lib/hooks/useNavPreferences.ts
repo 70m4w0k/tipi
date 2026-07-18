@@ -15,6 +15,7 @@ export const ALL_TABS: { key: NavTab; label: string; icon: string }[] = [
   { key: "recipes", label: "Recettes", icon: "restaurant-outline" },
   { key: "calendar", label: "Calendrier", icon: "calendar-outline" },
   { key: "documents", label: "Documents", icon: "document-text-outline" },
+  { key: "sport", label: "Sport", icon: "barbell-outline" },
 ];
 
 export function useNavPreferences() {
