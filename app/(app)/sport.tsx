@@ -61,7 +61,6 @@ export default function SportScreen() {
 
   const [period, setPeriod] = useState<Period>("day");
   const [refreshing, setRefreshing] = useState(false);
-  const [fabOpen, setFabOpen] = useState(false);
   const [editModal, setEditModal] = useState<Exercise | undefined>(undefined); // undefined=closed, null=new
   const [editName, setEditName] = useState("");
   const [editIcon, setEditIcon] = useState("barbell-outline");
@@ -128,7 +127,6 @@ export default function SportScreen() {
   };
 
   const openEditModal = (ex?: Exercise) => {
-    setFabOpen(false);
     if (ex) {
       setEditModal(ex);
       setEditName(ex.name);
@@ -204,6 +202,15 @@ export default function SportScreen() {
                   <View style={styles.exerciseNameRow}>
                     <Ionicons name={ex.icon as any} size={20} color={t.accent} />
                     <Text style={[styles.exerciseName, { color: t.text }]}>{ex.name}</Text>
+                    <Pressable
+                      hitSlop={8}
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        openEditModal(ex);
+                      }}
+                    >
+                      <Ionicons name="pencil-outline" size={14} color={t.textMuted} />
+                    </Pressable>
                   </View>
                   <View style={[styles.exerciseTotal, { backgroundColor: t.accentLight }]}>
                     <Text style={[styles.exerciseTotalText, { color: t.accent }]}>
@@ -246,32 +253,11 @@ export default function SportScreen() {
 
       {/* FAB */}
       <View style={styles.fabContainer}>
-        {fabOpen && (
-          <View style={styles.fabMenu}>
-            <Pressable
-              style={[styles.fabMenuItem, { backgroundColor: t.card, borderColor: t.cardBorder }]}
-              onPress={() => openEditModal()}
-            >
-              <Ionicons name="add" size={20} color={t.accent} />
-              <Text style={[styles.fabMenuText, { color: t.text }]}>Ajouter</Text>
-            </Pressable>
-            {exercises.map((ex) => (
-              <Pressable
-                key={ex.id}
-                style={[styles.fabMenuItem, { backgroundColor: t.card, borderColor: t.cardBorder }]}
-                onPress={() => openEditModal(ex)}
-              >
-                <Ionicons name={ex.icon as any} size={20} color={t.textSecondary} />
-                <Text style={[styles.fabMenuText, { color: t.text }]} numberOfLines={1}>{ex.name}</Text>
-              </Pressable>
-            ))}
-          </View>
-        )}
         <Pressable
           style={[styles.fab, { backgroundColor: t.accent }]}
-          onPress={() => { void haptic.light(); setFabOpen((p) => !p); }}
+          onPress={() => { void haptic.light(); openEditModal(); }}
         >
-          <Ionicons name={fabOpen ? "close" : "add"} size={24} color="#FFFFFF" />
+          <Ionicons name="add" size={24} color="#FFFFFF" />
         </Pressable>
       </View>
 
@@ -454,13 +440,6 @@ const styles = StyleSheet.create({
 
   // FAB
   fabContainer: { position: "absolute", bottom: 24, right: 16, alignItems: "flex-end" },
-  fabMenu: { marginBottom: 12, gap: 8, alignItems: "flex-end" },
-  fabMenuItem: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    paddingHorizontal: 14, paddingVertical: 10,
-    borderWidth: 1, borderRadius: 10,
-  },
-  fabMenuText: { fontSize: 14, fontWeight: "500", maxWidth: 160 },
   fab: {
     width: 52, height: 52, borderRadius: 26,
     alignItems: "center", justifyContent: "center",
