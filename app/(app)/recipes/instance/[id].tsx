@@ -37,9 +37,12 @@ function durationToMs(value: number, unit: DurationUnit): number {
   }
 }
 
-function stepProgress(step: RecipeStep, stepStartedAt: string | null): number {
+function stepProgress(step: RecipeStep, stepStartedAt: string | null, pausedRemainingMs?: number): number {
   const totalMs = durationToMs(step.duration_value ?? 0, step.duration_unit);
   if (totalMs <= 0 || !stepStartedAt) return 0;
+  if (pausedRemainingMs !== undefined) {
+    return Math.min(Math.max(1 - pausedRemainingMs / totalMs, 0.02), 1);
+  }
   const elapsed = Date.now() - new Date(stepStartedAt).getTime();
   return Math.min(Math.max(elapsed / totalMs, 0.02), 1);
 }
@@ -66,12 +69,14 @@ type FlippableStepCardProps = {
   t: ReturnType<typeof useTheme>;
   stepStartedAt: string | null;
   tick: number;
+  isPaused: boolean;
+  togglePause: () => void;
   onFlip: () => void;
 };
 
 function FlippableStepCard({
   step, stepIdx, isCurrent, stepProgress: prog, userColor, t,
-  stepStartedAt, tick, onFlip,
+  stepStartedAt, tick, isPaused, togglePause, onFlip,
 }: FlippableStepCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const rotateY = useSharedValue(0);
@@ -115,21 +120,6 @@ function FlippableStepCard({
     return formatDateShort(new Date(new Date(stepStartedAt).getTime() + totalMs).toISOString());
   }, [stepStartedAt, step.duration_value, step.duration_unit]);
 
-  // Pause / resume timer
-  const [isPaused, setIsPaused] = useState(false);
-  const pausedRemainingRef = useRef(0);
-
-  const togglePause = () => {
-    if (!isPaused) {
-      // Store current remaining time
-      const totalMs = durationToMs(step.duration_value ?? 0, step.duration_unit);
-      if (totalMs <= 0 || !stepStartedAt) return;
-      const end = new Date(stepStartedAt).getTime() + totalMs;
-      pausedRemainingRef.current = Math.max(0, end - Date.now());
-    }
-    setIsPaused((prev) => !prev);
-  };
-
   // Pulsating opacity when paused
   const pauseOpacity = useSharedValue(1);
   useEffect(() => {
@@ -148,16 +138,18 @@ function FlippableStepCard({
     opacity: pauseOpacity.value,
   }));
 
-  // Countdown (respects pause)
+  // Countdown (respects pause — frozen value computed by parent)
   const remainingMs = useMemo(() => {
     if (!stepStartedAt) return 0;
     const totalMs = durationToMs(step.duration_value ?? 0, step.duration_unit);
     if (totalMs <= 0) return 0;
-    if (isPaused) return pausedRemainingRef.current;
+    // When paused, remaining is derived from the frozen progress bar value:
+    // prog = 1 - remaining/totalMs  →  remaining = (1 - prog) * totalMs
+    if (isPaused) return Math.round((1 - prog) * totalMs);
     const end = new Date(stepStartedAt).getTime() + totalMs;
     return Math.max(0, end - Date.now());
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tick triggers recompute
-  }, [stepStartedAt, step.duration_value, step.duration_unit, tick, isPaused]);
+  }, [stepStartedAt, step.duration_value, step.duration_unit, tick, isPaused, prog]);
 
   const showCountdown = isCurrent && remainingMs > 0;
 
@@ -272,6 +264,24 @@ export default function InstanceDetailScreen() {
     const id = setInterval(() => setTick((t) => t + 1), 100);
     return () => clearInterval(id);
   }, []);
+
+  // Pause state for countdown + progress bar
+  const [isPaused, setIsPaused] = useState(false);
+  const pausedRemainingRef = useRef(0);
+  const togglePause = () => {
+    if (!isPaused) {
+      // Capture remaining ms at pause moment
+      const step = recipe?.steps[currentStep];
+      if (step && inst?.step_started_at) {
+        const totalMs = durationToMs(step.duration_value ?? 0, step.duration_unit);
+        if (totalMs > 0) {
+          const end = new Date(inst.step_started_at).getTime() + totalMs;
+          pausedRemainingRef.current = Math.max(0, end - Date.now());
+        }
+      }
+    }
+    setIsPaused((prev) => !prev);
+  };
 
   // Auto-scroll de la timeline verticale vers l'étape en cours.
   const contentScrollRef = useRef<ScrollView>(null);
@@ -405,11 +415,13 @@ export default function InstanceDetailScreen() {
                     step={step}
                     stepIdx={idx}
                     isCurrent
-                    stepProgress={stepProgress(step, inst.step_started_at)}
+                    stepProgress={stepProgress(step, inst.step_started_at, isPaused ? pausedRemainingRef.current : undefined)}
                     userColor={userColor}
                     t={t}
                     stepStartedAt={inst.step_started_at}
                     tick={tick}
+                    isPaused={isPaused}
+                    togglePause={togglePause}
                     onFlip={() => {}}
                   />
                 ) : (
