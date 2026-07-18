@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -12,6 +12,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from "react-native-reanimated";
 import { useAuth } from "../../../../lib/hooks/useAuth";
 import { useRecipes } from "../../../../lib/hooks/useRecipes";
 import { useTheme } from "../../../../lib/theme";
@@ -37,6 +42,160 @@ function stepProgress(step: RecipeStep, stepStartedAt: string | null): number {
   return Math.min(Math.max(elapsed / totalMs, 0.02), 1);
 }
 
+function formatCountdown(remainingMs: number): string {
+  if (remainingMs <= 0) return "00:00:00";
+  const totalSec = Math.floor(remainingMs / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function formatDateShort(iso: string): string {
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+}
+
+type FlippableStepCardProps = {
+  step: RecipeStep;
+  stepIdx: number;
+  isCurrent: boolean;
+  stepProgress: number;
+  userColor: string;
+  t: ReturnType<typeof useTheme>;
+  stepStartedAt: string | null;
+  tick: number;
+  onFlip: () => void;
+};
+
+function FlippableStepCard({
+  step, stepIdx, isCurrent, stepProgress: prog, userColor, t,
+  stepStartedAt, tick, onFlip,
+}: FlippableStepCardProps) {
+  const flipRotate = useSharedValue(0);
+  const isFlipped = useSharedValue(false);
+
+  const toggleFlip = () => {
+    const next = !isFlipped.value;
+    isFlipped.value = next;
+    flipRotate.value = withSpring(next ? 180 : 0, { damping: 15, stiffness: 150 });
+    onFlip();
+  };
+
+  const frontStyle = useAnimatedStyle(() => ({
+    transform: [
+      { perspective: 800 },
+      { rotateY: `${flipRotate.value}deg` },
+    ],
+    backfaceVisibility: "hidden" as const,
+  }));
+
+  const backStyle = useAnimatedStyle(() => ({
+    transform: [
+      { perspective: 800 },
+      { rotateY: `${flipRotate.value + 180}deg` },
+    ],
+    backfaceVisibility: "hidden" as const,
+  }));
+
+  // Compute back-face dates
+  const startDate = stepStartedAt ? formatDateShort(stepStartedAt) : null;
+  const endDate = useMemo(() => {
+    if (!stepStartedAt) return null;
+    const totalMs = durationToMs(step.duration_value ?? 0, step.duration_unit);
+    if (totalMs <= 0) return null;
+    return formatDateShort(new Date(new Date(stepStartedAt).getTime() + totalMs).toISOString());
+  }, [stepStartedAt, step.duration_value, step.duration_unit]);
+
+  // Countdown
+  const remainingMs = useMemo(() => {
+    if (!stepStartedAt) return 0;
+    const totalMs = durationToMs(step.duration_value ?? 0, step.duration_unit);
+    if (totalMs <= 0) return 0;
+    const end = new Date(stepStartedAt).getTime() + totalMs;
+    return Math.max(0, end - Date.now());
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tick triggers recompute
+  }, [stepStartedAt, step.duration_value, step.duration_unit, tick]);
+
+  const showCountdown = isCurrent && remainingMs > 0;
+
+  return (
+    <View style={[styles.flipContainer]}>
+      {/* Front face */}
+      <Animated.View style={[styles.flipFace, frontStyle]}>
+        <View style={[
+          styles.timelineCard,
+          { backgroundColor: t.card, borderColor: t.cardBorder },
+          { borderColor: userColor, borderWidth: 2 },
+        ]}>
+          <LiquidProgress progress={prog} color={userColor} borderRadius={10} />
+          <View style={{ zIndex: 1 }}>
+            <View style={styles.timelineCardHeader}>
+              <Text style={[styles.timelineStepNum, { color: userColor }]}>Étape {stepIdx + 1}</Text>
+              <Pressable
+                hitSlop={8}
+                onPress={() => { void haptic.light(); toggleFlip(); }}
+              >
+                <Ionicons name="information-circle-outline" size={18} color={userColor} />
+              </Pressable>
+            </View>
+            <Text style={[styles.timelineTitle, { color: t.text }]}>{step.title}</Text>
+            {step.description ? (
+              <Text style={[styles.timelineDesc, { color: t.textSecondary }]}>{step.description}</Text>
+            ) : null}
+            {formatDuration(step) ? (
+              <View style={styles.timelineDurationRow}>
+                <Ionicons name="time-outline" size={12} color={t.textMuted} />
+                <Text style={[styles.timelineDuration, { color: t.textMuted }]}>{formatDuration(step)}</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </Animated.View>
+
+      {/* Back face */}
+      <Animated.View style={[styles.flipFace, styles.flipFaceBack, backStyle]}>
+        <View style={[
+          styles.timelineCard,
+          { backgroundColor: t.card, borderColor: t.cardBorder },
+          { borderColor: userColor, borderWidth: 2 },
+        ]}>
+          <LiquidProgress progress={prog} color={userColor} borderRadius={10} />
+          <View style={{ zIndex: 1, flex: 1 }}>
+            {/* Header row */}
+            <View style={styles.timelineCardHeader}>
+              {startDate ? (
+                <Text style={[styles.backDate, { color: t.textSecondary }]}>Début : {startDate}</Text>
+              ) : (
+                <View />
+              )}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                {endDate ? (
+                  <Text style={[styles.backDate, { color: t.textSecondary }]}>Fin : {endDate}</Text>
+                ) : null}
+                <Pressable
+                  hitSlop={8}
+                  onPress={() => { void haptic.light(); toggleFlip(); }}
+                >
+                  <Ionicons name="information-circle" size={18} color={userColor} />
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Countdown center */}
+            <View style={styles.countdownCenter}>
+              {showCountdown ? (
+                <Text style={[styles.countdownText, { color: t.text }]}>{formatCountdown(remainingMs)}</Text>
+              ) : (
+                <Text style={[styles.countdownPlaceholder, { color: t.textMuted }]}>—</Text>
+              )}
+            </View>
+          </View>
+        </View>
+      </Animated.View>
+    </View>
+  );
+}
+
 const DOT_SIZE = 22;
 const LINE_WIDTH = 2;
 
@@ -59,6 +218,13 @@ export default function InstanceDetailScreen() {
   const [notesChanged, setNotesChanged] = useState(false);
   const [notesSaved, setNotesSaved] = useState(false);
   const [notesFocused, setNotesFocused] = useState(false);
+
+  // Real-time tick for progress animation & countdown
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 100);
+    return () => clearInterval(id);
+  }, []);
 
   // Auto-scroll de la timeline verticale vers l'étape en cours.
   const contentScrollRef = useRef<ScrollView>(null);
@@ -187,33 +353,46 @@ export default function InstanceDetailScreen() {
                 </View>
 
                 {/* Card */}
-                <View style={[
-                  styles.timelineCard,
-                  { backgroundColor: t.card, borderColor: t.cardBorder },
-                  isCurrent && { borderColor: userColor, borderWidth: 2 },
-                ]}>
-                  <LiquidProgress
-                    progress={isDone ? 1 : isCurrent ? stepProgress(step, inst.step_started_at) : 0}
-                    color={userColor}
-                    borderRadius={10}
+                {isCurrent ? (
+                  <FlippableStepCard
+                    step={step}
+                    stepIdx={idx}
+                    isCurrent
+                    stepProgress={stepProgress(step, inst.step_started_at)}
+                    userColor={userColor}
+                    t={t}
+                    stepStartedAt={inst.step_started_at}
+                    tick={tick}
+                    onFlip={() => {}}
                   />
-                  <View style={{ zIndex: 1 }}>
-                    <View style={styles.timelineCardHeader}>
-                      <Text style={[styles.timelineStepNum, { color }]}>Étape {idx + 1}</Text>
-                      {date ? <Text style={[styles.timelineDate, { color: t.textMuted }]}>{date}</Text> : null}
-                    </View>
-                    <Text style={[styles.timelineTitle, { color: t.text }]}>{step.title}</Text>
-                    {step.description ? (
-                      <Text style={[styles.timelineDesc, { color: t.textSecondary }]}>{step.description}</Text>
-                    ) : null}
-                    {formatDuration(step) ? (
-                      <View style={styles.timelineDurationRow}>
-                        <Ionicons name="time-outline" size={12} color={t.textMuted} />
-                        <Text style={[styles.timelineDuration, { color: t.textMuted }]}>{formatDuration(step)}</Text>
+                ) : (
+                  <View style={[
+                    styles.timelineCard,
+                    { backgroundColor: t.card, borderColor: t.cardBorder },
+                  ]}>
+                    <LiquidProgress
+                      progress={isDone ? 1 : 0}
+                      color={userColor}
+                      borderRadius={10}
+                    />
+                    <View style={{ zIndex: 1 }}>
+                      <View style={styles.timelineCardHeader}>
+                        <Text style={[styles.timelineStepNum, { color }]}>Étape {idx + 1}</Text>
+                        {date ? <Text style={[styles.timelineDate, { color: t.textMuted }]}>{date}</Text> : null}
                       </View>
-                    ) : null}
+                      <Text style={[styles.timelineTitle, { color: t.text }]}>{step.title}</Text>
+                      {step.description ? (
+                        <Text style={[styles.timelineDesc, { color: t.textSecondary }]}>{step.description}</Text>
+                      ) : null}
+                      {formatDuration(step) ? (
+                        <View style={styles.timelineDurationRow}>
+                          <Ionicons name="time-outline" size={12} color={t.textMuted} />
+                          <Text style={[styles.timelineDuration, { color: t.textMuted }]}>{formatDuration(step)}</Text>
+                        </View>
+                      ) : null}
+                    </View>
                   </View>
-                </View>
+                )}
               </View>
             );
           })}
@@ -341,6 +520,15 @@ const styles = StyleSheet.create({
   timelineDesc: { fontSize: 13, marginTop: 4 },
   timelineDurationRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 },
   timelineDuration: { fontSize: 11 },
+
+  // Flip card
+  flipContainer: { flex: 1, marginBottom: 8 },
+  flipFace: { width: "100%" },
+  flipFaceBack: { position: "absolute", top: 0, left: 0, right: 0 },
+  backDate: { fontSize: 11 },
+  countdownCenter: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 12 },
+  countdownText: { fontSize: 26, fontWeight: "700", fontVariant: ["tabular-nums"] as const },
+  countdownPlaceholder: { fontSize: 22, fontWeight: "300" },
 
   // Notes
   notesSection: { borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 12 },
