@@ -18,6 +18,8 @@ import { useTheme } from "../../../lib/theme";
 import { haptic } from "../../../lib/haptics";
 import { ExerciseLog } from "../../../lib/types";
 
+import { BadgeRow, BadgeItem } from "../../../components/BadgeRow";
+
 const BAR_WIDTH = 40;
 const BAR_GAP = 12;
 const BAR_MAX_HEIGHT = 180;
@@ -36,7 +38,7 @@ export default function ExerciseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile } = useAuth();
   const { members } = useHousehold(profile);
-  const { exercises, logs, logExercise, updateLog, fetchAll } = useSport(profile?.household_id);
+  const { exercises, logs, logExercise, updateLog, fetchAll, exerciseBadges, temporalBadges, userBadges, unlockedBadges, temporalTitles, collectiveTitle } = useSport(profile?.household_id, profile?.id);
   const t = useTheme();
   const router = useRouter();
 
@@ -272,6 +274,53 @@ export default function ExerciseDetailScreen() {
               {selectedTotal} {exercise.unit}
             </Text>
           </View>
+
+          {/* Badges */}
+          {exercise && (
+            <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+              {(() => {
+                const exBadges = exerciseBadges.filter((b) => b.exercise_id === id);
+                const exUnlocked = userBadges.map((ub) => ub.badge_id);
+                const badgeItems: BadgeItem[] = exBadges.map((b) => ({
+                  title: b.title,
+                  icon: b.icon,
+                  threshold: b.threshold,
+                  unlocked: exUnlocked.includes(b.id),
+                }));
+                const exTemporal = temporalBadges
+                  .filter((b) => b.exercise_id === id)
+                  .filter((b) => temporalTitles.some((t) => t.badge.id === b.id));
+
+                return (
+                  <>
+                    {badgeItems.length > 0 && (
+                      <BadgeRow badges={badgeItems} accent={profile?.color ?? t.accent} />
+                    )}
+                    {exTemporal.length > 0 && (
+                      <View style={{ marginTop: 12 }}>
+                        <Text style={{ fontSize: 12, fontWeight: "700", textTransform: "uppercase", color: t.textSecondary, marginBottom: 6 }}>
+                          Titres actifs
+                        </Text>
+                        {exTemporal.map((b) => (
+                          <View key={b.id} style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4 }}>
+                            <Ionicons name={b.icon as any} size={16} color={t.accent} />
+                            <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>{b.title}</Text>
+                            <Text style={{ fontSize: 11, color: t.success }}>✓ actif</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                    {collectiveTitle && (
+                      <View style={{ marginTop: 12, flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6, paddingHorizontal: 10, backgroundColor: t.accentLight, borderRadius: 10 }}>
+                        <Ionicons name={collectiveTitle.icon as any} size={18} color={t.accent} />
+                        <Text style={{ fontSize: 13, fontWeight: "700", color: t.accent }}>{collectiveTitle.title}</Text>
+                      </View>
+                    )}
+                  </>
+                );
+              })()}
+            </View>
+          )}
 
           {/* Series for selected day */}
           {selectedSeries.map((log, i) => (

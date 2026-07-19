@@ -193,3 +193,30 @@ export type ExerciseLog = {
   logged_at: string;
   created_at: string;
 };
+
+export type ExerciseBadge = {
+  id: string;
+  exercise_id: string;
+  household_id: string;
+  threshold: number;
+  title: string;
+  icon: string;
+};
+
+export type TemporalBadge = {
+  id: string;
+  exercise_id: string;
+  household_id: string;
+  threshold: number;
+  window_days: number;
+  title: string;
+  icon: string;
+  grace_hours: number;
+};
+
+export type UserBadge = {
+  id: string;
+  user_id: string;
+  badge_id: string;
+  unlocked_at: string;
+};

@@ -1,14 +1,23 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../supabase";
-import { Exercise, ExerciseLog } from "../types";
-import { DEFAULT_EXERCISES } from "../sport-logic";
+import { Exercise, ExerciseLog, ExerciseBadge, TemporalBadge, UserBadge } from "../types";
+import {
+  DEFAULT_EXERCISES,
+  COLLECTIVE_THRESHOLDS,
+  computeUnlockedBadges,
+  computeTemporalTitles,
+  computeCollectiveTitles,
+} from "../sport-logic";
 
 let channelCounter = 0;
 
-export function useSport(householdId: string | null | undefined) {
+export function useSport(householdId: string | null | undefined, userId?: string | null) {
   const channelId = useRef(++channelCounter);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [logs, setLogs] = useState<ExerciseLog[]>([]);
+  const [exerciseBadges, setExerciseBadges] = useState<ExerciseBadge[]>([]);
+  const [temporalBadges, setTemporalBadges] = useState<TemporalBadge[]>([]);
+  const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
   const [loading, setLoading] = useState(false);
   const hasFetched = useRef(false);
   const seededRef = useRef(false);
@@ -17,133 +26,89 @@ export function useSport(householdId: string | null | undefined) {
     if (!householdId) {
       setExercises([]);
       setLogs([]);
+      setExerciseBadges([]);
+      setTemporalBadges([]);
+      setUserBadges([]);
       return;
     }
     setLoading(true);
 
-    const [exRes, logRes] = await Promise.all([
-      supabase
-        .from("exercises")
-        .select("*")
-        .eq("household_id", householdId)
-        .order("name", { ascending: true }),
-      supabase
-        .from("exercise_logs")
-        .select("*")
-        .eq("household_id", householdId)
-        .order("logged_at", { ascending: false }),
+    const [exRes, logRes, badgeRes, tmpRes, ubRes] = await Promise.all([
+      supabase.from("exercises").select("*").eq("household_id", householdId).order("name"),
+      supabase.from("exercise_logs").select("*").eq("household_id", householdId).order("logged_at", { ascending: false }),
+      supabase.from("exercise_badges").select("*").eq("household_id", householdId),
+      supabase.from("temporal_badges").select("*").eq("household_id", householdId),
+      supabase.from("user_badges").select("*"),
     ]);
 
     setExercises(exRes.data ?? []);
     setLogs(logRes.data ?? []);
+    setExerciseBadges(badgeRes.data ?? []);
+    setTemporalBadges(tmpRes.data ?? []);
+    setUserBadges(ubRes.data ?? []);
     setLoading(false);
     hasFetched.current = true;
   }, [householdId]);
 
-  useEffect(() => {
-    void fetchAll();
-  }, [fetchAll]);
+  useEffect(() => { void fetchAll(); }, [fetchAll]);
 
-  // Realtime subscriptions
   const fetchRef = useRef(fetchAll);
   fetchRef.current = fetchAll;
 
   useEffect(() => {
     if (!householdId) return;
-
     const handler = () => void fetchRef.current();
     const channel = supabase
       .channel(`sport:${householdId}:${channelId.current}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "exercises", filter: `household_id=eq.${householdId}` }, handler)
       .on("postgres_changes", { event: "*", schema: "public", table: "exercise_logs", filter: `household_id=eq.${householdId}` }, handler)
+      .on("postgres_changes", { event: "*", schema: "public", table: "exercise_badges", filter: `household_id=eq.${householdId}` }, handler)
+      .on("postgres_changes", { event: "*", schema: "public", table: "temporal_badges", filter: `household_id=eq.${householdId}` }, handler)
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_badges" }, handler)
       .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+    return () => { void supabase.removeChannel(channel); };
   }, [householdId]);
 
-  const addExercise = useCallback(
-    async (name: string, icon: string, unit: string): Promise<string | null> => {
-      if (!householdId || !name.trim()) return null;
-      const { data } = await supabase
-        .from("exercises")
-        .insert({ household_id: householdId, name: name.trim(), icon, unit })
-        .select("id")
-        .single();
-      void fetchAll();
-      return (data?.id as string | undefined) ?? null;
-    },
-    [householdId, fetchAll]
-  );
+  const addExercise = useCallback(async (name: string, icon: string, unit: string): Promise<string | null> => {
+    if (!householdId || !name.trim()) return null;
+    const { data } = await supabase.from("exercises").insert({ household_id: householdId, name: name.trim(), icon, unit }).select("id").single();
+    void fetchAll();
+    return (data?.id as string | undefined) ?? null;
+  }, [householdId, fetchAll]);
 
-  const updateExercise = useCallback(
-    async (id: string, name: string, icon: string, unit: string) => {
-      if (!householdId || !name.trim()) return;
-      await supabase
-        .from("exercises")
-        .update({ name: name.trim(), icon, unit })
-        .eq("id", id);
-      void fetchAll();
-    },
-    [householdId, fetchAll]
-  );
+  const updateExercise = useCallback(async (id: string, name: string, icon: string, unit: string) => {
+    if (!householdId || !name.trim()) return;
+    await supabase.from("exercises").update({ name: name.trim(), icon, unit }).eq("id", id);
+    void fetchAll();
+  }, [householdId, fetchAll]);
 
-  const deleteExercise = useCallback(
-    async (id: string) => {
-      await supabase.from("exercises").delete().eq("id", id);
-      void fetchAll();
-    },
-    [fetchAll]
-  );
+  const deleteExercise = useCallback(async (id: string) => {
+    await supabase.from("exercises").delete().eq("id", id);
+    void fetchAll();
+  }, [fetchAll]);
 
-  const logExercise = useCallback(
-    async (exerciseId: string, userId: string, count: number, loggedAt?: string) => {
-      if (!householdId || count <= 0) return;
-      await supabase.from("exercise_logs").insert({
-        household_id: householdId,
-        exercise_id: exerciseId,
-        user_id: userId,
-        count,
-        ...(loggedAt ? { logged_at: loggedAt } : {}),
-      });
-      void fetchAll();
-    },
-    [householdId, fetchAll]
-  );
+  const logExercise = useCallback(async (exerciseId: string, uid: string, count: number, loggedAt?: string) => {
+    if (!householdId || count <= 0) return;
+    await supabase.from("exercise_logs").insert({ household_id: householdId, exercise_id: exerciseId, user_id: uid, count, ...(loggedAt ? { logged_at: loggedAt } : {}) });
+    void fetchAll();
+  }, [householdId, fetchAll]);
 
-  const deleteLog = useCallback(
-    async (id: string) => {
-      await supabase.from("exercise_logs").delete().eq("id", id);
-      void fetchAll();
-    },
-    [fetchAll]
-  );
+  const deleteLog = useCallback(async (id: string) => {
+    await supabase.from("exercise_logs").delete().eq("id", id);
+    void fetchAll();
+  }, [fetchAll]);
 
-  const updateLog = useCallback(
-    async (id: string, count: number) => {
-      if (count <= 0) {
-        await supabase.from("exercise_logs").delete().eq("id", id);
-      } else {
-        await supabase.from("exercise_logs").update({ count }).eq("id", id);
-      }
-      void fetchAll();
-    },
-    [fetchAll]
-  );
+  const updateLog = useCallback(async (id: string, count: number) => {
+    if (count <= 0) { await supabase.from("exercise_logs").delete().eq("id", id); }
+    else { await supabase.from("exercise_logs").update({ count }).eq("id", id); }
+    void fetchAll();
+  }, [fetchAll]);
 
-  const seedDefaultExercises = useCallback(
-    async () => {
-      if (!householdId) return;
-      const rows = DEFAULT_EXERCISES.map((e) => ({
-        household_id: householdId,
-        ...e,
-      }));
-      await supabase.from("exercises").insert(rows);
-      void fetchAll();
-    },
-    [householdId, fetchAll]
-  );
+  const seedDefaultExercises = useCallback(async () => {
+    if (!householdId) return;
+    await supabase.from("exercises").insert(DEFAULT_EXERCISES.map((e) => ({ household_id: householdId, ...e })));
+    void fetchAll();
+  }, [householdId, fetchAll]);
 
   useEffect(() => {
     if (householdId && hasFetched.current && !loading && exercises.length === 0 && !seededRef.current) {
@@ -152,16 +117,34 @@ export function useSport(householdId: string | null | undefined) {
     }
   }, [householdId, loading, exercises.length]);
 
+  const unlockBadge = useCallback(async (badgeId: string) => {
+    if (!userId) return;
+    await supabase.from("user_badges").insert({ user_id: userId, badge_id: badgeId });
+    void fetchAll();
+  }, [userId, fetchAll]);
+
+  // Computed values
+  const unlockedBadges = useMemo(() => {
+    if (!userId) return [];
+    const total = logs.filter((l) => l.user_id === userId).reduce((s, l) => s + l.count, 0);
+    return computeUnlockedBadges(total, exerciseBadges);
+  }, [logs, userId, exerciseBadges]);
+
+  const temporalTitles = useMemo(() => {
+    if (!userId) return [];
+    return computeTemporalTitles(logs, userId, temporalBadges);
+  }, [logs, userId, temporalBadges]);
+
+  const collectiveTitle = useMemo(() => {
+    const total = logs.reduce((s, l) => s + l.count, 0);
+    return computeCollectiveTitles(total, COLLECTIVE_THRESHOLDS);
+  }, [logs]);
+
   return {
-    exercises,
-    logs,
-    loading,
-    addExercise,
-    updateExercise,
-    deleteExercise,
-    logExercise,
-    deleteLog,
-    updateLog,
-    fetchAll,
+    exercises, logs, exerciseBadges, temporalBadges, userBadges, loading,
+    addExercise, updateExercise, deleteExercise,
+    logExercise, deleteLog, updateLog,
+    fetchAll, unlockBadge,
+    unlockedBadges, temporalTitles, collectiveTitle,
   };
 }

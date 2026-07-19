@@ -37,7 +37,8 @@ export default function SportScreen() {
     exercises, logs, loading,
     addExercise, updateExercise, deleteExercise,
     fetchAll,
-  } = useSport(profile?.household_id);
+    userBadges, exerciseBadges, collectiveTitle,
+  } = useSport(profile?.household_id, profile?.id);
   const t = useTheme();
   const router = useRouter();
 
@@ -132,6 +133,9 @@ export default function SportScreen() {
             const stats = exerciseStats[ex.id] ?? {};
             const total = Object.values(stats).reduce((s, c) => s + c, 0);
             const userEntries = Object.entries(stats);
+            const exBadges = exerciseBadges.filter((b) => b.exercise_id === ex.id);
+            const unlockedIds = new Set(userBadges.map((ub) => ub.badge_id));
+            const badgeCount = exBadges.filter((b) => unlockedIds.has(b.id)).length;
 
             return (
               <Pressable
@@ -152,6 +156,12 @@ export default function SportScreen() {
                 <Text style={[styles.cardTotal, { color: t.accent }]}>
                   {total} {ex.unit}
                 </Text>
+                {badgeCount > 0 && (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginBottom: 6 }}>
+                    <Ionicons name="ribbon-outline" size={13} color={t.textMuted} />
+                    <Text style={{ fontSize: 11, fontWeight: "600", color: t.textMuted }}>{badgeCount}</Text>
+                  </View>
+                )}
                 {userEntries.length > 0 && (
                   <View style={styles.cardUsers}>
                     {userEntries.map(([userId]) => (
@@ -160,6 +170,12 @@ export default function SportScreen() {
                         style={[styles.userDot, { backgroundColor: userColor(userId) }]}
                       />
                     ))}
+                  </View>
+                )}
+                {collectiveTitle && (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingTop: 6, marginTop: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#E5E7EB" }}>
+                    <Ionicons name={collectiveTitle.icon as any} size={12} color={t.accent} />
+                    <Text style={{ fontSize: 10, fontWeight: "600", color: t.accent }} numberOfLines={1}>{collectiveTitle.title}</Text>
                   </View>
                 )}
               </Pressable>
