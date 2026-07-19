@@ -85,20 +85,24 @@ export default function ExerciseDetailScreen() {
     return map;
   }, [exerciseLogs]);
 
-  // Sorted days from first log to today
+  // Sorted days from 7 days before first log to today
   const days = useMemo(() => {
-    const set = new Set(Object.keys(dailyTotals));
-    if (exerciseLogs.length === 0) return [];
-    const first = exerciseLogs[0].logged_at.slice(0, 10);
-    const result: string[] = [];
-    const cursor = new Date(first);
-    const end = new Date(today);
-    while (cursor <= end) {
-      const d = cursor.toISOString().slice(0, 10);
-      if (set.has(d)) result.push(d);
-      cursor.setDate(cursor.getDate() + 1);
+    if (exerciseLogs.length > 0) {
+      // Start 7 days before the first log
+      const firstDate = new Date(exerciseLogs[0].logged_at.slice(0, 10));
+      firstDate.setDate(firstDate.getDate() - 7);
+      const first = firstDate.toISOString().slice(0, 10);
+      const result: string[] = [];
+      const cursor = new Date(first);
+      const end = new Date(today);
+      while (cursor <= end) {
+        const d = cursor.toISOString().slice(0, 10);
+        result.push(d);
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      return result;
     }
-    return result;
+    return [];
   }, [dailyTotals, exerciseLogs, today]);
 
   const maxCount = useMemo(() => {
