@@ -85,25 +85,23 @@ export default function ExerciseDetailScreen() {
     return map;
   }, [exerciseLogs]);
 
-  // Sorted days from 7 days before first log to today
+  // Sorted days from 7 days before first log to today (or last 7 days if no logs)
   const days = useMemo(() => {
+    const firstDate = new Date(today);
     if (exerciseLogs.length > 0) {
-      // Start 7 days before the first log
-      const firstDate = new Date(exerciseLogs[0].logged_at.slice(0, 10));
-      firstDate.setDate(firstDate.getDate() - 7);
-      const first = firstDate.toISOString().slice(0, 10);
-      const result: string[] = [];
-      const cursor = new Date(first);
-      const end = new Date(today);
-      while (cursor <= end) {
-        const d = cursor.toISOString().slice(0, 10);
-        result.push(d);
-        cursor.setDate(cursor.getDate() + 1);
-      }
-      return result;
+      firstDate.setTime(new Date(exerciseLogs[0].logged_at.slice(0, 10)).getTime());
     }
-    return [];
-  }, [dailyTotals, exerciseLogs, today]);
+    firstDate.setDate(firstDate.getDate() - 7);
+    const first = firstDate.toISOString().slice(0, 10);
+    const result: string[] = [];
+    const cursor = new Date(first);
+    const end = new Date(today);
+    while (cursor <= end) {
+      result.push(cursor.toISOString().slice(0, 10));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return result;
+  }, [exerciseLogs, today]);
 
   const maxCount = useMemo(() => {
     let max = 1;
@@ -167,7 +165,7 @@ export default function ExerciseDetailScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: t.background }]} edges={["top"]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: t.card, borderBottomColor: t.cardBorder }]}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={() => router.replace("/(app)/sport")} hitSlop={8}>
           <Ionicons name="chevron-back" size={24} color={t.text} />
         </Pressable>
         <View style={styles.headerCenter}>
@@ -184,16 +182,15 @@ export default function ExerciseDetailScreen() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
 
           {/* Bar chart */}
-          {days.length > 0 && (
-            <ScrollView
-              ref={chartScrollRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chartScroll}
-              onLayout={() => setChartReady(true)}
-            >
-              <View style={styles.chartContainer}>
-                {days.map((day, idx) => {
+          <ScrollView
+            ref={chartScrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chartScroll}
+            onLayout={() => setChartReady(true)}
+          >
+            <View style={styles.chartContainer}>
+              {days.map((day, idx) => {
                   const total = dailyTotals[day] ?? 0;
                   const barHeight = total > 0 ? Math.max((total / maxCount) * BAR_MAX_HEIGHT, 4) : 0;
                   const byUser = dailyByUser[day] ?? {};
@@ -245,7 +242,6 @@ export default function ExerciseDetailScreen() {
                 })}
               </View>
             </ScrollView>
-          )}
 
           {/* Selected day recap */}
           <View style={[styles.totalBanner, { backgroundColor: t.accentLight }]}>
