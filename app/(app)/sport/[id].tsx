@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -18,8 +18,8 @@ import { useTheme } from "../../../lib/theme";
 import { haptic } from "../../../lib/haptics";
 import { ExerciseLog } from "../../../lib/types";
 
-const BAR_WIDTH = 36;
-const BAR_GAP = 10;
+const BAR_WIDTH = 40;
+const BAR_GAP = 12;
 const BAR_MAX_HEIGHT = 180;
 const CHART_LABEL_HEIGHT = 24;
 
@@ -42,10 +42,10 @@ export default function ExerciseDetailScreen() {
 
   const exercise = exercises.find((e) => e.id === id);
   const today = todayISO();
+  const [selectedDay, setSelectedDay] = useState(today);
 
   // Auto-scroll chart to today
   const chartScrollRef = useRef<ScrollView>(null);
-  const todayBarRef = useRef<View>(null);
   const [chartReady, setChartReady] = useState(false);
 
   // Filter logs for this exercise
@@ -56,12 +56,12 @@ export default function ExerciseDetailScreen() {
     [logs, id]
   );
 
-  // Today's series (logs for today, sorted by time)
-  const todaySeries = useMemo(
+  // Series for selected day
+  const selectedSeries = useMemo(
     () => exerciseLogs
-      .filter((l) => l.logged_at.slice(0, 10) === today)
+      .filter((l) => l.logged_at.slice(0, 10) === selectedDay)
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
-    [exerciseLogs, today]
+    [exerciseLogs, selectedDay]
   );
 
   // Aggregate by day
@@ -102,14 +102,15 @@ export default function ExerciseDetailScreen() {
   }, [dailyTotals, exerciseLogs, today]);
 
   const maxCount = useMemo(() => {
-    let max = 0;
-    for (const v of Object.values(dailyTotals)) {
+    let max = 1;
+    for (const d of days) {
+      const v = dailyTotals[d] ?? 0;
       if (v > max) max = v;
     }
-    return max || 1;
-  }, [dailyTotals]);
+    return max;
+  }, [dailyTotals, days]);
 
-  // Auto-scroll to today's bar when chart data is ready
+  // Auto-scroll to today's bar
   const todayIndex = days.indexOf(today);
   useEffect(() => {
     if (todayIndex >= 0 && chartReady) {
@@ -133,7 +134,16 @@ export default function ExerciseDetailScreen() {
   const handleAddSeries = async () => {
     if (!profile?.id || !exercise) return;
     void haptic.light();
-    await logExercise(exercise.id, profile.id, 1);
+    const loggedAt = selectedDay === today ? undefined : `${selectedDay}T12:00:00`;
+    await logExercise(exercise.id, profile.id, 1, loggedAt);
+  };
+
+  // Scroll to selected day when user taps a bar
+  const handleSelectDay = (day: string, index: number) => {
+    void haptic.light();
+    setSelectedDay(day);
+    const x = index * (BAR_WIDTH + BAR_GAP) - 60;
+    chartScrollRef.current?.scrollTo({ x: Math.max(0, x), animated: true });
   };
 
   if (!exercise) {
@@ -146,7 +156,8 @@ export default function ExerciseDetailScreen() {
     );
   }
 
-  const totalAll = Object.values(dailyTotals).reduce((s, v) => s + v, 0);
+  const selectedTotal = dailyTotals[selectedDay] ?? 0;
+  const selectedByUser = dailyByUser[selectedDay] ?? {};
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: t.background }]} edges={["top"]}>
@@ -170,36 +181,40 @@ export default function ExerciseDetailScreen() {
 
           {/* Bar chart */}
           {days.length > 0 && (
-            <>
-              <ScrollView
-                ref={chartScrollRef}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.chartScroll}
-                onLayout={() => setChartReady(true)}
-              >
-                <View style={styles.chartContainer}>
-                  {days.map((day) => {
-                    const total = dailyTotals[day] ?? 0;
-                    const barHeight = total > 0 ? Math.max((total / maxCount) * BAR_MAX_HEIGHT, 4) : 0;
-                    const byUser = dailyByUser[day] ?? {};
+            <ScrollView
+              ref={chartScrollRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chartScroll}
+              onLayout={() => setChartReady(true)}
+            >
+              <View style={styles.chartContainer}>
+                {days.map((day, idx) => {
+                  const total = dailyTotals[day] ?? 0;
+                  const barHeight = total > 0 ? Math.max((total / maxCount) * BAR_MAX_HEIGHT, 4) : 0;
+                  const byUser = dailyByUser[day] ?? {};
+                  const isSelected = day === selectedDay;
 
-                    const segments = Object.entries(byUser)
-                      .sort(([, a], [, b]) => b - a)
-                      .map(([userId, count]) => ({
-                        color: userColor(userId),
-                        height: Math.max((count / maxCount) * BAR_MAX_HEIGHT, 0),
-                      }));
+                  const segments = Object.entries(byUser)
+                    .sort(([, a], [, b]) => b - a)
+                    .map(([userId, count]) => ({
+                      color: userColor(userId),
+                      height: Math.max((count / maxCount) * BAR_MAX_HEIGHT, 0),
+                    }));
 
-                    return (
-                      <View
-                        key={day}
-                        ref={day === today ? todayBarRef : undefined}
-                        style={styles.barColumn}
-                      >
-                        <View style={[styles.barBody, { height: BAR_MAX_HEIGHT }]}>
+                  return (
+                    <Pressable
+                      key={day}
+                      onPress={() => handleSelectDay(day, idx)}
+                      style={styles.barColumn}
+                    >
+                      <View style={[styles.barBody, { height: BAR_MAX_HEIGHT }]}>
+                        <View style={[
+                          styles.barHitArea,
+                          isSelected && { backgroundColor: t.accentLight },
+                        ]}>
                           {segments.length > 1 ? (
-                            <View style={[styles.barStack, { height: barHeight }]}>
+                            <View style={[styles.barStack, { height: barHeight, opacity: isSelected ? 1 : 0.85 }]}>
                               {segments.map((seg, i) => (
                                 <View
                                   key={i}
@@ -209,34 +224,57 @@ export default function ExerciseDetailScreen() {
                             </View>
                           ) : barHeight > 0 ? (
                             <View
-                              style={[styles.barSingle, { backgroundColor: segments[0]?.color ?? t.accent, height: barHeight }]}
+                              style={[styles.barSingle, { backgroundColor: segments[0]?.color ?? t.accent, height: barHeight, opacity: isSelected ? 1 : 0.85 }]}
                             />
                           ) : null}
                         </View>
-                        <Text style={[styles.barLabel, { color: t.textMuted }]}>{formatDayLabel(day)}</Text>
+                      </View>
+                      <Text style={[
+                        styles.barLabel,
+                        { color: isSelected ? t.accent : t.textMuted },
+                        isSelected && styles.barLabelSelected,
+                      ]}>
+                        {formatDayLabel(day)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          )}
+
+          {/* Selected day recap */}
+          <View style={[styles.totalBanner, { backgroundColor: t.accentLight }]}>
+            <View>
+              <Text style={[styles.totalLabel, { color: t.textSecondary }]}>
+                {selectedDay === today ? "Aujourd'hui" : formatDayLabelFull(selectedDay)}
+              </Text>
+              {Object.keys(selectedByUser).length > 0 && (
+                <View style={styles.totalUsers}>
+                  {Object.entries(selectedByUser).map(([userId, count]) => {
+                    const member = members.find((m) => m.id === userId);
+                    return (
+                      <View key={userId} style={styles.totalUserRow}>
+                        <View style={[styles.totalUserDot, { backgroundColor: userColor(userId) }]} />
+                        <Text style={[styles.totalUserName, { color: t.textSecondary }]}>
+                          {member?.display_name ?? "?"}
+                        </Text>
+                        <Text style={[styles.totalUserCount, { color: t.textSecondary }]}>
+                          {count} {exercise.unit}
+                        </Text>
                       </View>
                     );
                   })}
                 </View>
-              </ScrollView>
+              )}
+            </View>
+            <Text style={[styles.totalValue, { color: t.accent }]}>
+              {selectedTotal} {exercise.unit}
+            </Text>
+          </View>
 
-              {/* Total recap */}
-              <View style={[styles.totalBanner, { backgroundColor: t.accentLight }]}>
-                <Text style={[styles.totalLabel, { color: t.textSecondary }]}>Total</Text>
-                <Text style={[styles.totalValue, { color: t.accent }]}>
-                  {totalAll} {exercise.unit}
-                </Text>
-              </View>
-            </>
-          )}
-
-          {/* Today section label */}
-          <Text style={[styles.sectionTitle, { color: t.text }]}>
-            Aujourd'hui
-          </Text>
-
-          {/* Today's series */}
-          {todaySeries.map((log, i) => (
+          {/* Series for selected day */}
+          {selectedSeries.map((log, i) => (
             <View
               key={log.id}
               style={[styles.seriesCard, { backgroundColor: t.card, borderColor: t.cardBorder }]}
@@ -261,7 +299,7 @@ export default function ExerciseDetailScreen() {
             </View>
           ))}
 
-          {/* Ghost card to add a new series */}
+          {/* Ghost card */}
           <Pressable
             style={[styles.ghostCard, { borderColor: t.cardBorder }]}
             onPress={() => void handleAddSeries()}
@@ -270,42 +308,15 @@ export default function ExerciseDetailScreen() {
             <Text style={[styles.ghostText, { color: t.textMuted }]}>Ajouter une série</Text>
           </Pressable>
 
-          {/* Previous days log (collapsed list) */}
-          {exerciseLogs.filter((l) => l.logged_at.slice(0, 10) !== today).length > 0 && (
-            <>
-              <Text style={[styles.sectionTitle, { color: t.text, marginTop: 16 }]}>
-                Historique récent
-              </Text>
-              {exerciseLogs
-                .filter((l) => l.logged_at.slice(0, 10) !== today)
-                .slice()
-                .reverse()
-                .slice(0, 20)
-                .map((log) => {
-                  const member = members.find((m) => m.id === log.user_id);
-                  return (
-                    <View key={log.id} style={[styles.logRow, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-                      <View style={[styles.logDot, { backgroundColor: userColor(log.user_id) }]} />
-                      <Text style={[styles.logUser, { color: t.textSecondary }]}>
-                        {member?.display_name ?? "?"}
-                      </Text>
-                      <Text style={[styles.logCount, { color: t.text }]}>
-                        {log.count} {exercise.unit}
-                      </Text>
-                      <Text style={[styles.logDate, { color: t.textMuted }]}>
-                        {new Date(log.logged_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
-                      </Text>
-                    </View>
-                  );
-                })}
-            </>
-          )}
-
           <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
+}
+
+function formatDayLabelFull(iso: string): string {
+  return new Date(iso).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 }
 
 const styles = StyleSheet.create({
@@ -327,22 +338,26 @@ const styles = StyleSheet.create({
   chartContainer: { flexDirection: "row", alignItems: "flex-end", gap: BAR_GAP },
   barColumn: { alignItems: "center", width: BAR_WIDTH },
   barBody: { width: BAR_WIDTH, justifyContent: "flex-end", alignItems: "center" },
-  barStack: { width: BAR_WIDTH, borderRadius: 4, overflow: "hidden", justifyContent: "flex-end" },
-  barSegment: { width: BAR_WIDTH },
-  barSingle: { width: BAR_WIDTH, borderRadius: 4 },
+  barHitArea: { width: BAR_WIDTH + 8, alignItems: "center", justifyContent: "flex-end", borderRadius: 6, paddingBottom: 2 },
+  barStack: { width: BAR_WIDTH - 4, borderRadius: 4, overflow: "hidden", justifyContent: "flex-end" },
+  barSegment: { width: BAR_WIDTH - 4 },
+  barSingle: { width: BAR_WIDTH - 4, borderRadius: 4 },
   barLabel: { fontSize: 10, marginTop: 4, height: CHART_LABEL_HEIGHT, textAlign: "center" },
+  barLabelSelected: { fontWeight: "700" },
 
   // Total banner
   totalBanner: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start",
     marginHorizontal: 16, marginBottom: 16,
     paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12,
   },
-  totalLabel: { fontSize: 13, fontWeight: "600" },
+  totalLabel: { fontSize: 14, fontWeight: "700", marginBottom: 4 },
   totalValue: { fontSize: 22, fontWeight: "800" },
-
-  // Section
-  sectionTitle: { fontSize: 15, fontWeight: "700", paddingHorizontal: 16, marginBottom: 10 },
+  totalUsers: { gap: 2 },
+  totalUserRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  totalUserDot: { width: 7, height: 7, borderRadius: 4 },
+  totalUserName: { fontSize: 12 },
+  totalUserCount: { fontSize: 12, fontWeight: "600" },
 
   // Series cards
   seriesCard: {
@@ -367,16 +382,4 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   ghostText: { fontSize: 14, fontWeight: "600" },
-
-  // History log rows
-  logRow: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    marginHorizontal: 16,
-    borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
-    marginBottom: 6,
-  },
-  logDot: { width: 8, height: 8, borderRadius: 4 },
-  logUser: { fontSize: 13, flex: 1 },
-  logCount: { fontSize: 14, fontWeight: "700", marginRight: 8 },
-  logDate: { fontSize: 11 },
 });

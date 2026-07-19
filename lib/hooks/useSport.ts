@@ -98,13 +98,14 @@ export function useSport(householdId: string | null | undefined) {
   );
 
   const logExercise = useCallback(
-    async (exerciseId: string, userId: string, count: number) => {
+    async (exerciseId: string, userId: string, count: number, loggedAt?: string) => {
       if (!householdId || count <= 0) return;
       await supabase.from("exercise_logs").insert({
         household_id: householdId,
         exercise_id: exerciseId,
         user_id: userId,
         count,
+        ...(loggedAt ? { logged_at: loggedAt } : {}),
       });
       void fetchAll();
     },
