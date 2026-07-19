@@ -63,9 +63,9 @@ BEGIN
   titles_5000 := ARRAY['Pompistador', 'Abdominator Suprême', 'Squatman Légendaire', 'Mégalithe'];
   titles_10000 := ARRAY['Pompéi', 'Plaque de Chocolat', 'Dieu du Squat', 'Mont Rushmore'];
 
-  tmp_titles_100 := ARRAY['Régulier', 'Régulier', 'Régulier', 'Régulier'];
-  tmp_titles_200 := ARRAY['Assidu', 'Assidu', 'Assidu', 'Assidu'];
-  tmp_titles_500 := ARRAY['Intense', 'Intense', 'Intense', 'Intense'];
+  tmp_titles_100 := ARRAY['Pompeur Régulier', 'Abdo Régulier', 'Squat Régulier', 'Gainage Régulier'];
+  tmp_titles_200 := ARRAY['Pompeur Assidu', 'Abdo Assidu', 'Squat Assidu', 'Gainage Assidu'];
+  tmp_titles_500 := ARRAY['Pompeur Intense', 'Abdo Intense', 'Squat Intense', 'Gainage Intense'];
 
   i := 0;
   FOR ex IN SELECT id, name FROM exercises WHERE name IN ('Pompes','Abdos','Squats','Gainage') LOOP
