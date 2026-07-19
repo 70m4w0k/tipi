@@ -14,13 +14,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useAuth } from "../../lib/hooks/useAuth";
-import { useHousehold } from "../../lib/hooks/useHousehold";
-import { useSport } from "../../lib/hooks/useSport";
-import { useTheme } from "../../lib/theme";
-import { haptic } from "../../lib/haptics";
-import { Exercise } from "../../lib/types";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { useAuth } from "../../../lib/hooks/useAuth";
+import { useHousehold } from "../../../lib/hooks/useHousehold";
+import { useSport } from "../../../lib/hooks/useSport";
+import { useTheme } from "../../../lib/theme";
+import { haptic } from "../../../lib/haptics";
+import { Exercise } from "../../../lib/types";
+import { ConfirmDialog } from "../../../components/ConfirmDialog";
 
 const EXERCISE_ICONS = [
   "barbell-outline", "fitness-outline", "timer-outline",
