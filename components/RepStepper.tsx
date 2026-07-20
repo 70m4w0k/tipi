@@ -12,6 +12,8 @@ const MAX_COUNT = 99999;
 type RepStepperProps = {
   count: number;
   onCommit: (count: number) => void;
+  /** Fired on every local change (during hold / typing) so the screen can reflect it live */
+  onChange?: (count: number) => void;
 };
 
 /**
@@ -19,7 +21,7 @@ type RepStepperProps = {
  * tap sur le nombre pour saisir directement au clavier.
  * La valeur n'est commitée qu'au relâchement / à la validation (un seul write DB).
  */
-export function RepStepper({ count, onCommit }: RepStepperProps) {
+export function RepStepper({ count, onCommit, onChange }: RepStepperProps) {
   const t = useTheme();
   const [localCount, setLocalCount] = useState(count);
   const [editing, setEditing] = useState(false);
@@ -43,6 +45,7 @@ export function RepStepper({ count, onCommit }: RepStepperProps) {
     if (next === valueRef.current) return;
     valueRef.current = next;
     setLocalCount(next);
+    onChange?.(next);
     void haptic.light();
   };
 
@@ -75,6 +78,7 @@ export function RepStepper({ count, onCommit }: RepStepperProps) {
       const next = Math.min(MAX_COUNT, Math.max(0, parsed));
       valueRef.current = next;
       setLocalCount(next);
+      onChange?.(next);
       onCommit(next);
     } else {
       setDraft(String(count));

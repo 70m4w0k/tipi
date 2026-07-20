@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -81,6 +81,31 @@ export default function ExerciseDetailScreen() {
     [logs, id]
   );
 
+  // Live counts from RepStepper (during hold / typing), before the DB commit
+  const [liveCounts, setLiveCounts] = useState<Record<string, number>>({});
+  const handleLiveChange = useCallback((logId: string, n: number) => {
+    setLiveCounts((prev) => (prev[logId] === n ? prev : { ...prev, [logId]: n }));
+  }, []);
+  // Prune entries once the server has caught up (or the log was deleted)
+  useEffect(() => {
+    setLiveCounts((prev) => {
+      const next: Record<string, number> = {};
+      let changed = false;
+      for (const [logId, n] of Object.entries(prev)) {
+        const server = logs.find((l) => l.id === logId);
+        if (server && server.count !== n) next[logId] = n;
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [logs]);
+
+  // Logs with in-flight stepper values applied — drives chart, totals and badge progress
+  const liveExerciseLogs = useMemo(
+    () => exerciseLogs.map((l) => (liveCounts[l.id] != null ? { ...l, count: liveCounts[l.id] } : l)),
+    [exerciseLogs, liveCounts]
+  );
+
   // Series for selected day
   const selectedSeries = useMemo(
     () => exerciseLogs
@@ -92,17 +117,17 @@ export default function ExerciseDetailScreen() {
   // Aggregate by day
   const dailyTotals = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const log of exerciseLogs) {
+    for (const log of liveExerciseLogs) {
       const day = log.logged_at.slice(0, 10);
       map[day] = (map[day] ?? 0) + log.count;
     }
     return map;
-  }, [exerciseLogs]);
+  }, [liveExerciseLogs]);
 
   // Per-user per-day
   const dailyByUser = useMemo(() => {
     const map: Record<string, Record<string, number>> = {};
-    for (const log of exerciseLogs) {
+    for (const log of liveExerciseLogs) {
       const day = log.logged_at.slice(0, 10);
       if (!map[day]) map[day] = {};
       map[day][log.user_id] = (map[day][log.user_id] ?? 0) + log.count;
@@ -298,7 +323,7 @@ export default function ExerciseDetailScreen() {
                 const badgeItems: BadgeItem[] = exBadges.map((b) => {
                   const unlocked = exUnlocked.includes(b.id);
                   // Total for this user + exercise
-                  const userTotal = exerciseLogs
+                  const userTotal = liveExerciseLogs
                     .filter((l) => l.user_id === profile?.id)
                     .reduce((s, l) => s + l.count, 0);
                   const prevThreshold = exBadges
@@ -313,7 +338,7 @@ export default function ExerciseDetailScreen() {
                   .filter((b) => temporalTitles.some((t) => t.badge.id === b.id));
 
                 // Next badge to unlock for this exercise
-                const userTotal = exerciseLogs
+                const userTotal = liveExerciseLogs
                   .filter((l) => l.user_id === profile?.id)
                   .reduce((s, l) => s + l.count, 0);
                 const nextBadge = exBadges
@@ -376,7 +401,11 @@ export default function ExerciseDetailScreen() {
               style={[styles.seriesCard, { backgroundColor: t.card, borderColor: t.cardBorder }]}
             >
               <Text style={[styles.seriesLabel, { color: t.textSecondary }]}>Série {i + 1}</Text>
-              <RepStepper count={log.count} onCommit={(n) => void updateLog(log.id, n)} />
+              <RepStepper
+                count={log.count}
+                onCommit={(n) => void updateLog(log.id, n)}
+                onChange={(n) => handleLiveChange(log.id, n)}
+              />
               <Text style={[styles.seriesUnit, { color: t.textMuted }]}>{exercise.unit}</Text>
             </View>
           ))}
