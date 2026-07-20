@@ -19,6 +19,7 @@ import path from "path";
 // Composant -> écran parent qui fournit le KeyboardAvoidingView.
 const HANDLED_BY_PARENT: Record<string, string> = {
   "components/ExpenseForm.tsx": "app/(app)/expenses.tsx",
+  "components/RepStepper.tsx": "app/(app)/sport/[id].tsx",
 };
 
 const ROOT = path.resolve(__dirname, "..");

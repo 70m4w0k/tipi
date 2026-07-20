@@ -16,11 +16,10 @@ import { useHousehold } from "../../../lib/hooks/useHousehold";
 import { useSport } from "../../../lib/hooks/useSport";
 import { useTheme } from "../../../lib/theme";
 import { haptic } from "../../../lib/haptics";
-import { ExerciseLog } from "../../../lib/types";
 
 import { BadgeRow, BadgeItem } from "../../../components/BadgeRow";
 import { BadgeUnlockOverlay } from "../../../components/BadgeUnlockOverlay";
-import { PulseCount } from "../../../components/PulseCount";
+import { RepStepper } from "../../../components/RepStepper";
 
 const BAR_WIDTH = 40;
 const BAR_GAP = 12;
@@ -148,16 +147,6 @@ export default function ExerciseDetailScreen() {
   }, [todayIndex, chartReady]);
 
   const userColor = (userId: string) => members.find((m) => m.id === userId)?.color ?? t.accent;
-
-  const handleIncrement = (log: ExerciseLog) => {
-    void haptic.light();
-    void updateLog(log.id, log.count + 1);
-  };
-
-  const handleDecrement = (log: ExerciseLog) => {
-    void haptic.light();
-    void updateLog(log.id, log.count - 1);
-  };
 
   const handleAddSeries = async () => {
     if (!profile?.id || !exercise) return;
@@ -387,21 +376,7 @@ export default function ExerciseDetailScreen() {
               style={[styles.seriesCard, { backgroundColor: t.card, borderColor: t.cardBorder }]}
             >
               <Text style={[styles.seriesLabel, { color: t.textSecondary }]}>Série {i + 1}</Text>
-              <View style={styles.seriesControls}>
-                <Pressable
-                  style={[styles.seriesBtn, { backgroundColor: t.dangerLight }]}
-                  onPress={() => handleDecrement(log)}
-                >
-                  <Ionicons name="remove" size={18} color={t.danger} />
-                </Pressable>
-                <PulseCount value={log.count} style={styles.seriesCount} color={t.text} />
-                <Pressable
-                  style={[styles.seriesBtn, { backgroundColor: t.accentLight }]}
-                  onPress={() => handleIncrement(log)}
-                >
-                  <Ionicons name="add" size={18} color={t.accent} />
-                </Pressable>
-              </View>
+              <RepStepper count={log.count} onCommit={(n) => void updateLog(log.id, n)} />
               <Text style={[styles.seriesUnit, { color: t.textMuted }]}>{exercise.unit}</Text>
             </View>
           ))}
@@ -479,12 +454,6 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14,
   },
   seriesLabel: { fontSize: 12, fontWeight: "600", width: 50 },
-  seriesControls: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 14 },
-  seriesBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    alignItems: "center", justifyContent: "center",
-  },
-  seriesCount: { fontSize: 20, fontWeight: "800", minWidth: 40, textAlign: "center" },
   seriesUnit: { fontSize: 12, width: 70, textAlign: "right" },
 
   // Ghost card
