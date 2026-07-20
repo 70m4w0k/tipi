@@ -117,6 +117,29 @@ export function useSport(householdId: string | null | undefined, userId?: string
     }
   }, [householdId, loading, exercises.length]);
 
+  // Auto-unlock badges when thresholds are crossed
+  useEffect(() => {
+    if (!userId || exerciseBadges.length === 0) return;
+
+    const toUpsert = exerciseBadges
+      .filter((badge) => {
+        const total = logs
+          .filter((l) => l.user_id === userId && l.exercise_id === badge.exercise_id)
+          .reduce((s, l) => s + l.count, 0);
+        return total >= badge.threshold;
+      })
+      .filter((badge) => !userBadges.some((ub) => ub.badge_id === badge.id))
+      .map((badge) => ({ user_id: userId, badge_id: badge.id }));
+
+    if (toUpsert.length > 0) {
+      Promise.all(
+        toUpsert.map((row) =>
+          supabase.from("user_badges").upsert(row, { onConflict: "user_id,badge_id", ignoreDuplicates: true })
+        )
+      ).then(() => fetchAll());
+    }
+  }, [logs, exerciseBadges, userBadges, userId, fetchAll]);
+
   const unlockBadge = useCallback(async (badgeId: string) => {
     if (!userId) return;
     await supabase.from("user_badges").insert({ user_id: userId, badge_id: badgeId });
@@ -126,8 +149,7 @@ export function useSport(householdId: string | null | undefined, userId?: string
   // Computed values
   const unlockedBadges = useMemo(() => {
     if (!userId) return [];
-    const total = logs.filter((l) => l.user_id === userId).reduce((s, l) => s + l.count, 0);
-    return computeUnlockedBadges(total, exerciseBadges);
+    return computeUnlockedBadges(logs, userId, exerciseBadges);
   }, [logs, userId, exerciseBadges]);
 
   const temporalTitles = useMemo(() => {

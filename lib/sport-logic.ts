@@ -14,22 +14,59 @@ export const COLLECTIVE_THRESHOLDS = [
   { threshold: 100000, title: "Armée de Tipi", icon: "flag" },
 ];
 
-/** Badges permanents débloqués pour un total donné */
-export function computeUnlockedBadges(total: number, badges: ExerciseBadge[]): ExerciseBadge[] {
+/** Badges permanents débloqués (par exercice) */
+export function computeUnlockedBadges(
+  logs: ExerciseLog[],
+  userId: string,
+  badges: ExerciseBadge[]
+): ExerciseBadge[] {
   return badges
-    .filter((b) => total >= b.threshold)
+    .filter((b) => {
+      const total = logs
+        .filter((l) => l.user_id === userId && l.exercise_id === b.exercise_id)
+        .reduce((s, l) => s + l.count, 0);
+      return total >= b.threshold;
+    })
     .sort((a, b) => a.threshold - b.threshold);
 }
 
-/** Prochain badge à débloquer, ou null si tous débloqués */
-export function computeNextBadge(total: number, badges: ExerciseBadge[]): ExerciseBadge | null {
+/** Prochain badge à débloquer pour un exercice donné */
+export function computeNextBadge(
+  logs: ExerciseLog[],
+  userId: string,
+  badges: ExerciseBadge[]
+): ExerciseBadge | null {
   const next = badges
-    .filter((b) => total < b.threshold)
+    .filter((b) => {
+      const total = logs
+        .filter((l) => l.user_id === userId && l.exercise_id === b.exercise_id)
+        .reduce((s, l) => s + l.count, 0);
+      return total < b.threshold;
+    })
     .sort((a, b) => a.threshold - b.threshold);
   return next.length > 0 ? next[0] : null;
 }
 
-/** Titres temporels actifs (fenêtre glissante + période de grâce) */
+/** Progression vers le prochain badge (0-1) */
+export function computeNextBadgeProgress(
+  logs: ExerciseLog[],
+  userId: string,
+  badges: ExerciseBadge[]
+): { badge: ExerciseBadge | null; progress: number; current: number } {
+  const next = computeNextBadge(logs, userId, badges);
+  if (!next) return { badge: null, progress: 1, current: 0 };
+  const current = logs
+    .filter((l) => l.user_id === userId && l.exercise_id === next.exercise_id)
+    .reduce((s, l) => s + l.count, 0);
+  const prevThreshold = badges
+    .filter((b) => b.exercise_id === next.exercise_id && b.threshold < next.threshold)
+    .sort((a, b) => b.threshold - a.threshold)[0]?.threshold ?? 0;
+  const range = next.threshold - prevThreshold;
+  const progress = range > 0 ? (current - prevThreshold) / range : 0;
+  return { badge: next, progress: Math.max(0, Math.min(1, progress)), current };
+}
+
+/** Titres temporels actifs (fenêtre glissante + période de grâce, filtré par exercice) */
 export function computeTemporalTitles(
   logs: ExerciseLog[],
   userId: string,
@@ -42,7 +79,11 @@ export function computeTemporalTitles(
       const windowStart = new Date(now.getTime() - badge.window_days * 86400 * 1000);
       const effectiveStart = new Date(windowStart.getTime() - graceMs);
       const total = logs
-        .filter((l) => l.user_id === userId && new Date(l.logged_at).getTime() >= effectiveStart.getTime())
+        .filter((l) =>
+          l.user_id === userId &&
+          l.exercise_id === badge.exercise_id &&
+          new Date(l.logged_at).getTime() >= effectiveStart.getTime()
+        )
         .reduce((s, l) => s + l.count, 0);
       return { badge, currentTotal: total };
     })

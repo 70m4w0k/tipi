@@ -173,7 +173,7 @@ export default function SportScreen() {
                   </View>
                 )}
                 {collectiveTitle && (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingTop: 6, marginTop: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#E5E7EB" }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingTop: 6, marginTop: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.cardBorder }}>
                     <Ionicons name={collectiveTitle.icon as any} size={12} color={t.accent} />
                     <Text style={{ fontSize: 10, fontWeight: "600", color: t.accent }} numberOfLines={1}>{collectiveTitle.title}</Text>
                   </View>
