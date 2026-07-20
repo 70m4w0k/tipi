@@ -68,6 +68,14 @@ export async function seedSportLog(exerciseName: string, count: number, daysAgo:
   await c.auth.signOut();
 }
 
+/** (Ré)initialise le titre sportif affiché de l'utilisateur de test. */
+export async function setSportTitle(title: string | null): Promise<void> {
+  const c = await client();
+  const { data: u } = await c.auth.getUser();
+  await c.from("profiles").update({ sport_title: title }).eq("id", u.user!.id);
+  await c.auth.signOut();
+}
+
 /** Lit le réglage show_sport_level de l'utilisateur de test. */
 export async function getShowSportLevel(): Promise<boolean> {
   const c = await client();

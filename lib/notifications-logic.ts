@@ -1,4 +1,4 @@
-import { RecipeInstance, Recipe } from "./types";
+import { RecipeInstance, Recipe, TemporalBadge } from "./types";
 
 export type Notification = {
   id: string;
@@ -29,4 +29,17 @@ export function buildRecipeNotifications(
     icon: "restaurant-outline",
     route: "/(app)/recipes",
   }];
+}
+
+/** Notifications sport : titres temporels portés par la période de grâce */
+export function buildSportNotifications(
+  threatened: { badge: TemporalBadge; missing: number }[],
+  exercises: { id: string; unit: string }[],
+): Notification[] {
+  return threatened.map(({ badge, missing }) => ({
+    id: `sport-threat-${badge.id}`,
+    text: `Encore ${missing} ${exercises.find((e) => e.id === badge.exercise_id)?.unit ?? "répétitions"} pour garder « ${badge.title} »`,
+    icon: "flame-outline",
+    route: "/(app)/sport",
+  }));
 }

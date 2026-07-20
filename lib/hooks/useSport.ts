@@ -12,6 +12,7 @@ import {
   computeXp,
   computeLevel,
   computeDailyGoal,
+  computeThreatenedTitles,
 } from "../sport-logic";
 
 let channelCounter = 0;
@@ -194,6 +195,12 @@ export function useSport(householdId: string | null | undefined, userId?: string
     return computeCollectiveTitles(total, COLLECTIVE_THRESHOLDS);
   }, [logs]);
 
+  // Titres portés uniquement par la période de grâce (spec §5.4 — bannière)
+  const threatenedTitles = useMemo(
+    () => (userId ? computeThreatenedTitles(logs, userId, temporalBadges) : []),
+    [logs, userId, temporalBadges]
+  );
+
   // XP & niveau de l'utilisateur courant (spec §5.1)
   const xp = useMemo(
     () => (userId ? computeXp(logs, userId, exercises, userBadges) : 0),
@@ -232,6 +239,6 @@ export function useSport(householdId: string | null | undefined, userId?: string
     logExercise, deleteLog, updateLog,
     fetchAll, unlockBadge,
     unlockedBadges, temporalTitles, collectiveTitle,
-    xp, levelInfo, memberLevel, dailyGoals,
+    xp, levelInfo, memberLevel, dailyGoals, threatenedTitles,
   };
 }

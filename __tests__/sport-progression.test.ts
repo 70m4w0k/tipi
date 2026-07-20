@@ -181,3 +181,63 @@ describe("computeDailyGoal", () => {
     expect(computeDailyGoal(logs, "u1", "ex1", 100, now)).toBe(22);
   });
 });
+
+describe("computeThreatenedTitles", () => {
+  const { computeThreatenedTitles } = require("../lib/sport-logic");
+  const now = new Date("2026-07-20T15:00:00Z");
+  const badge = {
+    id: "tb1", exercise_id: "ex1", household_id: "h1",
+    threshold: 100, window_days: 7, title: "Régulier", icon: "flame", grace_hours: 48,
+  };
+  const logAt = (daysAgo: number, count: number) => ({
+    id: `l-${Math.random()}`, household_id: "h1", exercise_id: "ex1", user_id: "u1",
+    count, logged_at: new Date(now.getTime() - daysAgo * 86400 * 1000).toISOString(),
+    created_at: new Date().toISOString(),
+  });
+
+  it("titre solide (fenêtre stricte suffisante) : pas menacé", () => {
+    expect(computeThreatenedTitles([logAt(2, 150)], "u1", [badge], now)).toHaveLength(0);
+  });
+
+  it("titre porté par la grâce seule : menacé, avec le volume manquant", () => {
+    // 150 reps il y a 8 jours : hors fenêtre 7j, dans la grâce (9j)
+    const result = computeThreatenedTitles([logAt(8, 150)], "u1", [badge], now);
+    expect(result).toHaveLength(1);
+    expect(result[0].missing).toBe(100);
+  });
+
+  it("compte le partiel de la fenêtre stricte dans le manquant", () => {
+    // 80 il y a 8j (grâce) + 30 il y a 2j (strict) : grâce 110 >= 100, strict 30 < 100
+    const result = computeThreatenedTitles([logAt(8, 80), logAt(2, 30)], "u1", [badge], now);
+    expect(result).toHaveLength(1);
+    expect(result[0].missing).toBe(70);
+  });
+
+  it("titre perdu (même la grâce insuffisante) : pas menacé, juste perdu", () => {
+    expect(computeThreatenedTitles([logAt(12, 150)], "u1", [badge], now)).toHaveLength(0);
+  });
+});
+
+describe("computePersonalRecords", () => {
+  const { computePersonalRecords } = require("../lib/sport-logic");
+
+  it("null sans logs", () => {
+    expect(computePersonalRecords([], "u1", "ex1")).toEqual({ bestDay: null, bestSeries: null });
+  });
+
+  it("meilleure journée agrégée et meilleure série", () => {
+    const day1 = "2026-07-18";
+    const day2 = "2026-07-19";
+    const logs = [
+      { ...makeLog("ex1", "u1", 40), logged_at: `${day1}T10:00:00Z` },
+      { ...makeLog("ex1", "u1", 45), logged_at: `${day1}T18:00:00Z` }, // jour 85
+      { ...makeLog("ex1", "u1", 60), logged_at: `${day2}T10:00:00Z` }, // jour 60, série max 60
+      { ...makeLog("ex1", "u2", 999), logged_at: `${day2}T10:00:00Z` }, // autre user
+      { ...makeLog("ex2", "u1", 999), logged_at: `${day2}T10:00:00Z` }, // autre exercice
+    ];
+    expect(computePersonalRecords(logs, "u1", "ex1")).toEqual({
+      bestDay: { day: day1, total: 85 },
+      bestSeries: 60,
+    });
+  });
+});

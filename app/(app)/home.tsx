@@ -17,10 +17,11 @@ import { useChores } from "../../lib/hooks/useChores";
 import { useRecipes } from "../../lib/hooks/useRecipes";
 import { useShoppingList } from "../../lib/hooks/useShoppingList";
 import { useNavPreferences, ALL_TABS } from "../../lib/hooks/useNavPreferences";
+import { useSport } from "../../lib/hooks/useSport";
 import { useTheme } from "../../lib/theme";
 import { OnboardingOverlay } from "../../components/OnboardingOverlay";
 import ChoreReminderCard, { recurrenceMatchesToday } from "../../components/ChoreReminder";
-import { buildRecipeNotifications } from "../../lib/notifications-logic";
+import { buildRecipeNotifications, buildSportNotifications } from "../../lib/notifications-logic";
 
 type Notification = {
   id: string;
@@ -39,6 +40,12 @@ export default function HomeScreen() {
   const { instances, recipes, fetchAll: fetchRecipes } = useRecipes(profile?.household_id);
   const { items: shoppingItems, fetchItems: fetchShopping } = useShoppingList(profile?.household_id);
   const { enabledTabs } = useNavPreferences();
+  // Données sport uniquement si l'onglet est activé (householdId undefined = pas de fetch)
+  const sportEnabled = enabledTabs.includes("sport");
+  const { exercises: sportExercises, threatenedTitles } = useSport(
+    sportEnabled ? profile?.household_id : undefined,
+    profile?.id
+  );
   const t = useTheme();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [refreshing, setRefreshing] = useState(false);
@@ -67,12 +74,19 @@ export default function HomeScreen() {
   );
 
   const notifications = useMemo(() => {
-    return buildRecipeNotifications(instances, recipes).map((n) => ({
-      ...n,
-      color: t.success,
-      params: {},
-    }));
-  }, [todayReminders, instances, recipes, t]);
+    return [
+      ...buildRecipeNotifications(instances, recipes).map((n) => ({
+        ...n,
+        color: t.success,
+        params: {},
+      })),
+      ...buildSportNotifications(threatenedTitles, sportExercises).map((n) => ({
+        ...n,
+        color: t.accent,
+        params: {},
+      })),
+    ];
+  }, [todayReminders, instances, recipes, threatenedTitles, sportExercises, t]);
 
   const visibleNotifs = notifications.filter((n) => !dismissed.has(n.id));
 

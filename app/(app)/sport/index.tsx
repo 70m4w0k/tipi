@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../../lib/hooks/useAuth";
+import { supabase } from "../../../lib/supabase";
 import { useHousehold } from "../../../lib/hooks/useHousehold";
 import { useSport } from "../../../lib/hooks/useSport";
 import { useTheme } from "../../../lib/theme";
@@ -38,14 +39,14 @@ const EXERCISE_ICONS = [
 const UNIT_OPTIONS = ["répétitions", "secondes", "minutes"];
 
 export default function SportScreen() {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const { members } = useHousehold(profile);
   const {
     exercises, logs, loading,
     addExercise, updateExercise, deleteExercise,
     fetchAll,
     userBadges, exerciseBadges, collectiveTitle,
-    xp, levelInfo, dailyGoals,
+    xp, levelInfo, dailyGoals, threatenedTitles,
   } = useSport(profile?.household_id, profile?.id);
   const t = useTheme();
   const router = useRouter();
@@ -58,6 +59,22 @@ export default function SportScreen() {
   const [confirm, setConfirm] = useState<
     { title: string; message: string; confirmLabel: string; onConfirm: () => void } | null
   >(null);
+  const [titleModal, setTitleModal] = useState(false);
+
+  // Titres débloqués par l'utilisateur (choix du titre affiché, gate niveau 5)
+  const ownUnlockedTitles = useMemo(() => {
+    if (!profile?.id) return [];
+    const ownBadgeIds = new Set(userBadges.filter((ub) => ub.user_id === profile.id).map((ub) => ub.badge_id));
+    return exerciseBadges.filter((b) => ownBadgeIds.has(b.id)).sort((a, b) => a.threshold - b.threshold);
+  }, [exerciseBadges, userBadges, profile?.id]);
+
+  const saveSportTitle = async (title: string | null) => {
+    if (!profile?.id) return;
+    void haptic.light();
+    await supabase.from("profiles").update({ sport_title: title }).eq("id", profile.id);
+    await refreshProfile();
+    setTitleModal(false);
+  };
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -158,10 +175,32 @@ export default function SportScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} colors={[t.accent]} />}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Niveau + progression XP (spec R3) */}
+        {/* Niveau + progression XP (spec R3) — tap au niveau 5+ pour choisir son titre */}
         {exercises.length > 0 && (
-          <LevelHeader levelInfo={levelInfo} xp={xp} sportTitle={profile?.sport_title} />
+          <LevelHeader
+            levelInfo={levelInfo}
+            xp={xp}
+            sportTitle={profile?.sport_title}
+            onPress={levelInfo.level >= 5 ? () => { void haptic.light(); setTitleModal(true); } : undefined}
+          />
         )}
+
+        {/* Titres portés par la période de grâce (spec §5.4) */}
+        {threatenedTitles.map(({ badge, missing }) => {
+          const unit = exercises.find((e) => e.id === badge.exercise_id)?.unit ?? "répétitions";
+          return (
+            <View
+              key={badge.id}
+              testID="threatened-title"
+              style={[styles.threatBanner, { backgroundColor: t.accentLight }]}
+            >
+              <Ionicons name="flame" size={16} color={t.accent} />
+              <Text style={[styles.threatText, { color: t.accent }]} numberOfLines={2}>
+                Encore {missing} {unit} pour garder « {badge.title} »
+              </Text>
+            </View>
+          );
+        })}
 
         {exercises.length === 0 && !loading && (
           <View style={styles.emptyContainer}>
@@ -320,6 +359,38 @@ export default function SportScreen() {
         onCancel={() => setConfirm(null)}
       />
 
+      {/* Choix du titre affiché (gate niveau 5) */}
+      <Modal visible={titleModal} transparent animationType="fade">
+        <Pressable style={styles.modalOverlay} onPress={() => setTitleModal(false)}>
+          <Pressable style={[styles.modalContent, { backgroundColor: t.card }]} onPress={() => {}}>
+            <Text style={[styles.editTitle, { color: t.text }]}>Titre affiché</Text>
+            <ScrollView style={{ maxHeight: 320 }}>
+              <Pressable
+                testID="title-option-none"
+                style={[styles.titleRow, { borderBottomColor: t.cardBorder }]}
+                onPress={() => void saveSportTitle(null)}
+              >
+                <Ionicons name="close-circle-outline" size={18} color={t.textMuted} />
+                <Text style={[styles.titleRowText, { color: t.textSecondary }]}>Aucun titre (Niv. {levelInfo.level})</Text>
+                {profile?.sport_title == null && <Ionicons name="checkmark" size={18} color={t.accent} />}
+              </Pressable>
+              {ownUnlockedTitles.map((b) => (
+                <Pressable
+                  key={b.id}
+                  testID={`title-option-${b.id}`}
+                  style={[styles.titleRow, { borderBottomColor: t.cardBorder }]}
+                  onPress={() => void saveSportTitle(b.title)}
+                >
+                  <Ionicons name={b.icon as any} size={18} color={t.accent} />
+                  <Text style={[styles.titleRowText, { color: t.text }]} numberOfLines={1}>{b.title}</Text>
+                  {profile?.sport_title === b.title && <Ionicons name="checkmark" size={18} color={t.accent} />}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* Passage de niveau — réutilise l'overlay badge (spec §5.5) */}
       <BadgeUnlockOverlay
         visible={levelUp != null}
@@ -352,6 +423,20 @@ const styles = StyleSheet.create({
   },
   cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   cardTopRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+
+  // Bannière titre menacé
+  threatBanner: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 10,
+  },
+  threatText: { flex: 1, fontSize: 12, fontWeight: "700" },
+
+  // Modal choix du titre
+  titleRow: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  titleRowText: { flex: 1, fontSize: 14, fontWeight: "600" },
   cardName: { fontSize: 15, fontWeight: "700", marginBottom: 4 },
   cardTotal: { fontSize: 22, fontWeight: "800", marginBottom: 8 },
   cardUsers: { flexDirection: "row", gap: 4 },

@@ -1,6 +1,8 @@
 # Spec — Système de progression Sport : niveaux, badges cachés, déblocage de features
 
-> **Statut** : draft v1 — 20/07/2026
+> **Statut** : phases 1-3 livrées le 20/07/2026 (P0 complet + P1 hors gates 7/10 ; la
+> « notification locale » P1 est implémentée comme notification in-app sur l'accueil,
+> via le système existant — pas de dépendance expo-notifications)
 > **Base** : branche `feature/sport-gamification-hermes` (badges permanents, titres temporels 7j + grâce 48h, titres collectifs, overlay de déblocage, anneaux de progression)
 > **Références** : patterns Habitica (badges "?", classes au niveau 10), Duolingo (streak freeze), Ring Fit (titres identitaires), études de rétention (badge jour 1 = +64 % de rétention ; streaks sociales = +34 % de durée)
 

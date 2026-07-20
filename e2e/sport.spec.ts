@@ -1,9 +1,11 @@
 import { test, expect, Page } from "@playwright/test";
 import { login, GOTO_OPTS } from "./helpers";
-import { cleanupByPrefix, seedSportLog, getShowSportLevel, TEST_PREFIX } from "./db";
+import { cleanupByPrefix, seedSportLog, getShowSportLevel, setSportTitle, TEST_PREFIX } from "./db";
 
 test.afterAll(async () => {
   await cleanupByPrefix(TEST_PREFIX);
+  // Le titre choisi référence un badge d'exercice E2E supprimé : on le réinitialise.
+  await setSportTitle(null);
 });
 
 /**
@@ -17,6 +19,21 @@ async function loginWithSportTab(page: Page) {
     } catch {}
   });
   await login(page);
+}
+
+/**
+ * Ferme l'overlay « Niveau atteint » s'il se déclenche (dépend de l'historique
+ * accumulé par les tests précédents du run) — il intercepte les clics sinon.
+ */
+async function dismissLevelUpIfShown(page: Page) {
+  const overlay = page.getByText("Niveau atteint");
+  try {
+    await overlay.waitFor({ state: "visible", timeout: 4000 });
+    await overlay.click();
+    await overlay.waitFor({ state: "hidden", timeout: 5000 });
+  } catch {
+    // Pas d'overlay : rien à faire.
+  }
 }
 
 /** Crée un exercice custom via le FAB et ouvre sa page détail. */
@@ -114,6 +131,67 @@ test.describe("Sport — gamification", () => {
 
     await toggle.click();
     await expect.poll(async () => getShowSportLevel(), { timeout: 10_000 }).toBe(true);
+  });
+
+  test("les records personnels apparaissent au niveau 3", async ({ page }) => {
+    const EX = `${TEST_PREFIX}records-${Date.now()}`;
+    await loginWithSportTab(page);
+    await createAndOpenExercise(page, EX);
+
+    // 400 reps hier -> 400 XP + 50 (badge 100) = 450 -> niveau 3
+    await seedSportLog(EX, 400, 1);
+    await page.goto("/sport", GOTO_OPTS);
+    const card = page.getByTestId(`sport-card-${EX}`);
+    await expect(card).toBeVisible({ timeout: 20_000 });
+    await dismissLevelUpIfShown(page);
+    await card.click();
+
+    const records = page.getByTestId("personal-records");
+    await expect(records).toBeVisible({ timeout: 15_000 });
+    await expect(records.getByText("400").first()).toBeVisible();
+  });
+
+  test("un titre porté par la grâce affiche la bannière « pour garder »", async ({ page }) => {
+    const EX = `${TEST_PREFIX}threat-${Date.now()}`;
+    await loginWithSportTab(page);
+    await createAndOpenExercise(page, EX);
+
+    // 150 reps il y a 8 jours : hors fenêtre 7j mais dans la grâce 48h -> titre menacé
+    await seedSportLog(EX, 150, 8);
+    await page.goto("/sport", GOTO_OPTS);
+
+    const banner = page.getByTestId("threatened-title").first();
+    await expect(banner).toBeVisible({ timeout: 20_000 });
+    await expect(banner.getByText(/pour garder/)).toBeVisible();
+  });
+
+  test("au niveau 5, le titre affiché se choisit depuis la carte de niveau", async ({ page }) => {
+    const EX = `${TEST_PREFIX}title-${Date.now()}`;
+    await loginWithSportTab(page);
+    await createAndOpenExercise(page, EX);
+
+    // 1500 reps hier -> 1500 XP + 150 (badges 100/500/1000) = 1650 -> niveau 5
+    await seedSportLog(EX, 1500, 1);
+    await page.goto("/sport", GOTO_OPTS);
+
+    const chip = page.getByTestId("level-chip");
+    await expect(chip).toBeVisible({ timeout: 20_000 });
+    await expect(chip).toHaveText(/Niv\. [5-9]/, { timeout: 15_000 });
+    await dismissLevelUpIfShown(page);
+
+    // Ouvre le sélecteur de titre et choisit le badge Centurion de cet exercice.
+    await page.getByTestId("level-header").click();
+    const option = page.getByTestId(/^title-option-/).filter({ hasText: `${EX} — Centurion` });
+    await expect(option).toBeVisible({ timeout: 10_000 });
+    await option.click();
+
+    // Le chip affiche le titre choisi à la place du niveau.
+    await expect(chip).toHaveText(`${EX} — Centurion`, { timeout: 15_000 });
+
+    // Retour à « Aucun titre » pour ne pas polluer les runs suivants.
+    await page.getByTestId("level-header").click();
+    await page.getByTestId("title-option-none").click();
+    await expect(chip).toHaveText(/Niv\. [5-9]/, { timeout: 15_000 });
   });
 
   test("l'appui long sur + incrémente en continu", async ({ page }) => {

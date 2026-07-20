@@ -275,6 +275,58 @@ export function computeTemporalTitles(
     .filter((t) => t.currentTotal >= t.badge.threshold);
 }
 
+/**
+ * Titres temporels menacés : encore actifs grâce à la période de grâce, mais
+ * dont la fenêtre stricte est repassée sous le seuil. `missing` = ce qu'il
+ * reste à faire pour re-sécuriser le titre.
+ */
+export function computeThreatenedTitles(
+  logs: ExerciseLog[],
+  userId: string,
+  badges: TemporalBadge[],
+  now: Date = new Date()
+): { badge: TemporalBadge; missing: number }[] {
+  return badges
+    .map((badge) => {
+      const windowStart = now.getTime() - badge.window_days * 86400 * 1000;
+      const graceStart = windowStart - badge.grace_hours * 3600 * 1000;
+      let strictTotal = 0;
+      let graceTotal = 0;
+      for (const l of logs) {
+        if (l.user_id !== userId || l.exercise_id !== badge.exercise_id) continue;
+        const ts = new Date(l.logged_at).getTime();
+        if (ts >= graceStart) graceTotal += l.count;
+        if (ts >= windowStart) strictTotal += l.count;
+      }
+      return { badge, strictTotal, graceTotal };
+    })
+    .filter((x) => x.graceTotal >= x.badge.threshold && x.strictTotal < x.badge.threshold)
+    .map((x) => ({ badge: x.badge, missing: x.badge.threshold - x.strictTotal }));
+}
+
+/** Records personnels d'un utilisateur sur un exercice (gate niveau 3) */
+export function computePersonalRecords(
+  logs: ExerciseLog[],
+  userId: string,
+  exerciseId: string
+): { bestDay: { day: string; total: number } | null; bestSeries: number | null } {
+  const own = logs.filter((l) => l.user_id === userId && l.exercise_id === exerciseId);
+  if (own.length === 0) return { bestDay: null, bestSeries: null };
+
+  const byDay: Record<string, number> = {};
+  let bestSeries = 0;
+  for (const l of own) {
+    const day = l.logged_at.slice(0, 10);
+    byDay[day] = (byDay[day] ?? 0) + l.count;
+    if (l.count > bestSeries) bestSeries = l.count;
+  }
+  const bestDay = Object.entries(byDay).reduce(
+    (best, [day, total]) => (total > best.total ? { day, total } : best),
+    { day: "", total: -1 }
+  );
+  return { bestDay: { day: bestDay.day, total: bestDay.total }, bestSeries };
+}
+
 /** Titre collectif le plus élevé atteint */
 export function computeCollectiveTitles(
   total: number,

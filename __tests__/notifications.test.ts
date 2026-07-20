@@ -89,3 +89,25 @@ describe("buildRecipeNotifications", () => {
     expect(notifs[0].text).toContain("Kimchi maison");
   });
 });
+
+describe("buildSportNotifications", () => {
+  const { buildSportNotifications } = require("../lib/notifications-logic");
+  const badge = {
+    id: "tb1", exercise_id: "ex1", household_id: "h1",
+    threshold: 100, window_days: 7, title: "Pompeur Régulier", icon: "flame", grace_hours: 48,
+  };
+
+  it("construit une notification par titre menacé avec l'unité de l'exercice", () => {
+    const notifs = buildSportNotifications(
+      [{ badge, missing: 40 }],
+      [{ id: "ex1", unit: "répétitions" }]
+    );
+    expect(notifs).toHaveLength(1);
+    expect(notifs[0].text).toBe("Encore 40 répétitions pour garder « Pompeur Régulier »");
+    expect(notifs[0].route).toBe("/(app)/sport");
+  });
+
+  it("aucune notification sans titre menacé", () => {
+    expect(buildSportNotifications([], [])).toHaveLength(0);
+  });
+});

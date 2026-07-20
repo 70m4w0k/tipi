@@ -18,7 +18,7 @@ import { useTheme } from "../../../lib/theme";
 import { haptic } from "../../../lib/haptics";
 
 import { BadgeRow, BadgeItem } from "../../../components/BadgeRow";
-import { computeBadgeVisibility } from "../../../lib/sport-logic";
+import { computeBadgeVisibility, computePersonalRecords } from "../../../lib/sport-logic";
 import { BadgeUnlockOverlay } from "../../../components/BadgeUnlockOverlay";
 import { RepStepper } from "../../../components/RepStepper";
 
@@ -40,7 +40,7 @@ export default function ExerciseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile } = useAuth();
   const { members } = useHousehold(profile);
-  const { exercises, logs, logExercise, updateLog, fetchAll, exerciseBadges, temporalBadges, userBadges, unlockedBadges, temporalTitles, collectiveTitle, memberLevel } = useSport(profile?.household_id, profile?.id);
+  const { exercises, logs, logExercise, updateLog, fetchAll, exerciseBadges, temporalBadges, userBadges, unlockedBadges, temporalTitles, collectiveTitle, memberLevel, levelInfo } = useSport(profile?.household_id, profile?.id);
   const t = useTheme();
   const router = useRouter();
 
@@ -105,6 +105,12 @@ export default function ExerciseDetailScreen() {
   const liveExerciseLogs = useMemo(
     () => exerciseLogs.map((l) => (liveCounts[l.id] != null ? { ...l, count: liveCounts[l.id] } : l)),
     [exerciseLogs, liveCounts]
+  );
+
+  // Records personnels (gate niveau 3, spec §5.2)
+  const records = useMemo(
+    () => (profile?.id && id ? computePersonalRecords(logs, profile.id, id) : { bestDay: null, bestSeries: null }),
+    [logs, profile?.id, id]
   );
 
   // Series for selected day
@@ -401,6 +407,18 @@ export default function ExerciseDetailScreen() {
             </View>
           )}
 
+          {/* Records personnels — débloqués au niveau 3 (spec §5.2) */}
+          {levelInfo.level >= 3 && records.bestSeries != null && records.bestDay != null && (
+            <View testID="personal-records" style={[styles.recordsRow, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+              <Ionicons name="trophy-outline" size={16} color={t.accent} />
+              <Text style={[styles.recordsText, { color: t.textSecondary }]} numberOfLines={2}>
+                Meilleure journée : <Text style={{ color: t.text, fontWeight: "700" }}>{records.bestDay.total}</Text>
+                {" "}({formatDayLabel(records.bestDay.day)}) · Meilleure série :{" "}
+                <Text style={{ color: t.text, fontWeight: "700" }}>{records.bestSeries}</Text>
+              </Text>
+            </View>
+          )}
+
           {/* Series for selected day */}
           {selectedSeries.map((log, i) => (
             <View
@@ -484,6 +502,14 @@ const styles = StyleSheet.create({
   totalUserName: { fontSize: 12 },
   totalUserLevel: { fontSize: 10, fontWeight: "800" },
   totalUserCount: { fontSize: 12, fontWeight: "600" },
+
+  // Records personnels
+  recordsRow: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    marginHorizontal: 16, marginBottom: 12,
+    borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8,
+  },
+  recordsText: { flex: 1, fontSize: 12 },
 
   // Series cards
   seriesCard: {
