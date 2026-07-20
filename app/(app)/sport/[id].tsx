@@ -19,6 +19,8 @@ import { haptic } from "../../../lib/haptics";
 import { ExerciseLog } from "../../../lib/types";
 
 import { BadgeRow, BadgeItem } from "../../../components/BadgeRow";
+import { BadgeUnlockOverlay } from "../../../components/BadgeUnlockOverlay";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 
 const BAR_WIDTH = 40;
 const BAR_GAP = 12;
@@ -45,6 +47,28 @@ export default function ExerciseDetailScreen() {
   const exercise = exercises.find((e) => e.id === id);
   const today = todayISO();
   const [selectedDay, setSelectedDay] = useState(today);
+  const [newBadge, setNewBadge] = useState<{ title: string; icon: string } | null>(null);
+  const prevUserBadgeIds = useRef(new Set<string>());
+
+  // Detect newly unlocked badges
+  useEffect(() => {
+    const current = new Set(userBadges.map((ub) => ub.badge_id));
+    const prev = prevUserBadgeIds.current;
+
+    if (prev.size > 0) {
+      for (const id of current) {
+        if (!prev.has(id)) {
+          const badge = exerciseBadges.find((b) => b.id === id && b.exercise_id === exercise?.id);
+          if (badge) {
+            setNewBadge({ title: badge.title, icon: badge.icon });
+            const timer = setTimeout(() => setNewBadge(null), 3000);
+            return () => clearTimeout(timer);
+          }
+        }
+      }
+    }
+    prevUserBadgeIds.current = current;
+  }, [userBadges, exerciseBadges, exercise?.id]);
 
   // Auto-scroll chart to today
   const chartScrollRef = useRef<ScrollView>(null);
@@ -281,20 +305,54 @@ export default function ExerciseDetailScreen() {
               {(() => {
                 const exBadges = exerciseBadges.filter((b) => b.exercise_id === id);
                 const exUnlocked = userBadges.map((ub) => ub.badge_id);
-                const badgeItems: BadgeItem[] = exBadges.map((b) => ({
-                  title: b.title,
-                  icon: b.icon,
-                  threshold: b.threshold,
-                  unlocked: exUnlocked.includes(b.id),
-                }));
+                // Compute per-badge progress
+                const badgeItems: BadgeItem[] = exBadges.map((b) => {
+                  const unlocked = exUnlocked.includes(b.id);
+                  // Total for this user + exercise
+                  const userTotal = exerciseLogs
+                    .filter((l) => l.user_id === profile?.id)
+                    .reduce((s, l) => s + l.count, 0);
+                  const prevThreshold = exBadges
+                    .filter((x) => x.threshold < b.threshold)
+                    .sort((a, b) => b.threshold - a.threshold)[0]?.threshold ?? 0;
+                  const range = b.threshold - prevThreshold;
+                  const progress = unlocked ? 1 : range > 0 ? Math.min(1, (userTotal - prevThreshold) / range) : 0;
+                  return { title: b.title, icon: b.icon, threshold: b.threshold, unlocked, progress };
+                });
                 const exTemporal = temporalBadges
                   .filter((b) => b.exercise_id === id)
                   .filter((b) => temporalTitles.some((t) => t.badge.id === b.id));
+
+                // Next badge to unlock for this exercise
+                const userTotal = exerciseLogs
+                  .filter((l) => l.user_id === profile?.id)
+                  .reduce((s, l) => s + l.count, 0);
+                const nextBadge = exBadges
+                  .filter((b) => !exUnlocked.includes(b.id))
+                  .sort((a, b) => a.threshold - b.threshold)[0];
+                const prevThreshold = nextBadge
+                  ? (exBadges
+                      .filter((x) => x.threshold < nextBadge.threshold)
+                      .sort((a, b) => b.threshold - a.threshold)[0]?.threshold ?? 0)
+                  : 0;
+                const nextProgress = nextBadge && (nextBadge.threshold - prevThreshold) > 0
+                  ? (userTotal - prevThreshold) / (nextBadge.threshold - prevThreshold)
+                  : 0;
 
                 return (
                   <>
                     {badgeItems.length > 0 && (
                       <BadgeRow badges={badgeItems} accent={profile?.color ?? t.accent} />
+                    )}
+                    {nextBadge && (
+                      <View style={{ marginTop: 12, paddingHorizontal: 4 }}>
+                        <Text style={{ fontSize: 11, fontWeight: "600", color: t.textSecondary, marginBottom: 4 }}>
+                          Prochain badge : {nextBadge.title} — encore {nextBadge.threshold - userTotal} {exercise.unit}
+                        </Text>
+                        <View style={{ height: 4, borderRadius: 2, backgroundColor: t.cardBorder, overflow: "hidden" }}>
+                          <View style={{ height: 4, borderRadius: 2, backgroundColor: t.accent, width: `${Math.round(nextProgress * 100)}%` as any }} />
+                        </View>
+                      </View>
                     )}
                     {exTemporal.length > 0 && (
                       <View style={{ marginTop: 12 }}>
@@ -360,6 +418,12 @@ export default function ExerciseDetailScreen() {
           <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+      <BadgeUnlockOverlay
+        visible={!!newBadge}
+        badgeTitle={newBadge?.title ?? ""}
+        badgeIcon={newBadge?.icon ?? "ribbon-outline"}
+        onDismiss={() => setNewBadge(null)}
+      />
     </SafeAreaView>
   );
 }
