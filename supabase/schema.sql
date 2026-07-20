@@ -21,7 +21,9 @@ CREATE TABLE profiles (
   household_id uuid REFERENCES households(id),
   role text NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
   birthday date,
-  created_at timestamptz DEFAULT now()
+  created_at timestamptz DEFAULT now(),
+  show_sport_level boolean NOT NULL DEFAULT true,
+  sport_title text
 );
 
 CREATE TABLE messages (

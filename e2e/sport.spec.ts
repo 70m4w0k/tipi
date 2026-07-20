@@ -1,6 +1,6 @@
 import { test, expect, Page } from "@playwright/test";
-import { login } from "./helpers";
-import { cleanupByPrefix, TEST_PREFIX } from "./db";
+import { login, GOTO_OPTS } from "./helpers";
+import { cleanupByPrefix, seedSportLog, getShowSportLevel, TEST_PREFIX } from "./db";
 
 test.afterAll(async () => {
   await cleanupByPrefix(TEST_PREFIX);
@@ -80,6 +80,40 @@ test.describe("Sport — gamification", () => {
     await expect(page.getByTestId("badge-unlocked-100")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("badge-next-500").getByText(`${EX} — Vétéran`)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId(/^badge-hidden-/)).toHaveCount(3);
+  });
+
+  test("le niveau s'affiche et l'objectif du jour apparaît au niveau 2", async ({ page }) => {
+    const EX = `${TEST_PREFIX}level-${Date.now()}`;
+    await loginWithSportTab(page);
+    await createAndOpenExercise(page, EX);
+
+    // Historique d'hier : 200 reps -> 200 XP volume + 50 XP badge (palier 100) -> niveau >= 2
+    await seedSportLog(EX, 200, 1);
+
+    // Recharge la page Sport pour refetch avec l'historique.
+    await page.goto("/sport", GOTO_OPTS);
+    const chip = page.getByTestId("level-chip");
+    await expect(chip).toBeVisible({ timeout: 20_000 });
+    await expect(chip).toHaveText(/Niv\. [2-9]/, { timeout: 15_000 });
+
+    // L'objectif du jour est visible sur la carte : moyenne 200 × 1.1 = 220, rien fait aujourd'hui.
+    const ring = page.getByTestId(`sport-card-${EX}`).getByTestId("daily-goal-ring");
+    await expect(ring).toBeVisible({ timeout: 15_000 });
+    await expect(ring.getByText("0/220")).toBeVisible();
+  });
+
+  test("le réglage « niveau visible par les colocs » se sauvegarde", async ({ page }) => {
+    await loginWithSportTab(page);
+    await page.goto("/other", GOTO_OPTS);
+    const toggle = page.getByTestId("toggle-show-sport-level");
+    await toggle.scrollIntoViewIfNeeded();
+    await expect(toggle).toBeVisible({ timeout: 15_000 });
+
+    await toggle.click();
+    await expect.poll(async () => getShowSportLevel(), { timeout: 10_000 }).toBe(false);
+
+    await toggle.click();
+    await expect.poll(async () => getShowSportLevel(), { timeout: 10_000 }).toBe(true);
   });
 
   test("l'appui long sur + incrémente en continu", async ({ page }) => {

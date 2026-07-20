@@ -40,7 +40,7 @@ export default function ExerciseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile } = useAuth();
   const { members } = useHousehold(profile);
-  const { exercises, logs, logExercise, updateLog, fetchAll, exerciseBadges, temporalBadges, userBadges, unlockedBadges, temporalTitles, collectiveTitle } = useSport(profile?.household_id, profile?.id);
+  const { exercises, logs, logExercise, updateLog, fetchAll, exerciseBadges, temporalBadges, userBadges, unlockedBadges, temporalTitles, collectiveTitle, memberLevel } = useSport(profile?.household_id, profile?.id);
   const t = useTheme();
   const router = useRouter();
 
@@ -294,12 +294,18 @@ export default function ExerciseDetailScreen() {
                 <View style={styles.totalUsers}>
                   {Object.entries(selectedByUser).map(([userId, count]) => {
                     const member = members.find((m) => m.id === userId);
+                    const showLevel = member ? (member.show_sport_level ?? true) : false;
                     return (
                       <View key={userId} style={styles.totalUserRow}>
                         <View style={[styles.totalUserDot, { backgroundColor: userColor(userId) }]} />
                         <Text style={[styles.totalUserName, { color: t.textSecondary }]}>
                           {member?.display_name ?? "?"}
                         </Text>
+                        {showLevel && (
+                          <Text style={[styles.totalUserLevel, { color: t.accent }]}>
+                            {member?.sport_title ?? `Niv. ${memberLevel(userId)}`}
+                          </Text>
+                        )}
                         <Text style={[styles.totalUserCount, { color: t.textSecondary }]}>
                           {count} {exercise.unit}
                         </Text>
@@ -476,6 +482,7 @@ const styles = StyleSheet.create({
   totalUserRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   totalUserDot: { width: 7, height: 7, borderRadius: 4 },
   totalUserName: { fontSize: 12 },
+  totalUserLevel: { fontSize: 10, fontWeight: "800" },
   totalUserCount: { fontSize: 12, fontWeight: "600" },
 
   // Series cards

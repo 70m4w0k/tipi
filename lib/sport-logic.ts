@@ -133,6 +133,49 @@ export function computeLevel(xp: number): LevelInfo {
   return { level, xpForCurrent: floor, xpForNext: next, progress };
 }
 
+/** Fonctionnalités débloquées par niveau (spec §5.2) */
+export const LEVEL_UNLOCKS: Record<number, string> = {
+  2: "Objectif du jour",
+  3: "Records personnels",
+  5: "Choix du titre affiché",
+  7: "Badges du foyer",
+  10: "Défis hebdomadaires",
+};
+
+// --- Objectif du jour (spec §5.4) ---
+
+/**
+ * Objectif quotidien pour un exercice : moyenne des 7 derniers jours actifs
+ * (fenêtre de 14 jours, aujourd'hui exclu) × 1.1, plancher = plus petit seuil
+ * de badge / 10. Null si l'exercice n'a pas été pratiqué sur la fenêtre.
+ */
+export function computeDailyGoal(
+  logs: ExerciseLog[],
+  userId: string,
+  exerciseId: string,
+  minBadgeThreshold: number,
+  now: Date = new Date()
+): number | null {
+  const today = now.toISOString().slice(0, 10);
+  const windowStart = new Date(now.getTime() - 14 * 86400 * 1000).toISOString().slice(0, 10);
+
+  const byDay: Record<string, number> = {};
+  for (const l of logs) {
+    if (l.user_id !== userId || l.exercise_id !== exerciseId) continue;
+    const day = l.logged_at.slice(0, 10);
+    if (day >= today || day < windowStart) continue;
+    byDay[day] = (byDay[day] ?? 0) + l.count;
+  }
+
+  const activeDays = Object.entries(byDay)
+    .sort(([a], [b]) => (a < b ? 1 : -1))
+    .slice(0, 7);
+  if (activeDays.length === 0) return null;
+
+  const avg = activeDays.reduce((s, [, v]) => s + v, 0) / activeDays.length;
+  return Math.max(Math.round(avg * 1.1), Math.round(minBadgeThreshold / 10));
+}
+
 // --- Badges cachés (spec §5.3) ---
 
 export type BadgeDisplayState = "unlocked" | "next" | "hidden";

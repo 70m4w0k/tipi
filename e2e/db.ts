@@ -49,6 +49,35 @@ export async function cleanupByPrefix(prefix: string): Promise<void> {
 export const TEST_PREFIX = "E2E-";
 
 /**
+ * Insère un log d'exercice antidaté pour l'utilisateur de test (historique
+ * nécessaire au calcul de l'objectif du jour et du niveau).
+ */
+export async function seedSportLog(exerciseName: string, count: number, daysAgo: number): Promise<void> {
+  const c = await client();
+  const { data: ex } = await c.from("exercises").select("id,household_id").eq("name", exerciseName).single();
+  if (!ex) throw new Error(`seedSportLog: exercice "${exerciseName}" introuvable`);
+  const { data: u } = await c.auth.getUser();
+  const loggedAt = new Date(Date.now() - daysAgo * 86400 * 1000).toISOString();
+  await c.from("exercise_logs").insert({
+    household_id: ex.household_id,
+    exercise_id: ex.id,
+    user_id: u.user!.id,
+    count,
+    logged_at: loggedAt,
+  });
+  await c.auth.signOut();
+}
+
+/** Lit le réglage show_sport_level de l'utilisateur de test. */
+export async function getShowSportLevel(): Promise<boolean> {
+  const c = await client();
+  const { data: u } = await c.auth.getUser();
+  const { data } = await c.from("profiles").select("show_sport_level").eq("id", u.user!.id).single();
+  await c.auth.signOut();
+  return (data?.show_sport_level as boolean | null) ?? true;
+}
+
+/**
  * Insère une recette (étapes sans durée -> planifiable à n'importe quelle date).
  * Utile pour tester la planification calendrier sans dépendre de l'UI recettes.
  * Nettoyée par cleanupByPrefix si le titre porte TEST_PREFIX.

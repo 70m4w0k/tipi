@@ -18,12 +18,16 @@ type BadgeUnlockOverlayProps = {
   badgeTitle: string;
   badgeIcon: string;
   onDismiss: () => void;
+  /** Ligne au-dessus du titre (défaut : "Badge débloqué") */
+  subtitle?: string;
+  /** Ligne optionnelle sous le titre (ex. fonctionnalité débloquée par un niveau) */
+  detail?: string;
 };
 
 const RING_DURATION = 600;
 const SPRING_CONFIG = { damping: 12, stiffness: 120 };
 
-export function BadgeUnlockOverlay({ visible, badgeTitle, badgeIcon, onDismiss }: BadgeUnlockOverlayProps) {
+export function BadgeUnlockOverlay({ visible, badgeTitle, badgeIcon, onDismiss, subtitle, detail }: BadgeUnlockOverlayProps) {
   const t = useTheme();
 
   const overlayOpacity = useSharedValue(0);
@@ -109,11 +113,16 @@ export function BadgeUnlockOverlay({ visible, badgeTitle, badgeIcon, onDismiss }
             {/* Title */}
             <Animated.View style={[titleStyle, { marginTop: 32 }]}>
               <Text style={[styles.subtitle, { color: t.textSecondary }]}>
-                Badge débloqué
+                {subtitle ?? "Badge débloqué"}
               </Text>
               <Text style={[styles.title, { color: t.text }]}>
                 {badgeTitle}
               </Text>
+              {detail != null && (
+                <Text style={[styles.detail, { color: t.textSecondary }]}>
+                  {detail}
+                </Text>
+              )}
             </Animated.View>
           </View>
         </Pressable>
@@ -147,4 +156,5 @@ const styles = StyleSheet.create({
   },
   subtitle: { fontSize: 14, fontWeight: "600", textAlign: "center" },
   title: { fontSize: 22, fontWeight: "800", textAlign: "center", marginTop: 4 },
+  detail: { fontSize: 13, fontWeight: "600", textAlign: "center", marginTop: 8 },
 });

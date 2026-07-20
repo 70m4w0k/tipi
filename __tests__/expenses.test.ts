@@ -16,6 +16,8 @@ function makeProfile(id: string): Profile {
     role: "member",
     birthday: null,
     created_at: "",
+    show_sport_level: true,
+    sport_title: null,
   };
 }
 

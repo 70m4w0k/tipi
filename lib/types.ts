@@ -8,6 +8,8 @@ export type Profile = {
   role: "admin" | "member";
   birthday: string | null;
   created_at: string;
+  show_sport_level: boolean;
+  sport_title: string | null;
 };
 
 export type Household = {

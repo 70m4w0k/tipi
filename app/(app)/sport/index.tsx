@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -21,6 +21,13 @@ import { useTheme } from "../../../lib/theme";
 import { haptic } from "../../../lib/haptics";
 import { Exercise } from "../../../lib/types";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LevelHeader } from "../../../components/LevelHeader";
+import { DailyGoalRing } from "../../../components/DailyGoalRing";
+import { BadgeUnlockOverlay } from "../../../components/BadgeUnlockOverlay";
+import { LEVEL_UNLOCKS } from "../../../lib/sport-logic";
+
+const LEVEL_SEEN_KEY = "sport_last_level_seen";
 
 const EXERCISE_ICONS = [
   "barbell-outline", "fitness-outline", "timer-outline",
@@ -38,6 +45,7 @@ export default function SportScreen() {
     addExercise, updateExercise, deleteExercise,
     fetchAll,
     userBadges, exerciseBadges, collectiveTitle,
+    xp, levelInfo, dailyGoals,
   } = useSport(profile?.household_id, profile?.id);
   const t = useTheme();
   const router = useRouter();
@@ -56,6 +64,36 @@ export default function SportScreen() {
     await fetchAll();
     setRefreshing(false);
   }, [fetchAll]);
+
+  // Overlay de passage de niveau — une seule célébration par niveau (spec §5.5).
+  // Premier lancement : initialisation silencieuse (pas de célébration rétroactive).
+  const [levelUp, setLevelUp] = useState<number | null>(null);
+  const lastSeenLevel = useRef<number | null>(null);
+  const levelSeenLoaded = useRef(false);
+  useEffect(() => {
+    AsyncStorage.getItem(LEVEL_SEEN_KEY).then((v) => {
+      lastSeenLevel.current = v != null ? parseInt(v, 10) : null;
+      levelSeenLoaded.current = true;
+    });
+  }, []);
+  useEffect(() => {
+    if (!levelSeenLoaded.current || loading || logs.length === 0) return;
+    const seen = lastSeenLevel.current;
+    if (seen == null) {
+      lastSeenLevel.current = levelInfo.level;
+      void AsyncStorage.setItem(LEVEL_SEEN_KEY, String(levelInfo.level));
+    } else if (levelInfo.level > seen) {
+      setLevelUp(levelInfo.level);
+    }
+  }, [levelInfo.level, loading, logs.length]);
+
+  const dismissLevelUp = useCallback(() => {
+    if (levelUp != null) {
+      lastSeenLevel.current = levelUp;
+      void AsyncStorage.setItem(LEVEL_SEEN_KEY, String(levelUp));
+    }
+    setLevelUp(null);
+  }, [levelUp]);
 
   // Totals per exercise per user (all time)
   const exerciseStats = useMemo(() => {
@@ -120,6 +158,11 @@ export default function SportScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} colors={[t.accent]} />}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Niveau + progression XP (spec R3) */}
+        {exercises.length > 0 && (
+          <LevelHeader levelInfo={levelInfo} xp={xp} sportTitle={profile?.sport_title} />
+        )}
+
         {exercises.length === 0 && !loading && (
           <View style={styles.emptyContainer}>
             <Ionicons name="barbell-outline" size={48} color={t.emptyIcon} />
@@ -146,12 +189,22 @@ export default function SportScreen() {
               >
                 <View style={styles.cardTop}>
                   <Ionicons name={ex.icon as any} size={24} color={t.accent} />
-                  <Pressable
-                    hitSlop={8}
-                    onPress={(e) => { e.stopPropagation?.(); openEditModal(ex); }}
-                  >
-                    <Ionicons name="pencil-outline" size={13} color={t.textMuted} />
-                  </Pressable>
+                  <View style={styles.cardTopRight}>
+                    {/* Objectif du jour — débloqué au niveau 2 (spec §5.2) */}
+                    {levelInfo.level >= 2 && dailyGoals[ex.id] && (
+                      <DailyGoalRing
+                        current={dailyGoals[ex.id].current}
+                        goal={dailyGoals[ex.id].goal}
+                        accent={profile?.color ?? t.accent}
+                      />
+                    )}
+                    <Pressable
+                      hitSlop={8}
+                      onPress={(e) => { e.stopPropagation?.(); openEditModal(ex); }}
+                    >
+                      <Ionicons name="pencil-outline" size={13} color={t.textMuted} />
+                    </Pressable>
+                  </View>
                 </View>
                 <Text style={[styles.cardName, { color: t.text }]} numberOfLines={1}>{ex.name}</Text>
                 <Text style={[styles.cardTotal, { color: t.accent }]}>
@@ -266,6 +319,16 @@ export default function SportScreen() {
         onConfirm={() => { confirm?.onConfirm(); setConfirm(null); }}
         onCancel={() => setConfirm(null)}
       />
+
+      {/* Passage de niveau — réutilise l'overlay badge (spec §5.5) */}
+      <BadgeUnlockOverlay
+        visible={levelUp != null}
+        badgeTitle={`Niveau ${levelUp ?? ""}`}
+        badgeIcon="arrow-up-circle"
+        subtitle="Niveau atteint"
+        detail={levelUp != null && LEVEL_UNLOCKS[levelUp] ? `Nouvelle fonctionnalité : ${LEVEL_UNLOCKS[levelUp]}` : undefined}
+        onDismiss={dismissLevelUp}
+      />
     </SafeAreaView>
   );
 }
@@ -288,6 +351,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderRadius: 14, padding: 14,
   },
   cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  cardTopRight: { flexDirection: "row", alignItems: "center", gap: 8 },
   cardName: { fontSize: 15, fontWeight: "700", marginBottom: 4 },
   cardTotal: { fontSize: 22, fontWeight: "800", marginBottom: 8 },
   cardUsers: { flexDirection: "row", gap: 4 },

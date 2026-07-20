@@ -458,6 +458,32 @@ export function ProfileSettings({
         </>
       )}
 
+      <Text style={[styles.sectionTitle, { color: t.text }]}>Sport</Text>
+      <View style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+        <Pressable
+          testID="toggle-show-sport-level"
+          style={[styles.navConfigItem, { borderBottomColor: t.separator }]}
+          onPress={() => {
+            void haptic.light();
+            void supabase
+              .from("profiles")
+              .update({ show_sport_level: !(profile.show_sport_level ?? true) })
+              .eq("id", profile.id)
+              .then(() => onProfileUpdated());
+          }}
+        >
+          <Ionicons name="barbell-outline" size={20} color={(profile.show_sport_level ?? true) ? t.accent : t.textMuted} />
+          <Text style={[styles.navConfigLabel, { color: t.textSecondary }, (profile.show_sport_level ?? true) && { color: t.text, fontWeight: "600" }]}>
+            Niveau visible par les colocs
+          </Text>
+          <Ionicons
+            name={(profile.show_sport_level ?? true) ? "checkbox" : "square-outline"}
+            size={22}
+            color={(profile.show_sport_level ?? true) ? t.accent : t.textMuted}
+          />
+        </Pressable>
+      </View>
+
       <Text style={[styles.sectionTitle, { color: t.text }]}>Apparence</Text>
       <View style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
         {(["system", "light", "dark"] as ThemeMode[]).map((m) => {

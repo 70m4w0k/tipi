@@ -134,3 +134,50 @@ describe("computeBadgeVisibility", () => {
     ]);
   });
 });
+
+describe("computeDailyGoal", () => {
+  const { computeDailyGoal } = require("../lib/sport-logic");
+  const now = new Date("2026-07-20T15:00:00Z");
+  const dayLog = (daysAgo: number, count: number, userId = "u1", exerciseId = "ex1") => ({
+    ...makeLog(exerciseId, userId, count),
+    logged_at: new Date(now.getTime() - daysAgo * 86400 * 1000).toISOString(),
+  });
+
+  it("retourne null sans pratique sur les 14 derniers jours", () => {
+    expect(computeDailyGoal([], "u1", "ex1", 100, now)).toBeNull();
+    expect(computeDailyGoal([dayLog(20, 50)], "u1", "ex1", 100, now)).toBeNull();
+  });
+
+  it("ignore les logs d'aujourd'hui (objectif stable pendant la journée)", () => {
+    expect(computeDailyGoal([dayLog(0, 500)], "u1", "ex1", 100, now)).toBeNull();
+  });
+
+  it("moyenne des jours actifs × 1.1, arrondi", () => {
+    // 2 jours actifs : 100 et 60 -> moyenne 80 -> objectif 88
+    const logs = [dayLog(1, 100), dayLog(3, 60)];
+    expect(computeDailyGoal(logs, "u1", "ex1", 100, now)).toBe(88);
+  });
+
+  it("agrège plusieurs séries d'un même jour", () => {
+    // Jour -1 : 30 + 20 = 50 -> objectif max(55, 10) = 55
+    const logs = [dayLog(1, 30), dayLog(1, 20)];
+    expect(computeDailyGoal(logs, "u1", "ex1", 100, now)).toBe(55);
+  });
+
+  it("applique le plancher minBadgeThreshold / 10", () => {
+    // moyenne 5 -> 5.5 arrondi 6, mais plancher 100/10 = 10
+    expect(computeDailyGoal([dayLog(1, 5)], "u1", "ex1", 100, now)).toBe(10);
+  });
+
+  it("ne considère que l'utilisateur et l'exercice demandés", () => {
+    const logs = [dayLog(1, 100, "u2"), dayLog(1, 100, "u1", "ex2")];
+    expect(computeDailyGoal(logs, "u1", "ex1", 100, now)).toBeNull();
+  });
+
+  it("ne garde que les 7 jours actifs les plus récents", () => {
+    // 8 jours actifs à 10, plus un jour récent à 80 : le jour le plus ancien sort
+    const logs = [dayLog(1, 80), ...[2, 3, 4, 5, 6, 8].map((d) => dayLog(d, 10))];
+    // 7 jours retenus : 80 + 6×10 = 140 -> moyenne 20 -> 22
+    expect(computeDailyGoal(logs, "u1", "ex1", 100, now)).toBe(22);
+  });
+});

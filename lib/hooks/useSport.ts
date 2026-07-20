@@ -9,6 +9,9 @@ import {
   computeUnlockedBadges,
   computeTemporalTitles,
   computeCollectiveTitles,
+  computeXp,
+  computeLevel,
+  computeDailyGoal,
 } from "../sport-logic";
 
 let channelCounter = 0;
@@ -191,11 +194,44 @@ export function useSport(householdId: string | null | undefined, userId?: string
     return computeCollectiveTitles(total, COLLECTIVE_THRESHOLDS);
   }, [logs]);
 
+  // XP & niveau de l'utilisateur courant (spec §5.1)
+  const xp = useMemo(
+    () => (userId ? computeXp(logs, userId, exercises, userBadges) : 0),
+    [logs, userId, exercises, userBadges]
+  );
+  const levelInfo = useMemo(() => computeLevel(xp), [xp]);
+
+  /** Niveau d'un membre quelconque du foyer (les logs sont household-visibles) */
+  const memberLevel = useCallback(
+    (uid: string) => computeLevel(computeXp(logs, uid, exercises, userBadges)).level,
+    [logs, exercises, userBadges]
+  );
+
+  // Objectif du jour par exercice pratiqué (spec §5.4) — gate niveau 2 côté UI
+  const dailyGoals = useMemo(() => {
+    if (!userId) return {};
+    const map: Record<string, { goal: number; current: number }> = {};
+    const today = new Date().toISOString().slice(0, 10);
+    for (const ex of exercises) {
+      const minThreshold = exerciseBadges
+        .filter((b) => b.exercise_id === ex.id)
+        .reduce((m, b) => Math.min(m, b.threshold), Infinity);
+      const goal = computeDailyGoal(logs, userId, ex.id, Number.isFinite(minThreshold) ? minThreshold : 100);
+      if (goal == null) continue;
+      const current = logs
+        .filter((l) => l.user_id === userId && l.exercise_id === ex.id && l.logged_at.slice(0, 10) === today)
+        .reduce((s, l) => s + l.count, 0);
+      map[ex.id] = { goal, current };
+    }
+    return map;
+  }, [logs, userId, exercises, exerciseBadges]);
+
   return {
     exercises, logs, exerciseBadges, temporalBadges, userBadges, loading,
     addExercise, updateExercise, deleteExercise,
     logExercise, deleteLog, updateLog,
     fetchAll, unlockBadge,
     unlockedBadges, temporalTitles, collectiveTitle,
+    xp, levelInfo, memberLevel, dailyGoals,
   };
 }
