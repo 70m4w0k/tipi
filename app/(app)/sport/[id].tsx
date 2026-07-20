@@ -20,7 +20,7 @@ import { ExerciseLog } from "../../../lib/types";
 
 import { BadgeRow, BadgeItem } from "../../../components/BadgeRow";
 import { BadgeUnlockOverlay } from "../../../components/BadgeUnlockOverlay";
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
+import { PulseCount } from "../../../components/PulseCount";
 
 const BAR_WIDTH = 40;
 const BAR_GAP = 12;
@@ -394,7 +394,7 @@ export default function ExerciseDetailScreen() {
                 >
                   <Ionicons name="remove" size={18} color={t.danger} />
                 </Pressable>
-                <Text style={[styles.seriesCount, { color: t.text }]}>{log.count}</Text>
+                <PulseCount value={log.count} style={styles.seriesCount} color={t.text} />
                 <Pressable
                   style={[styles.seriesBtn, { backgroundColor: t.accentLight }]}
                   onPress={() => handleIncrement(log)}
