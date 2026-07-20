@@ -40,7 +40,7 @@ export default function ExerciseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile } = useAuth();
   const { members } = useHousehold(profile);
-  const { exercises, logs, logExercise, updateLog, fetchAll, exerciseBadges, temporalBadges, userBadges, unlockedBadges, temporalTitles, collectiveTitle, memberLevel, levelInfo } = useSport(profile?.household_id, profile?.id);
+  const { exercises, logs, loading, logExercise, updateLog, fetchAll, exerciseBadges, temporalBadges, userBadges, unlockedBadges, temporalTitles, collectiveTitle, memberLevel, levelInfo } = useSport(profile?.household_id, profile?.id);
   const t = useTheme();
   const router = useRouter();
 
@@ -48,27 +48,29 @@ export default function ExerciseDetailScreen() {
   const today = todayISO();
   const [selectedDay, setSelectedDay] = useState(today);
   const [newBadge, setNewBadge] = useState<{ title: string; icon: string } | null>(null);
-  const prevUserBadgeIds = useRef(new Set<string>());
+  // null = baseline pas encore établie (avant le premier fetch terminé)
+  const prevUserBadgeIds = useRef<Set<string> | null>(null);
 
-  // Detect newly unlocked badges
+  // Detect newly unlocked badges — la baseline est TOUJOURS mise à jour avant la
+  // détection, sinon chaque refetch (toute modification de série) re-déclenche l'overlay.
   useEffect(() => {
+    if (loading) return;
     const current = new Set(userBadges.map((ub) => ub.badge_id));
     const prev = prevUserBadgeIds.current;
+    prevUserBadgeIds.current = current;
+    if (prev == null) return; // premier snapshot après fetch : pas de célébration rétroactive
 
-    if (prev.size > 0) {
-      for (const id of current) {
-        if (!prev.has(id)) {
-          const badge = exerciseBadges.find((b) => b.id === id && b.exercise_id === exercise?.id);
-          if (badge) {
-            setNewBadge({ title: badge.title, icon: badge.icon });
-            const timer = setTimeout(() => setNewBadge(null), 3000);
-            return () => clearTimeout(timer);
-          }
+    for (const badgeId of current) {
+      if (!prev.has(badgeId)) {
+        const badge = exerciseBadges.find((b) => b.id === badgeId && b.exercise_id === exercise?.id);
+        if (badge) {
+          setNewBadge({ title: badge.title, icon: badge.icon });
+          const timer = setTimeout(() => setNewBadge(null), 3000);
+          return () => clearTimeout(timer);
         }
       }
     }
-    prevUserBadgeIds.current = current;
-  }, [userBadges, exerciseBadges, exercise?.id]);
+  }, [userBadges, exerciseBadges, exercise?.id, loading]);
 
   // Auto-scroll chart to today
   const chartScrollRef = useRef<ScrollView>(null);

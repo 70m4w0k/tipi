@@ -97,6 +97,12 @@ test.describe("Sport — gamification", () => {
     await expect(page.getByTestId("badge-unlocked-100")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("badge-next-500").getByText(`${EX} — Vétéran`)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId(/^badge-hidden-/)).toHaveCount(3);
+
+    // Régression : l'overlay ne doit PAS se relancer après une modification de série.
+    await expect(page.getByText("Badge débloqué")).toBeHidden({ timeout: 10_000 });
+    await page.getByTestId("rep-plus").first().click();
+    await page.waitForTimeout(1500);
+    await expect(page.getByText("Badge débloqué")).toBeHidden();
   });
 
   test("le niveau s'affiche et l'objectif du jour apparaît au niveau 2", async ({ page }) => {
