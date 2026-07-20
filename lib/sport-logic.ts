@@ -14,6 +14,59 @@ export const COLLECTIVE_THRESHOLDS = [
   { threshold: 100000, title: "Armée de Tipi", icon: "flag" },
 ];
 
+export const DEFAULT_BADGE_TIERS = [
+  { threshold: 100, genericTitle: "Centurion", icon: "shield-outline" },
+  { threshold: 500, genericTitle: "Vétéran", icon: "shield-half" },
+  { threshold: 1000, genericTitle: "Champion", icon: "shield" },
+  { threshold: 5000, genericTitle: "Maître", icon: "ribbon" },
+  { threshold: 10000, genericTitle: "Légende", icon: "trophy" },
+];
+
+export const DEFAULT_TEMPORAL_TIERS = [
+  { threshold: 100, window_days: 7, suffix: "Régulier", icon: "flame-outline", grace_hours: 48 },
+  { threshold: 200, window_days: 7, suffix: "Assidu", icon: "flame", grace_hours: 48 },
+  { threshold: 500, window_days: 7, suffix: "Intense", icon: "flash", grace_hours: 48 },
+];
+
+/** Titres spécifiques des exercices par défaut, alignés sur DEFAULT_BADGE_TIERS */
+const SPECIFIC_BADGE_TITLES: Record<string, string[]> = {
+  Pompes: ["Pompier", "Pompiste", "Pompinator", "Pompistador", "Pompéi"],
+  Abdos: ["Abdominable", "Abdominatus", "Abdominator", "Abdominator Suprême", "Plaque de Chocolat"],
+  Squats: ["Squatteur", "Squatteur Pro", "Squatman", "Squatman Légendaire", "Dieu du Squat"],
+  Gainage: ["Statue", "Statue Grecque", "Statue de Sel", "Mégalithe", "Mont Rushmore"],
+};
+
+const SPECIFIC_TEMPORAL_PREFIXES: Record<string, string> = {
+  Pompes: "Pompeur",
+  Abdos: "Abdo",
+  Squats: "Squat",
+  Gainage: "Gainage",
+};
+
+/** Badges permanents par défaut d'un exercice (titres spécifiques ou génériques) */
+export function buildDefaultBadges(exerciseName: string): { threshold: number; title: string; icon: string }[] {
+  const specific = SPECIFIC_BADGE_TITLES[exerciseName];
+  return DEFAULT_BADGE_TIERS.map((tier, i) => ({
+    threshold: tier.threshold,
+    title: specific?.[i] ?? `${exerciseName} — ${tier.genericTitle}`,
+    icon: tier.icon,
+  }));
+}
+
+/** Titres temporels par défaut d'un exercice */
+export function buildDefaultTemporalBadges(
+  exerciseName: string
+): { threshold: number; window_days: number; title: string; icon: string; grace_hours: number }[] {
+  const prefix = SPECIFIC_TEMPORAL_PREFIXES[exerciseName] ?? exerciseName;
+  return DEFAULT_TEMPORAL_TIERS.map((tier) => ({
+    threshold: tier.threshold,
+    window_days: tier.window_days,
+    title: `${prefix} ${tier.suffix}`,
+    icon: tier.icon,
+    grace_hours: tier.grace_hours,
+  }));
+}
+
 /** Badges permanents débloqués (par exercice) */
 export function computeUnlockedBadges(
   logs: ExerciseLog[],

@@ -4,6 +4,8 @@ import { Exercise, ExerciseLog, ExerciseBadge, TemporalBadge, UserBadge } from "
 import {
   DEFAULT_EXERCISES,
   COLLECTIVE_THRESHOLDS,
+  buildDefaultBadges,
+  buildDefaultTemporalBadges,
   computeUnlockedBadges,
   computeTemporalTitles,
   computeCollectiveTitles,
@@ -69,12 +71,23 @@ export function useSport(householdId: string | null | undefined, userId?: string
     return () => { void supabase.removeChannel(channel); };
   }, [householdId]);
 
+  const seedBadgesForExercise = useCallback(async (exerciseId: string, name: string) => {
+    if (!householdId) return;
+    const permanent = buildDefaultBadges(name).map((b) => ({ ...b, exercise_id: exerciseId, household_id: householdId }));
+    const temporal = buildDefaultTemporalBadges(name).map((b) => ({ ...b, exercise_id: exerciseId, household_id: householdId }));
+    await Promise.all([
+      supabase.from("exercise_badges").upsert(permanent, { onConflict: "exercise_id,threshold,household_id", ignoreDuplicates: true }),
+      supabase.from("temporal_badges").upsert(temporal, { onConflict: "exercise_id,threshold,window_days,household_id", ignoreDuplicates: true }),
+    ]);
+  }, [householdId]);
+
   const addExercise = useCallback(async (name: string, icon: string, unit: string): Promise<string | null> => {
     if (!householdId || !name.trim()) return null;
     const { data } = await supabase.from("exercises").insert({ household_id: householdId, name: name.trim(), icon, unit }).select("id").single();
+    if (data?.id) await seedBadgesForExercise(data.id, name.trim());
     void fetchAll();
     return (data?.id as string | undefined) ?? null;
-  }, [householdId, fetchAll]);
+  }, [householdId, fetchAll, seedBadgesForExercise]);
 
   const updateExercise = useCallback(async (id: string, name: string, icon: string, unit: string) => {
     if (!householdId || !name.trim()) return;
@@ -106,9 +119,13 @@ export function useSport(householdId: string | null | undefined, userId?: string
 
   const seedDefaultExercises = useCallback(async () => {
     if (!householdId) return;
-    await supabase.from("exercises").insert(DEFAULT_EXERCISES.map((e) => ({ household_id: householdId, ...e })));
+    const { data } = await supabase
+      .from("exercises")
+      .insert(DEFAULT_EXERCISES.map((e) => ({ household_id: householdId, ...e })))
+      .select("id,name");
+    if (data) await Promise.all(data.map((e) => seedBadgesForExercise(e.id, e.name)));
     void fetchAll();
-  }, [householdId, fetchAll]);
+  }, [householdId, fetchAll, seedBadgesForExercise]);
 
   useEffect(() => {
     if (householdId && hasFetched.current && !loading && exercises.length === 0 && !seededRef.current) {
@@ -116,6 +133,18 @@ export function useSport(householdId: string | null | undefined, userId?: string
       void seedDefaultExercises();
     }
   }, [householdId, loading, exercises.length]);
+
+  // Backfill: households whose exercises were created before badge seeding existed
+  const badgeBackfillRef = useRef(false);
+  useEffect(() => {
+    if (
+      householdId && hasFetched.current && !loading &&
+      exercises.length > 0 && exerciseBadges.length === 0 && !badgeBackfillRef.current
+    ) {
+      badgeBackfillRef.current = true;
+      void Promise.all(exercises.map((e) => seedBadgesForExercise(e.id, e.name))).then(() => fetchAll());
+    }
+  }, [householdId, loading, exercises, exerciseBadges.length, seedBadgesForExercise, fetchAll]);
 
   // Auto-unlock badges when thresholds are crossed
   useEffect(() => {

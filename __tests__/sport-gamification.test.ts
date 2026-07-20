@@ -114,3 +114,29 @@ describe("computeNextBadgeProgress", () => {
     expect(result.progress).toBeCloseTo(0.25, 1);
   });
 });
+describe("buildDefaultBadges", () => {
+  const { buildDefaultBadges, buildDefaultTemporalBadges, DEFAULT_BADGE_TIERS, DEFAULT_TEMPORAL_TIERS } = require("../lib/sport-logic");
+
+  it("utilise les titres spécifiques pour les exercices par défaut", () => {
+    const badges = buildDefaultBadges("Pompes");
+    expect(badges).toHaveLength(DEFAULT_BADGE_TIERS.length);
+    expect(badges[0]).toEqual({ threshold: 100, title: "Pompier", icon: "shield-outline" });
+    expect(badges[4]).toEqual({ threshold: 10000, title: "Pompéi", icon: "trophy" });
+  });
+
+  it("génère des titres génériques pour un exercice custom", () => {
+    const badges = buildDefaultBadges("Tractions");
+    expect(badges[0].title).toBe("Tractions — Centurion");
+    expect(badges[4].title).toBe("Tractions — Légende");
+    expect(badges.map((b: { threshold: number }) => b.threshold)).toEqual([100, 500, 1000, 5000, 10000]);
+  });
+
+  it("génère les titres temporels avec préfixe spécifique ou nom brut", () => {
+    const pompes = buildDefaultTemporalBadges("Pompes");
+    expect(pompes).toHaveLength(DEFAULT_TEMPORAL_TIERS.length);
+    expect(pompes[0]).toMatchObject({ threshold: 100, window_days: 7, title: "Pompeur Régulier", grace_hours: 48 });
+
+    const custom = buildDefaultTemporalBadges("Tractions");
+    expect(custom[1].title).toBe("Tractions Assidu");
+  });
+});
