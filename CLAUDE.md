@@ -88,9 +88,19 @@ Deux environnements, zéro coût :
 - Extraire la logique testable dans des modules séparés (`lib/*-logic.ts`)
 - E2E : comptes créés à la volée via `signUp` dans `e2e/global-setup.ts` + `e2e/fixtures.ts`
 
+## Compatibilité React Native
+- **Cible principale = Expo Go sur Android/iOS** — le web est secondaire
+- Avant d'utiliser une API visuelle (transforms 3D, animations, gestures), vérifier qu'elle fonctionne sur RN Android :
+  - `backfaceVisibility: "hidden"` → **NON FIABLE sur Android** ; utiliser opacity + shared value pour swap face/dos
+  - `overflow: "hidden"` avec `borderRadius` → buggy sur Android ancien ; tester
+  - Transforms 3D (rotateY, perspective) → fonctionnent mais pas avec backfaceVisibility
+- En cas de doute sur le support d'une prop CSS/style sur Android, chercher les issues connues avant d'implémenter
+- **Les tests Playwright ne valident que la version web** — les bugs mobile ne seront pas détectés par la CI
+
 ## Workflow
 - Vérifier qu'il n'y a pas d'erreurs de compilation avec `npx tsc --noEmit`
 - **Toujours vérifier le bundling** avec `npx expo export --platform web 2>&1 | head -20` après ajout de dépendances ou nouveaux imports (`tsc` ne détecte pas les erreurs de résolution de modules Metro)
+- **Lancer les tests E2E** (`npx playwright test`) quand les changements touchent la logique métier, les hooks, ou les interactions utilisateur — ils valident le fonctionnement sur web
 - Quand l'utilisateur dit "push", "pusher" ou "pousser" :
   1. Mettre à jour les fichiers du dossier `docs/` si les changements impactent l'architecture ou les features
   2. Commiter tous les changements (`git add -A && git commit`)
