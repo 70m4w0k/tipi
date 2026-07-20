@@ -50,6 +50,8 @@ XP = Σ logs (count × poids_unité) + 50 × badges_permanents_débloqués
 poids_unité : répétitions = 1, secondes = 0.5, minutes = 30
 ```
 
+> ✅ Poids validés par Tom le 20/07/2026 (0.5 XP/s de gainage confirmé).
+
 **Courbe de niveaux** (constante `LEVEL_THRESHOLDS` dans `lib/sport-logic.ts`) :
 
 | Niveau | XP cumulé | Ordre de grandeur |
@@ -115,6 +117,7 @@ Au-delà du niveau 10 : +5 000 XP par niveau, sans plafond.
 - [ ] Chip « Niv. X » à côté du nom/point de couleur sur la page Sport
 - [ ] Barre de progression vers le niveau suivant dans l'en-tête de la page Sport (« 320 XP → Niv. 5 »)
 - [ ] Overlay de passage de niveau (variante de `BadgeUnlockOverlay`), une seule fois par niveau (état vu en AsyncStorage)
+- [ ] **Visibilité par les colocs = option on/off** dans les paramètres utilisateur (colonne `profiles.show_sport_level boolean NOT NULL DEFAULT true`) — si off, les colocs ne voient ni niveau ni XP de cet utilisateur (son propre niveau reste visible pour lui)
 
 **R4. Objectif du jour (gate niveau 2)**
 - [ ] Calcul conforme à 5.4, recalculé à chaque ouverture
@@ -137,7 +140,8 @@ Au-delà du niveau 10 : +5 000 XP par niveau, sans plafond.
 
 ## 7. Données & architecture
 
-- **Aucune nouvelle table** en v1 : XP et niveaux sont dérivés des données existantes (`exercise_logs`, `user_badges`). Rétroactif, zéro migration, zéro état à synchroniser.
+- **Aucune nouvelle table** en v1 : XP et niveaux sont dérivés des données existantes (`exercise_logs`, `user_badges`). Rétroactif, zéro état à synchroniser.
+- **Une seule migration** : colonne `profiles.show_sport_level boolean NOT NULL DEFAULT true` (+ `schema.sql` + `lib/types.ts`, convention repo).
 - **AsyncStorage** (par appareil) : dernier niveau célébré (`sport_last_level_seen`), opt-in notifications.
 - **Convention repo** : logique dans `lib/sport-logic.ts` (testable), état dans `useSport`, UI dans `components/` (`LevelChip`, `DailyGoalRing`), tokens `useTheme()` partout, Ionicons only.
 
@@ -156,8 +160,8 @@ Pas d'infra analytics : on mesure via SQL sur la base prod (script `docs/queries
 
 ## 9. Questions ouvertes
 
-- **[Tom — bloquant P0]** Poids des unités XP : `secondes = 0.5` donne 30 XP/min de gainage vs 1 XP/pompe — équilibre à valider avec ton usage réel (fais 1 min de gainage et 30 pompes, compare l'effort ressenti).
-- **[Tom — non bloquant]** Le niveau est-il visible par les colocs dès la v1 (recommandé : oui, c'est le moteur social) ou d'abord privé ?
+- ~~**[Tom — bloquant P0]** Poids des unités XP~~ → **Résolu (20/07/2026)** : poids conservés tels quels (`secondes = 0.5`).
+- ~~**[Tom — non bloquant]** Niveau visible par les colocs ?~~ → **Résolu (20/07/2026)** : option on/off dans les paramètres utilisateur, ON par défaut (voir R3).
 - **[Design — non bloquant]** Position du chip niveau sur la carte exercice : à côté du point de couleur ou dans l'en-tête uniquement ? À trancher sur maquette Expo Go.
 - **[Eng — non bloquant]** L'anneau quotidien réutilise-t-il le composant SVG des badges ou un composant dédié ? (Décision à l'implémentation.)
 
