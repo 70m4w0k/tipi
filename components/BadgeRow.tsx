@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from "react-native-reanimated";
 import Svg, { Circle } from "react-native-svg";
 import { useTheme } from "../lib/theme";
+import { BadgeDisplayState } from "../lib/sport-logic";
 
 export type BadgeItem = {
   title: string;
@@ -11,6 +12,8 @@ export type BadgeItem = {
   threshold: number;
   unlocked?: boolean;
   progress?: number; // 0-1, for progress ring on locked badges
+  /** "hidden" = palier futur non révélé (affiché en "?") */
+  state?: BadgeDisplayState;
 };
 
 const CIRCLE_RADIUS = 20;
@@ -47,10 +50,27 @@ function BadgeIcon({ badge, accent, isNew }: { badge: BadgeItem; accent: string;
   }));
 
   const unlocked = badge.unlocked ?? false;
+  const state: BadgeDisplayState = badge.state ?? (unlocked ? "unlocked" : "next");
   const strokeOffset = CIRCUMFERENCE * (1 - (badge.progress ?? 0));
 
+  if (state === "hidden") {
+    return (
+      <View style={styles.badgeContainer} testID={`badge-hidden-${badge.threshold}`}>
+        <View style={styles.circleWrapper}>
+          <View style={[styles.badgeCircle, { backgroundColor: t.cardBorder }]}>
+            <Ionicons name="help-outline" size={16} color={t.textMuted} />
+          </View>
+        </View>
+        <Text style={[styles.badgeTitle, { color: t.textMuted }]}>?</Text>
+      </View>
+    );
+  }
+
   return (
-    <Animated.View style={[styles.badgeContainer, animStyle]}>
+    <Animated.View
+      style={[styles.badgeContainer, animStyle]}
+      testID={`badge-${state}-${badge.threshold}`}
+    >
       <View style={styles.circleWrapper}>
         {/* SVG progress ring for locked badges */}
         {!unlocked && (badge.progress ?? 0) > 0 && (

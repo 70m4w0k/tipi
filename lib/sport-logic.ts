@@ -1,4 +1,4 @@
-import { Exercise, ExerciseLog, ExerciseBadge, TemporalBadge } from "./types";
+import { Exercise, ExerciseLog, ExerciseBadge, TemporalBadge, UserBadge } from "./types";
 
 export const DEFAULT_EXERCISES: Omit<Exercise, "id" | "household_id" | "created_by" | "created_at">[] = [
   { name: "Pompes", icon: "barbell-outline", unit: "répétitions" },
@@ -65,6 +65,95 @@ export function buildDefaultTemporalBadges(
     icon: tier.icon,
     grace_hours: tier.grace_hours,
   }));
+}
+
+// --- XP & niveaux (spec docs/sport-progression-spec.md §5.1) ---
+
+export const UNIT_XP_WEIGHTS: Record<string, number> = {
+  "répétitions": 1,
+  "secondes": 0.5,
+  "minutes": 30,
+};
+
+export const XP_PER_BADGE = 50;
+
+/** XP cumulé requis pour atteindre chaque niveau (index 0 = niveau 2) */
+export const LEVEL_THRESHOLDS = [150, 400, 800, 1500, 2600, 4200, 6500, 9500, 13500];
+
+/** Au-delà du dernier palier : +5000 XP par niveau, sans plafond */
+export const XP_PER_LEVEL_BEYOND = 5000;
+
+/** XP d'un utilisateur : volume pondéré par unité + bonus par badge permanent débloqué */
+export function computeXp(
+  logs: ExerciseLog[],
+  userId: string,
+  exercises: Exercise[],
+  userBadges: UserBadge[]
+): number {
+  const unitByExercise = new Map(exercises.map((e) => [e.id, e.unit]));
+  const volume = logs
+    .filter((l) => l.user_id === userId)
+    .reduce((s, l) => {
+      const weight = UNIT_XP_WEIGHTS[unitByExercise.get(l.exercise_id) ?? ""] ?? 1;
+      return s + l.count * weight;
+    }, 0);
+  const badgeBonus = userBadges.filter((ub) => ub.user_id === userId).length * XP_PER_BADGE;
+  return Math.round(volume) + badgeBonus;
+}
+
+export type LevelInfo = {
+  level: number;
+  /** XP cumulé au plancher du niveau courant */
+  xpForCurrent: number;
+  /** XP cumulé requis pour le niveau suivant */
+  xpForNext: number;
+  /** Progression 0-1 vers le niveau suivant */
+  progress: number;
+};
+
+export function computeLevel(xp: number): LevelInfo {
+  const top = LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1];
+  let level: number;
+  let floor: number;
+  let next: number;
+  if (xp >= top) {
+    const extra = Math.floor((xp - top) / XP_PER_LEVEL_BEYOND);
+    level = LEVEL_THRESHOLDS.length + 1 + extra;
+    floor = top + extra * XP_PER_LEVEL_BEYOND;
+    next = floor + XP_PER_LEVEL_BEYOND;
+  } else {
+    level = 1;
+    floor = 0;
+    for (const t of LEVEL_THRESHOLDS) {
+      if (xp >= t) { level++; floor = t; } else break;
+    }
+    next = LEVEL_THRESHOLDS[level - 1];
+  }
+  const progress = Math.min(1, Math.max(0, (xp - floor) / (next - floor)));
+  return { level, xpForCurrent: floor, xpForNext: next, progress };
+}
+
+// --- Badges cachés (spec §5.3) ---
+
+export type BadgeDisplayState = "unlocked" | "next" | "hidden";
+
+/**
+ * Détermine l'état d'affichage de chaque badge : les débloqués sont visibles,
+ * seul le premier verrouillé (par seuil croissant) est révélé, le reste est caché.
+ */
+export function computeBadgeVisibility<T extends { threshold: number; unlocked?: boolean }>(
+  badges: T[]
+): (T & { state: BadgeDisplayState })[] {
+  const sorted = [...badges].sort((a, b) => a.threshold - b.threshold);
+  let nextRevealed = false;
+  return sorted.map((b) => {
+    if (b.unlocked) return { ...b, state: "unlocked" as const };
+    if (!nextRevealed) {
+      nextRevealed = true;
+      return { ...b, state: "next" as const };
+    }
+    return { ...b, state: "hidden" as const };
+  });
 }
 
 /** Badges permanents débloqués (par exercice) */

@@ -88,6 +88,7 @@ export function RepStepper({ count, onCommit, onChange }: RepStepperProps) {
   return (
     <View style={styles.controls}>
       <Pressable
+        testID="rep-minus"
         style={[styles.btn, { backgroundColor: t.dangerLight }]}
         onPressIn={() => startHold(-1)}
         onPressOut={endHold}
@@ -96,6 +97,7 @@ export function RepStepper({ count, onCommit, onChange }: RepStepperProps) {
       </Pressable>
       {editing ? (
         <TextInput
+          testID="rep-input"
           style={[styles.input, { color: t.text, borderColor: t.accent }]}
           value={draft}
           onChangeText={(v) => setDraft(v.replace(/[^0-9]/g, ""))}
@@ -107,11 +109,12 @@ export function RepStepper({ count, onCommit, onChange }: RepStepperProps) {
           onSubmitEditing={submitDraft}
         />
       ) : (
-        <Pressable onPress={openEditor} hitSlop={6}>
+        <Pressable testID="rep-count" onPress={openEditor} hitSlop={6}>
           <PulseCount value={localCount} style={styles.count} color={t.text} />
         </Pressable>
       )}
       <Pressable
+        testID="rep-plus"
         style={[styles.btn, { backgroundColor: t.accentLight }]}
         onPressIn={() => startHold(1)}
         onPressOut={endHold}

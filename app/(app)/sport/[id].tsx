@@ -18,6 +18,7 @@ import { useTheme } from "../../../lib/theme";
 import { haptic } from "../../../lib/haptics";
 
 import { BadgeRow, BadgeItem } from "../../../components/BadgeRow";
+import { computeBadgeVisibility } from "../../../lib/sport-logic";
 import { BadgeUnlockOverlay } from "../../../components/BadgeUnlockOverlay";
 import { RepStepper } from "../../../components/RepStepper";
 
@@ -320,7 +321,7 @@ export default function ExerciseDetailScreen() {
                 const exBadges = exerciseBadges.filter((b) => b.exercise_id === id);
                 const exUnlocked = userBadges.map((ub) => ub.badge_id);
                 // Compute per-badge progress
-                const badgeItems: BadgeItem[] = exBadges.map((b) => {
+                const badgeItems: BadgeItem[] = computeBadgeVisibility(exBadges.map((b) => {
                   const unlocked = exUnlocked.includes(b.id);
                   // Total for this user + exercise
                   const userTotal = liveExerciseLogs
@@ -332,7 +333,7 @@ export default function ExerciseDetailScreen() {
                   const range = b.threshold - prevThreshold;
                   const progress = unlocked ? 1 : range > 0 ? Math.min(1, (userTotal - prevThreshold) / range) : 0;
                   return { title: b.title, icon: b.icon, threshold: b.threshold, unlocked, progress };
-                });
+                }));
                 const exTemporal = temporalBadges
                   .filter((b) => b.exercise_id === id)
                   .filter((b) => temporalTitles.some((t) => t.badge.id === b.id));
@@ -412,6 +413,7 @@ export default function ExerciseDetailScreen() {
 
           {/* Ghost card */}
           <Pressable
+            testID="add-series"
             style={[styles.ghostCard, { borderColor: t.cardBorder }]}
             onPress={() => void handleAddSeries()}
           >

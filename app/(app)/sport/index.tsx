@@ -140,6 +140,7 @@ export default function SportScreen() {
             return (
               <Pressable
                 key={ex.id}
+                testID={`sport-card-${ex.name}`}
                 style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}
                 onPress={() => { void haptic.light(); router.push(`/(app)/sport/${ex.id}` as any); }}
               >
@@ -190,6 +191,7 @@ export default function SportScreen() {
       {/* FAB */}
       <View style={styles.fabContainer}>
         <Pressable
+          testID="sport-fab"
           style={[styles.fab, { backgroundColor: t.accent }]}
           onPress={() => { void haptic.light(); openEditModal(); }}
         >
