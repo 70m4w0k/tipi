@@ -5,47 +5,50 @@ import { MedallionMotif } from "../lib/sport-logic";
 /**
  * Médaillon de badge sportif (famille "Médaillon" RPG).
  * Motif propre à chaque exercice + hexagone dont l'ornement monte avec le rang.
- * viewBox interne 48×48, dessiné dans la couleur passée (react-native-svg ne
- * connaît pas currentColor).
+ * Tout est dessiné directement dans le repère 48×48 (motif centré, agrandi) :
+ * pas de transform ni de Svg imbriqué, donc rendu identique sur natif et web.
  */
 
-// --- Motifs par exercice (repère 0-24, recentrés ensuite par un G) ---
+const MAIN = 1.9;
+const THIN = 1.2;
+
+// --- Motifs par exercice, centrés sur (24,24) dans le repère 48×48 ---
 function Motif({ motif, color }: { motif: MedallionMotif; color: string }) {
   switch (motif) {
     case "pompes": // double chevron de poussée
       return (
         <>
-          <Path d="M7 6 L12 10.5 L17 6" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-          <Path d="M7 12 L12 16.5 L17 12" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M18.5 19 L24 23.2 L29.5 19" fill="none" stroke={color} strokeWidth={MAIN} strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M18.5 25 L24 29.2 L29.5 25" fill="none" stroke={color} strokeWidth={MAIN} strokeLinecap="round" strokeLinejoin="round" />
         </>
       );
     case "abdos": // tablette segmentée
       return (
         <>
-          <Rect x={8} y={4} width={8} height={16} rx={3} fill="none" stroke={color} strokeWidth={2} />
-          <Path d="M8 9.5 h8 M8 14.5 h8 M12 4 v16" stroke={color} strokeWidth={1.4} />
+          <Rect x={19.5} y={15.5} width={9} height={17} rx={3.4} fill="none" stroke={color} strokeWidth={MAIN} />
+          <Path d="M19.5 21.7 h9 M19.5 27.5 h9 M24 15.5 v17" stroke={color} strokeWidth={THIN} />
         </>
       );
     case "squats": // flèche de descente sur barre
       return (
         <>
-          <Path d="M12 4 v8" stroke={color} strokeWidth={2} strokeLinecap="round" />
-          <Path d="M8 9.5 L12 14 L16 9.5" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-          <Path d="M6.5 18.5 h11" stroke={color} strokeWidth={2} strokeLinecap="round" />
+          <Path d="M24 15.5 v7" stroke={color} strokeWidth={MAIN} strokeLinecap="round" />
+          <Path d="M19.5 21 L24 26 L28.5 21" fill="none" stroke={color} strokeWidth={MAIN} strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M17.8 31 h12.4" stroke={color} strokeWidth={MAIN} strokeLinecap="round" />
         </>
       );
     case "gainage": // colonne (cohérent avec Statue / Mégalithe / Mont Rushmore)
       return (
         <>
-          <Path d="M6 5 h12 M6 19 h12" stroke={color} strokeWidth={2} strokeLinecap="round" />
-          <Path d="M9 7.5 v9 M12 7.5 v9 M15 7.5 v9" stroke={color} strokeWidth={1.4} strokeLinecap="round" />
+          <Path d="M17.5 16 h13 M17.5 32 h13" stroke={color} strokeWidth={MAIN} strokeLinecap="round" />
+          <Path d="M20.5 19 v10 M24 19 v10 M27.5 19 v10" stroke={color} strokeWidth={THIN} strokeLinecap="round" />
         </>
       );
     default: // générique (exercices custom) : noyau/cible
       return (
         <>
-          <Circle cx={12} cy={12} r={4.5} fill="none" stroke={color} strokeWidth={2} />
-          <Circle cx={12} cy={12} r={1.4} fill={color} />
+          <Circle cx={24} cy={24} r={5.6} fill="none" stroke={color} strokeWidth={MAIN} />
+          <Circle cx={24} cy={24} r={1.8} fill={color} />
         </>
       );
   }
@@ -103,10 +106,7 @@ export function BadgeMedallion({ motif, tier, color, size = 36 }: BadgeMedallion
           <Circle cx={24} cy={45} r={2} fill={color} />
         </>
       )}
-      {/* Svg imbriqué : place et met à l'échelle le motif sans transform (compatible web) */}
-      <Svg x={17.28} y={18.28} width={13.44} height={13.44} viewBox="0 0 24 24">
-        <Motif motif={motif} color={color} />
-      </Svg>
+      <Motif motif={motif} color={color} />
     </Svg>
   );
 }
