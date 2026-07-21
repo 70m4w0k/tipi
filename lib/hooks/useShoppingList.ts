@@ -73,14 +73,35 @@ export function useShoppingList(householdId: string | null | undefined) {
   }, [householdId, fetchItems]);
 
   const addItem = useCallback(
-    async (title: string, category?: string) => {
+    async (title: string, category?: string, quantity?: string, ownerId?: string | null) => {
       if (!householdId || !title.trim()) return;
       const resolvedCategory = category?.trim() || guessAisle(title);
       await supabase.from("shopping_items").insert({
         household_id: householdId,
         title: title.trim(),
+        quantity: quantity?.trim() || "",
         category: resolvedCategory,
+        owner_id: ownerId ?? null,
       });
+      void fetchItems();
+    },
+    [householdId, fetchItems]
+  );
+
+  /** Ajout groupé (ex. ingrédients d'une recette) en une seule requête */
+  const addItems = useCallback(
+    async (rows: { title: string; quantity?: string; category?: string; ownerId?: string | null }[]) => {
+      if (!householdId || rows.length === 0) return;
+      const payload = rows
+        .filter((r) => r.title.trim().length > 0)
+        .map((r) => ({
+          household_id: householdId,
+          title: r.title.trim(),
+          quantity: r.quantity?.trim() || "",
+          category: r.category?.trim() || guessAisle(r.title),
+          owner_id: r.ownerId ?? null,
+        }));
+      if (payload.length > 0) await supabase.from("shopping_items").insert(payload);
       void fetchItems();
     },
     [householdId, fetchItems]
@@ -117,5 +138,5 @@ export function useShoppingList(householdId: string | null | undefined) {
     void fetchItems();
   }, [householdId, fetchItems]);
 
-  return { items, suggestions, loading, addItem, toggleItem, deleteItem, clearChecked, fetchItems };
+  return { items, suggestions, loading, addItem, addItems, toggleItem, deleteItem, clearChecked, fetchItems };
 }

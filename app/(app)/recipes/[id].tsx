@@ -24,8 +24,10 @@ import { getRecipePlaceholder, RECIPE_ICONS } from "../../../lib/recipe-placehol
 import { DraggableStepList } from "../../../components/DraggableStepList";
 import { LiquidProgress } from "../../../components/LiquidProgress";
 import { IngredientsEditor } from "../../../components/IngredientsEditor";
+import { AddToShoppingSheet } from "../../../components/AddToShoppingSheet";
 import { RecipeInstance, RecipeStep, DurationUnit, Ingredient } from "../../../lib/types";
-import { scaleAmount, formatQuantity } from "../../../lib/recipes-logic";
+import { scaleAmount, formatQuantity, computeShoppingAdditions } from "../../../lib/recipes-logic";
+import { useShoppingList } from "../../../lib/hooks/useShoppingList";
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -34,9 +36,11 @@ export default function RecipeDetailScreen() {
     recipes, instances, loading,
     startInstance, updateRecipe, activatePlannedInstance, deleteInstance, fetchAll,
   } = useRecipes(profile?.household_id);
+  const { items: shoppingItems, addItems } = useShoppingList(profile?.household_id);
   const t = useTheme();
   const router = useRouter();
   const userColor = profile?.color ?? t.accent;
+  const [shopSheet, setShopSheet] = useState(false);
 
   const recipe = recipes.find((r) => r.id === id);
   const recipeInstances = instances.filter((i) => i.recipe_id === id);
@@ -233,6 +237,14 @@ export default function RecipeDetailScreen() {
                 </View>
               );
             })}
+            <Pressable
+              testID="add-to-shopping"
+              style={[styles.shopBtn, { backgroundColor: t.accent }]}
+              onPress={() => { void haptic.light(); setShopSheet(true); }}
+            >
+              <Ionicons name="cart-outline" size={17} color="#FFFFFF" />
+              <Text style={styles.shopBtnText}>Ajouter aux courses</Text>
+            </Pressable>
           </View>
         )}
 
@@ -520,6 +532,22 @@ export default function RecipeDetailScreen() {
           </View>
         </Pressable>
       </Modal>
+
+      {recipe && (
+        <AddToShoppingSheet
+          visible={shopSheet}
+          recipeTitle={recipe.title}
+          additions={computeShoppingAdditions(recipe.ingredients, recipe.servings, targetServings, shoppingItems.map((s) => s.title))}
+          onClose={() => setShopSheet(false)}
+          onConfirm={(names, scope) => {
+            const chosen = new Set(names);
+            const rows = computeShoppingAdditions(recipe.ingredients, recipe.servings, targetServings, [])
+              .filter((a) => chosen.has(a.name))
+              .map((a) => ({ title: a.name, quantity: a.quantity, category: "epicerie", ownerId: scope === "personal" ? profile?.id ?? null : null }));
+            void addItems(rows);
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -543,6 +571,8 @@ const styles = StyleSheet.create({
   ingredientRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 3 },
   ingredientText: { fontSize: 14, flex: 1 },
   ingredientQty: { fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"] },
+  shopBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 12, borderRadius: 12, paddingVertical: 12 },
+  shopBtnText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" },
   servingsRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 },
   servingsControls: { flexDirection: "row", alignItems: "center", gap: 12 },
   servingsBtn: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, alignItems: "center", justifyContent: "center" },

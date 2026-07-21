@@ -47,20 +47,27 @@ export default function ShoppingScreen() {
     setRefreshing(false);
   }, [fetchItems]);
 
-  const checkedCount = items.filter((i) => i.checked).length;
-  const uncheckedCount = items.filter((i) => !i.checked).length;
+  const [scope, setScope] = useState<"shared" | "personal">("shared");
+  // Coloc = articles partagés (owner_id null) ; Perso = les tiens (RLS ne renvoie que les tiens).
+  const scopedItems = useMemo(
+    () => items.filter((i) => (scope === "personal" ? i.owner_id != null : i.owner_id == null)),
+    [items, scope]
+  );
+
+  const checkedCount = scopedItems.filter((i) => i.checked).length;
+  const uncheckedCount = scopedItems.filter((i) => !i.checked).length;
 
   const groupedItems = useMemo(() => {
     const groups: Record<ShoppingAisle, ShoppingItem[]> = {
       frais: [], epicerie: [], hygiene: [], menage: [], autre: [],
     };
-    for (const item of items) {
+    for (const item of scopedItems) {
       const aisle = (item.category as ShoppingAisle) || "autre";
       const target = groups[aisle] ?? groups.autre;
       target.push(item);
     }
     return groups;
-  }, [items]);
+  }, [scopedItems]);
 
   const filteredSuggestions = useMemo(() => {
     const currentTitles = new Set(items.map((i) => i.title.toLowerCase().trim()));
@@ -71,7 +78,7 @@ export default function ShoppingScreen() {
     const value = title ?? newItem;
     if (!value.trim()) return;
     void haptic.light();
-    await addItem(value.trim());
+    await addItem(value.trim(), undefined, undefined, scope === "personal" ? profile?.id ?? null : null);
     if (!title) setNewItem("");
   };
 
@@ -112,6 +119,7 @@ export default function ShoppingScreen() {
   const renderItem = (item: ShoppingItem) => (
     <Pressable
       key={item.id}
+      testID={`shopping-item-${item.title}`}
       style={[styles.itemRow, { backgroundColor: t.card, borderColor: t.cardBorder }, item.checked && { backgroundColor: t.separator }]}
       onPress={() => { void haptic.light(); void toggleItem(item.id); }}
       onLongPress={() => handleDelete(item.id, item.title)}
@@ -124,6 +132,9 @@ export default function ShoppingScreen() {
       <Text style={[styles.itemText, { color: t.text }, item.checked && { color: t.textMuted, textDecorationLine: "line-through" }]}>
         {item.title}
       </Text>
+      {!!item.quantity && (
+        <Text style={[styles.itemQty, { color: t.textMuted }, item.checked && { textDecorationLine: "line-through" }]}>{item.quantity}</Text>
+      )}
     </Pressable>
   );
 
@@ -144,10 +155,26 @@ export default function ShoppingScreen() {
         </View>
       </View>
 
+      <View style={[styles.segment, { backgroundColor: t.separator }]}>
+        {(["shared", "personal"] as const).map((s) => (
+          <Pressable
+            key={s}
+            testID={`shopping-scope-${s}`}
+            style={[styles.segmentBtn, scope === s && { backgroundColor: t.card }]}
+            onPress={() => { void haptic.light(); setScope(s); }}
+          >
+            <Ionicons name={s === "shared" ? "people-outline" : "person-outline"} size={15} color={scope === s ? t.accent : t.textMuted} />
+            <Text style={[styles.segmentText, { color: scope === s ? t.text : t.textMuted }]}>
+              {s === "shared" ? "Coloc" : "Perso"}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
       <View style={styles.addRow}>
         <TextInput
           style={[styles.addInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
-          placeholder="Ajouter un article..."
+          placeholder={scope === "personal" ? "Ajouter à ta liste perso..." : "Ajouter un article..."}
           placeholderTextColor={t.textMuted}
           value={newItem}
           onChangeText={setNewItem}
@@ -361,6 +388,10 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   itemText: { fontSize: 15, flex: 1 },
+  itemQty: { fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"], marginLeft: 8 },
+  segment: { flexDirection: "row", marginHorizontal: 16, marginTop: 10, borderRadius: 10, padding: 3 },
+  segmentBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 7, borderRadius: 8 },
+  segmentText: { fontSize: 13, fontWeight: "700" },
   emptyContainer: {
     alignItems: "center",
     paddingTop: 48,

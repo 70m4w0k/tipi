@@ -47,6 +47,37 @@ test.describe("Recettes", () => {
     await expect(page.getByText("500 g")).toBeVisible({ timeout: 10_000 });
   });
 
+  test("symbiose : ajouter les ingrédients aux courses en liste perso", async ({ page }) => {
+    const title = `${TEST_PREFIX}symb-${Date.now()}`;
+    const ing = `${TEST_PREFIX}Tofu`;
+    await login(page);
+    await page.getByRole("tab", { name: /Recettes/ }).click();
+    await page.getByTestId("recipes-fab").click();
+    await page.getByPlaceholder("Titre", { exact: true }).fill(title);
+    await page.getByTestId("ingredient-add").click();
+    await page.getByTestId("ingredient-name-0").fill(ing);
+    await page.getByTestId("ingredient-amount-0").fill("200");
+    await page.getByTestId("ingredient-unit-0").fill("g");
+    await page.getByText("Enregistrer", { exact: true }).click();
+
+    // Recette → Ajouter aux courses → destination Perso.
+    await page.getByText(title, { exact: true }).click();
+    await page.getByTestId("add-to-shopping").click();
+    await page.getByTestId("shop-scope-personal").click();
+    await page.getByTestId("shop-confirm").click();
+
+    // Courses, onglet Perso : l'article y est avec sa quantité.
+    await page.getByRole("tab", { name: /Courses/ }).click();
+    await page.getByTestId("shopping-scope-personal").click();
+    const row = page.getByTestId(`shopping-item-${ing}`);
+    await expect(row).toBeVisible({ timeout: 10_000 });
+    await expect(row.getByText("200 g")).toBeVisible();
+
+    // Absent de l'onglet Coloc (perso = invisible côté partagé).
+    await page.getByTestId("shopping-scope-shared").click();
+    await expect(page.getByTestId(`shopping-item-${ing}`)).toHaveCount(0);
+  });
+
   test("créer, déplier, lancer et faire progresser une instance", async ({ page }) => {
     const recipe = `${TEST_PREFIX}recette-${Date.now()}`;
     const instance = `${recipe}-inst`;
