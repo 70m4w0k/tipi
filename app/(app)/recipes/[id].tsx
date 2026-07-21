@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -23,7 +23,9 @@ import { formatDuration } from "../../../lib/calendar-logic";
 import { getRecipePlaceholder, RECIPE_ICONS } from "../../../lib/recipe-placeholders";
 import { DraggableStepList } from "../../../components/DraggableStepList";
 import { LiquidProgress } from "../../../components/LiquidProgress";
-import { RecipeInstance, RecipeStep, DurationUnit } from "../../../lib/types";
+import { IngredientsEditor } from "../../../components/IngredientsEditor";
+import { RecipeInstance, RecipeStep, DurationUnit, Ingredient } from "../../../lib/types";
+import { scaleAmount, formatQuantity } from "../../../lib/recipes-logic";
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -42,6 +44,9 @@ export default function RecipeDetailScreen() {
   const completedInstances = recipeInstances.filter((i) => !!i.completed_at);
 
   const [showSteps, setShowSteps] = useState(false);
+  const [targetServings, setTargetServings] = useState(4);
+  // Le curseur de portions démarre sur les portions de base de la recette.
+  useEffect(() => { if (recipe) setTargetServings(recipe.servings); }, [recipe?.id, recipe?.servings]);
   const [refreshing, setRefreshing] = useState(false);
 
   // Start modal
@@ -57,7 +62,8 @@ export default function RecipeDetailScreen() {
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [editIcon, setEditIcon] = useState<string | undefined>(undefined);
-  const [editIngredients, setEditIngredients] = useState("");
+  const [editIngredients, setEditIngredients] = useState<Ingredient[]>([]);
+  const [editServings, setEditServings] = useState(4);
   const [editSteps, setEditSteps] = useState<RecipeStep[]>([]);
   const [newStepTitle, setNewStepTitle] = useState("");
   const [newStepDesc, setNewStepDesc] = useState("");
@@ -93,7 +99,8 @@ export default function RecipeDetailScreen() {
     setEditTitle(recipe.title);
     setEditDesc(recipe.description);
     setEditIcon(recipe.icon ?? undefined);
-    setEditIngredients(recipe.ingredients.join("\n"));
+    setEditIngredients(recipe.ingredients);
+    setEditServings(recipe.servings);
     setEditSteps(recipe.steps);
     setShowEditModal(true);
   };
@@ -101,8 +108,8 @@ export default function RecipeDetailScreen() {
   const handleSaveEdit = async () => {
     if (!recipe || !editTitle.trim()) return;
     void haptic.medium();
-    const ingredients = editIngredients.split("\n").map((l) => l.trim()).filter(Boolean);
-    await updateRecipe(recipe.id, editTitle, editDesc, ingredients, editSteps, editIcon);
+    const ingredients = editIngredients.filter((i) => i.name.trim().length > 0);
+    await updateRecipe(recipe.id, editTitle, editDesc, ingredients, editSteps, editServings, editIcon);
     setShowEditModal(false);
   };
 
@@ -203,13 +210,29 @@ export default function RecipeDetailScreen() {
         {/* Ingredients */}
         {recipe.ingredients.length > 0 && (
           <View style={[styles.section, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-            <Text style={[styles.sectionTitle, { color: t.text }]}>Ingrédients</Text>
-            {recipe.ingredients.map((ing, i) => (
-              <View key={i} style={styles.ingredientRow}>
-                <Ionicons name="ellipse" size={6} color={t.textMuted} />
-                <Text style={[styles.ingredientText, { color: t.textSecondary }]}>{ing}</Text>
+            <View style={styles.ingredientsHeader}>
+              <Text style={[styles.sectionTitle, { color: t.text }]}>Ingrédients</Text>
+              <View style={styles.portionScaler}>
+                <Pressable testID="portion-minus" hitSlop={6} onPress={() => setTargetServings((s) => Math.max(1, s - 1))}>
+                  <Ionicons name="remove-circle-outline" size={22} color={t.accent} />
+                </Pressable>
+                <Text style={[styles.portionValue, { color: t.text }]}>{targetServings} pers.</Text>
+                <Pressable testID="portion-plus" hitSlop={6} onPress={() => setTargetServings((s) => Math.min(50, s + 1))}>
+                  <Ionicons name="add-circle-outline" size={22} color={t.accent} />
+                </Pressable>
               </View>
-            ))}
+            </View>
+            {recipe.ingredients.map((ing, i) => {
+              const amount = ing.amount != null ? scaleAmount(ing.amount, recipe.servings, targetServings) : null;
+              const qty = formatQuantity(amount, ing.unit);
+              return (
+                <View key={i} style={styles.ingredientRow}>
+                  <Ionicons name="ellipse" size={6} color={t.textMuted} />
+                  <Text style={[styles.ingredientText, { color: t.textSecondary }]}>{ing.name}</Text>
+                  {!!qty && <Text style={[styles.ingredientQty, { color: t.text }]}>{qty}</Text>}
+                </View>
+              );
+            })}
           </View>
         )}
 
@@ -390,12 +413,20 @@ export default function RecipeDetailScreen() {
                   </Pressable>
                 ))}
               </ScrollView>
-              <Text style={[styles.sectionLabel, { color: t.textSecondary }]}>Ingrédients (un par ligne)</Text>
-              <TextInput
-                style={[styles.modalInput, { minHeight: 80, borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
-                placeholder={"200g de sel\n1kg de magret"} placeholderTextColor={t.textMuted}
-                value={editIngredients} onChangeText={setEditIngredients} multiline
-              />
+              <View style={styles.servingsRow}>
+                <Text style={[styles.sectionLabel, { color: t.textSecondary, marginTop: 0 }]}>Portions</Text>
+                <View style={styles.servingsControls}>
+                  <Pressable testID="servings-minus" style={[styles.servingsBtn, { backgroundColor: t.inputBg, borderColor: t.inputBorder }]} onPress={() => setEditServings((s) => Math.max(1, s - 1))}>
+                    <Ionicons name="remove" size={18} color={t.textSecondary} />
+                  </Pressable>
+                  <Text style={[styles.servingsValue, { color: t.text }]}>{editServings}</Text>
+                  <Pressable testID="servings-plus" style={[styles.servingsBtn, { backgroundColor: t.inputBg, borderColor: t.inputBorder }]} onPress={() => setEditServings((s) => Math.min(50, s + 1))}>
+                    <Ionicons name="add" size={18} color={t.textSecondary} />
+                  </Pressable>
+                </View>
+              </View>
+              <Text style={[styles.sectionLabel, { color: t.textSecondary }]}>Ingrédients</Text>
+              <IngredientsEditor ingredients={editIngredients} onChange={setEditIngredients} />
               <Text style={[styles.sectionLabel, { color: t.textSecondary }]}>Étapes</Text>
               <DraggableStepList
                 items={editSteps}
@@ -506,8 +537,16 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 15, fontWeight: "700", marginBottom: 8 },
   sectionToggle: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
 
+  ingredientsHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
+  portionScaler: { flexDirection: "row", alignItems: "center", gap: 8 },
+  portionValue: { fontSize: 13, fontWeight: "700", minWidth: 54, textAlign: "center", fontVariant: ["tabular-nums"] },
   ingredientRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 3 },
-  ingredientText: { fontSize: 14 },
+  ingredientText: { fontSize: 14, flex: 1 },
+  ingredientQty: { fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"] },
+  servingsRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 },
+  servingsControls: { flexDirection: "row", alignItems: "center", gap: 12 },
+  servingsBtn: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  servingsValue: { fontSize: 16, fontWeight: "800", minWidth: 24, textAlign: "center" },
 
   stepItem: { flexDirection: "row", gap: 10, alignItems: "flex-start", paddingVertical: 8, borderTopWidth: 1 },
   stepNumber: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },

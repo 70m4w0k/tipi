@@ -28,7 +28,12 @@ describe("Recipes integration", () => {
         household_id: householdId,
         title: "Pain maison",
         description: "Pain au levain",
-        ingredients: ["farine", "eau", "sel", "levain"],
+        ingredients: [
+          { name: "farine", amount: 500, unit: "g" },
+          { name: "eau", amount: 350, unit: "ml" },
+          { name: "sel", amount: null, unit: "à volonté" },
+          { name: "levain", amount: 100, unit: "g" },
+        ],
         steps: [
           { title: "Mélanger", description: "Mélanger les ingrédients", duration_value: 10, duration_unit: "minutes" },
           { title: "Pétrir", description: "Pétrir la pâte", duration_value: 15, duration_unit: "minutes" },
@@ -42,7 +47,7 @@ describe("Recipes integration", () => {
     expect(error).toBeNull();
     expect(data!.title).toBe("Pain maison");
     expect(data!.steps).toHaveLength(4);
-    expect(data!.ingredients).toContain("levain");
+    expect(data!.ingredients.map((i: { name: string }) => i.name)).toContain("levain");
     recipeId = data!.id;
   });
 

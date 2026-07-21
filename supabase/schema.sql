@@ -116,8 +116,10 @@ CREATE TABLE shopping_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   household_id uuid NOT NULL REFERENCES households(id),
   title text NOT NULL,
+  quantity text NOT NULL DEFAULT '',
   category text DEFAULT '',
   checked boolean NOT NULL DEFAULT false,
+  owner_id uuid REFERENCES profiles(id),
   created_by uuid REFERENCES profiles(id),
   created_at timestamptz DEFAULT now()
 );
@@ -128,6 +130,7 @@ CREATE TABLE recipes (
   title text NOT NULL,
   description text DEFAULT '',
   icon text,
+  servings int NOT NULL DEFAULT 4,
   ingredients jsonb NOT NULL DEFAULT '[]'::jsonb,
   steps jsonb NOT NULL DEFAULT '[]'::jsonb,
   created_by uuid REFERENCES profiles(id),
@@ -415,10 +418,14 @@ CREATE POLICY "update" ON shared_files FOR UPDATE USING (household_id = my_house
 CREATE POLICY "delete" ON shared_files FOR DELETE USING (household_id = my_household_id());
 
 -- shopping_items
-CREATE POLICY "select" ON shopping_items FOR SELECT USING (household_id = my_household_id());
-CREATE POLICY "insert" ON shopping_items FOR INSERT WITH CHECK (household_id = my_household_id());
-CREATE POLICY "update" ON shopping_items FOR UPDATE USING (household_id = my_household_id());
-CREATE POLICY "delete" ON shopping_items FOR DELETE USING (household_id = my_household_id());
+CREATE POLICY "select" ON shopping_items FOR SELECT
+  USING (household_id = my_household_id() AND (owner_id IS NULL OR owner_id = auth.uid()));
+CREATE POLICY "insert" ON shopping_items FOR INSERT
+  WITH CHECK (household_id = my_household_id() AND (owner_id IS NULL OR owner_id = auth.uid()));
+CREATE POLICY "update" ON shopping_items FOR UPDATE
+  USING (household_id = my_household_id() AND (owner_id IS NULL OR owner_id = auth.uid()));
+CREATE POLICY "delete" ON shopping_items FOR DELETE
+  USING (household_id = my_household_id() AND (owner_id IS NULL OR owner_id = auth.uid()));
 
 -- recipes
 CREATE POLICY "select" ON recipes FOR SELECT USING (household_id = my_household_id());

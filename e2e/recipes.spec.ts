@@ -21,6 +21,32 @@ async function createRecipe(page: Page, title: string) {
 }
 
 test.describe("Recettes", () => {
+  test("ingrédients structurés + mise à l'échelle des portions", async ({ page }) => {
+    const title = `${TEST_PREFIX}portions-${Date.now()}`;
+    await login(page);
+    await page.getByRole("tab", { name: /Recettes/ }).click();
+    await page.getByTestId("recipes-fab").click();
+    await page.getByPlaceholder("Titre", { exact: true }).fill(title);
+
+    // Portions de base = 4 (défaut) → 2 via le stepper du formulaire.
+    await page.getByTestId("servings-minus").click();
+    await page.getByTestId("servings-minus").click(); // 4 → 2
+
+    // Un ingrédient structuré : Farine 250 g.
+    await page.getByTestId("ingredient-add").click();
+    await page.getByTestId("ingredient-name-0").fill("Farine");
+    await page.getByTestId("ingredient-amount-0").fill("250");
+    await page.getByTestId("ingredient-unit-0").fill("g");
+    await page.getByText("Enregistrer", { exact: true }).click();
+
+    // Détail : à 2 portions, 250 g ; +2 portions (→ 4) double la quantité.
+    await page.getByText(title, { exact: true }).click();
+    await expect(page.getByText("250 g")).toBeVisible({ timeout: 10_000 });
+    await page.getByTestId("portion-plus").click();
+    await page.getByTestId("portion-plus").click(); // 2 → 4
+    await expect(page.getByText("500 g")).toBeVisible({ timeout: 10_000 });
+  });
+
   test("créer, déplier, lancer et faire progresser une instance", async ({ page }) => {
     const recipe = `${TEST_PREFIX}recette-${Date.now()}`;
     const instance = `${recipe}-inst`;

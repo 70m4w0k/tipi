@@ -10,6 +10,7 @@ function makeRecipe(id: string, stepCount: number): Recipe {
     title: `Recipe ${id}`,
     description: "",
     ingredients: [],
+    servings: 4,
     steps: Array.from({ length: stepCount }, () => step),
     icon: null,
     created_by: null,

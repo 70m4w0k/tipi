@@ -1,4 +1,51 @@
-import { Recipe, RecipeInstance } from "./types";
+import { Recipe, RecipeInstance, Ingredient } from "./types";
+
+/** Met une quantité à l'échelle du nombre de portions cible (arrondi à 2 décimales) */
+export function scaleAmount(amount: number, baseServings: number, targetServings: number): number {
+  if (baseServings <= 0) return amount;
+  return Math.round(amount * (targetServings / baseServings) * 100) / 100;
+}
+
+/** Quantité affichable : "400 g", "2 c. à s.", "1", ou l'unité seule si amount null ("à volonté") */
+export function formatQuantity(amount: number | null, unit: string): string {
+  const u = unit.trim();
+  if (amount == null) return u;
+  const a = Number.isInteger(amount) ? String(amount) : String(amount);
+  return u ? `${a} ${u}` : a;
+}
+
+export type ShoppingAddition = {
+  name: string;
+  quantity: string; // mise à l'échelle + formatée
+  alreadyInList: boolean;
+};
+
+function normalizeName(s: string): string {
+  return s.trim().toLowerCase();
+}
+
+/**
+ * Prépare la checklist d'ajout aux courses : quantités mises à l'échelle des
+ * portions cible, et articles déjà présents dans les courses repérés (par nom).
+ */
+export function computeShoppingAdditions(
+  ingredients: Ingredient[],
+  baseServings: number,
+  targetServings: number,
+  existingTitles: string[]
+): ShoppingAddition[] {
+  const taken = new Set(existingTitles.map(normalizeName));
+  return ingredients
+    .filter((i) => i.name.trim().length > 0)
+    .map((i) => {
+      const amount = i.amount != null ? scaleAmount(i.amount, baseServings, targetServings) : null;
+      return {
+        name: i.name.trim(),
+        quantity: formatQuantity(amount, i.unit),
+        alreadyInList: taken.has(normalizeName(i.name)),
+      };
+    });
+}
 
 export function canAdvanceStep(
   instances: RecipeInstance[],

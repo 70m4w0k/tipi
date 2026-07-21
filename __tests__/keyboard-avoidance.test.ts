@@ -20,6 +20,7 @@ import path from "path";
 const HANDLED_BY_PARENT: Record<string, string> = {
   "components/ExpenseForm.tsx": "app/(app)/expenses.tsx",
   "components/RepStepper.tsx": "app/(app)/sport/[id].tsx",
+  "components/IngredientsEditor.tsx": "app/(app)/recipes/[id].tsx",
 };
 
 const ROOT = path.resolve(__dirname, "..");

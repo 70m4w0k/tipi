@@ -117,8 +117,11 @@ export type ShoppingItem = {
   id: string;
   household_id: string;
   title: string;
+  quantity: string;
   category: string;
   checked: boolean;
+  /** null = article partagé (coloc) ; sinon perso à ce membre */
+  owner_id: string | null;
   created_by: string | null;
   created_at: string;
 };
@@ -132,13 +135,21 @@ export type RecipeStep = {
   duration_unit: DurationUnit;
 };
 
+export type Ingredient = {
+  name: string;
+  /** null = non quantifiable (ex. "à volonté") */
+  amount: number | null;
+  unit: string;
+};
+
 export type Recipe = {
   id: string;
   household_id: string;
   title: string;
   description: string;
   icon: string | null;
-  ingredients: string[];
+  servings: number;
+  ingredients: Ingredient[];
   steps: RecipeStep[];
   created_by: string | null;
   created_at: string;

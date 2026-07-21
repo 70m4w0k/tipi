@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabase";
-import { Recipe, RecipeInstance, RecipeStep } from "../types";
+import { Recipe, RecipeInstance, RecipeStep, Ingredient } from "../types";
 
 let channelCounter = 0;
 
@@ -55,13 +55,14 @@ export function useRecipes(householdId: string | null | undefined) {
   }, [householdId]);
 
   const addRecipe = useCallback(
-    async (title: string, description: string, ingredients: string[], steps: RecipeStep[], icon?: string) => {
+    async (title: string, description: string, ingredients: Ingredient[], steps: RecipeStep[], servings: number, icon?: string) => {
       if (!householdId || !title.trim()) return;
       await supabase.from("recipes").insert({
         household_id: householdId,
         title: title.trim(),
         description: description.trim(),
         icon: icon ?? null,
+        servings,
         ingredients,
         steps,
       });
@@ -71,10 +72,10 @@ export function useRecipes(householdId: string | null | undefined) {
   );
 
   const updateRecipe = useCallback(
-    async (id: string, title: string, description: string, ingredients: string[], steps: RecipeStep[], icon?: string) => {
+    async (id: string, title: string, description: string, ingredients: Ingredient[], steps: RecipeStep[], servings: number, icon?: string) => {
       await supabase
         .from("recipes")
-        .update({ title: title.trim(), description: description.trim(), icon: icon ?? null, ingredients, steps })
+        .update({ title: title.trim(), description: description.trim(), icon: icon ?? null, servings, ingredients, steps })
         .eq("id", id);
       void fetchAll();
     },

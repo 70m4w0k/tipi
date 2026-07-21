@@ -10,6 +10,7 @@ function makeRecipe(id: string, stepCount: number): Recipe {
     title: `Recipe ${id}`,
     description: "",
     ingredients: [],
+    servings: 4,
     steps: Array.from({ length: stepCount }, (_, i) => ({
       ...step,
       title: `Étape ${i + 1}`,
@@ -138,5 +139,43 @@ describe("getInstanceProgress", () => {
     const instance = makeInstance("i1", "r1", 0);
     const progress = getInstanceProgress(instance, recipe);
     expect(progress).toEqual({ current: 1, total: 3, percent: 33 });
+  });
+});
+
+describe("scaleAmount / formatQuantity / computeShoppingAdditions", () => {
+  const { scaleAmount, formatQuantity, computeShoppingAdditions } = require("../lib/recipes-logic");
+
+  it("met à l'échelle des portions", () => {
+    expect(scaleAmount(400, 4, 8)).toBe(800);
+    expect(scaleAmount(400, 4, 2)).toBe(200);
+    expect(scaleAmount(100, 3, 4)).toBeCloseTo(133.33, 1);
+    expect(scaleAmount(400, 0, 8)).toBe(400); // garde-fou base 0
+  });
+
+  it("formate la quantité", () => {
+    expect(formatQuantity(400, "g")).toBe("400 g");
+    expect(formatQuantity(2, "c. à s.")).toBe("2 c. à s.");
+    expect(formatQuantity(1, "")).toBe("1");
+    expect(formatQuantity(null, "à volonté")).toBe("à volonté");
+    expect(formatQuantity(null, "")).toBe("");
+  });
+
+  it("prépare l'ajout aux courses avec mise à l'échelle et anti-doublon", () => {
+    const ings = [
+      { name: "Pois chiches", amount: 400, unit: "g" },
+      { name: "Oignon", amount: 1, unit: "" },
+      { name: "Sel", amount: null, unit: "à volonté" },
+    ];
+    const rows = computeShoppingAdditions(ings, 4, 8, ["oignon"]);
+    expect(rows).toEqual([
+      { name: "Pois chiches", quantity: "800 g", alreadyInList: false },
+      { name: "Oignon", quantity: "2", alreadyInList: true },
+      { name: "Sel", quantity: "à volonté", alreadyInList: false },
+    ]);
+  });
+
+  it("ignore les ingrédients sans nom", () => {
+    const rows = computeShoppingAdditions([{ name: "  ", amount: 1, unit: "g" }], 4, 4, []);
+    expect(rows).toEqual([]);
   });
 });

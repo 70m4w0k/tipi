@@ -18,11 +18,12 @@ import { useRouter } from "expo-router";
 import { useAuth } from "../../../lib/hooks/useAuth";
 import { useRecipes } from "../../../lib/hooks/useRecipes";
 import { useTheme } from "../../../lib/theme";
-import { Recipe, RecipeStep, DurationUnit } from "../../../lib/types";
+import { Recipe, RecipeStep, DurationUnit, Ingredient } from "../../../lib/types";
 import { haptic } from "../../../lib/haptics";
 import { formatDuration } from "../../../lib/calendar-logic";
 import { getRecipePlaceholder, RECIPE_ICONS } from "../../../lib/recipe-placeholders";
 import { DraggableStepList } from "../../../components/DraggableStepList";
+import { IngredientsEditor } from "../../../components/IngredientsEditor";
 
 export default function RecipesListScreen() {
   const { profile } = useAuth();
@@ -48,7 +49,8 @@ export default function RecipesListScreen() {
   const [formTitle, setFormTitle] = useState("");
   const [formDesc, setFormDesc] = useState("");
   const [formIcon, setFormIcon] = useState<string | undefined>(undefined);
-  const [formIngredients, setFormIngredients] = useState("");
+  const [formIngredients, setFormIngredients] = useState<Ingredient[]>([]);
+  const [formServings, setFormServings] = useState(4);
   const [formSteps, setFormSteps] = useState<RecipeStep[]>([]);
   const [newStepTitle, setNewStepTitle] = useState("");
   const [newStepDesc, setNewStepDesc] = useState("");
@@ -59,7 +61,7 @@ export default function RecipesListScreen() {
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; title: string } | null>(null);
 
   const resetForm = () => {
-    setFormTitle(""); setFormDesc(""); setFormIcon(undefined); setFormIngredients("");
+    setFormTitle(""); setFormDesc(""); setFormIcon(undefined); setFormIngredients([]); setFormServings(4);
     setFormSteps([]); setNewStepTitle(""); setNewStepDesc("");
     setNewStepDurationValue(""); setNewStepDurationUnit("minutes");
     setEditingRecipe(null); setShowForm(false);
@@ -70,7 +72,8 @@ export default function RecipesListScreen() {
     setFormTitle(recipe.title);
     setFormDesc(recipe.description);
     setFormIcon(recipe.icon ?? undefined);
-    setFormIngredients(recipe.ingredients.join("\n"));
+    setFormIngredients(recipe.ingredients);
+    setFormServings(recipe.servings);
     setFormSteps(recipe.steps);
     setShowForm(true);
   };
@@ -78,11 +81,11 @@ export default function RecipesListScreen() {
   const handleSaveRecipe = async () => {
     if (!formTitle.trim()) return;
     void haptic.medium();
-    const ingredients = formIngredients.split("\n").map((l) => l.trim()).filter(Boolean);
+    const ingredients = formIngredients.filter((i) => i.name.trim().length > 0);
     if (editingRecipe) {
-      await updateRecipe(editingRecipe.id, formTitle, formDesc, ingredients, formSteps, formIcon);
+      await updateRecipe(editingRecipe.id, formTitle, formDesc, ingredients, formSteps, formServings, formIcon);
     } else {
-      await addRecipe(formTitle, formDesc, ingredients, formSteps, formIcon);
+      await addRecipe(formTitle, formDesc, ingredients, formSteps, formServings, formIcon);
     }
     resetForm();
   };
@@ -222,12 +225,20 @@ export default function RecipesListScreen() {
                   </Pressable>
                 ))}
               </ScrollView>
-              <Text style={[styles.sectionLabel, { color: t.textSecondary }]}>Ingrédients (un par ligne)</Text>
-              <TextInput
-                style={[styles.modalInput, { minHeight: 80, borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
-                placeholder={"200g de sel\n1kg de magret\nPoivre noir"} placeholderTextColor={t.textMuted}
-                value={formIngredients} onChangeText={setFormIngredients} multiline
-              />
+              <View style={styles.servingsRow}>
+                <Text style={[styles.sectionLabel, { color: t.textSecondary, marginTop: 0 }]}>Portions</Text>
+                <View style={styles.servingsControls}>
+                  <Pressable testID="servings-minus" style={[styles.servingsBtn, { backgroundColor: t.inputBg, borderColor: t.inputBorder }]} onPress={() => setFormServings((s) => Math.max(1, s - 1))}>
+                    <Ionicons name="remove" size={18} color={t.textSecondary} />
+                  </Pressable>
+                  <Text style={[styles.servingsValue, { color: t.text }]}>{formServings}</Text>
+                  <Pressable testID="servings-plus" style={[styles.servingsBtn, { backgroundColor: t.inputBg, borderColor: t.inputBorder }]} onPress={() => setFormServings((s) => Math.min(50, s + 1))}>
+                    <Ionicons name="add" size={18} color={t.textSecondary} />
+                  </Pressable>
+                </View>
+              </View>
+              <Text style={[styles.sectionLabel, { color: t.textSecondary }]}>Ingrédients</Text>
+              <IngredientsEditor ingredients={formIngredients} onChange={setFormIngredients} />
               <Text style={[styles.sectionLabel, { color: t.textSecondary }]}>Étapes</Text>
               <DraggableStepList
                 items={formSteps}
@@ -378,6 +389,10 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 17, fontWeight: "700", marginBottom: 4 },
   modalInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 10 },
   sectionLabel: { fontSize: 13, fontWeight: "600", marginBottom: 8, marginTop: 4 },
+  servingsRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 },
+  servingsControls: { flexDirection: "row", alignItems: "center", gap: 12 },
+  servingsBtn: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  servingsValue: { fontSize: 16, fontWeight: "800", minWidth: 24, textAlign: "center" },
   stepCard: { borderWidth: 1, borderRadius: 8, padding: 10, marginBottom: 6 },
   stepCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   stepCardTitle: { fontSize: 14, fontWeight: "600", flex: 1 },
