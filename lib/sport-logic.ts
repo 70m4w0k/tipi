@@ -154,6 +154,19 @@ export function badgeTier(threshold: number): number {
   return i >= 0 ? i + 1 : 1;
 }
 
+/**
+ * Mode de saisie rapide de la page détail selon l'exercice :
+ * - "timer" pour les exercices en temps (secondes/minutes)
+ * - "counter" (compteur mains-libres) pour les répétitions, sauf Abdos/Squats
+ *   (le tap au nez ne colle pas à ces mouvements)
+ * - null : pas de saisie rapide, seulement l'ajout manuel de séries
+ */
+export function quickLogMode(name: string, unit: string): "timer" | "counter" | null {
+  if (unit === "secondes" || unit === "minutes") return "timer";
+  if (unit === "répétitions" && name !== "Abdos" && name !== "Squats") return "counter";
+  return null;
+}
+
 /** Fonctionnalités débloquées par niveau (spec §5.2) */
 export const LEVEL_UNLOCKS: Record<number, string> = {
   2: "Objectif du jour",

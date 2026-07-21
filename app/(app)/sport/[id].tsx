@@ -21,7 +21,7 @@ import { BadgeRow, BadgeItem } from "../../../components/BadgeRow";
 import { BadgeMedallion } from "../../../components/BadgeMedallion";
 import { ExerciseTimer } from "../../../components/ExerciseTimer";
 import { ExerciseCounter } from "../../../components/ExerciseCounter";
-import { computeBadgeVisibility, computePersonalRecords, medallionMotif, badgeTier, MedallionMotif } from "../../../lib/sport-logic";
+import { computeBadgeVisibility, computePersonalRecords, medallionMotif, badgeTier, MedallionMotif, quickLogMode } from "../../../lib/sport-logic";
 import { BadgeUnlockOverlay } from "../../../components/BadgeUnlockOverlay";
 import { RepStepper } from "../../../components/RepStepper";
 
@@ -383,19 +383,23 @@ export default function ExerciseDetailScreen() {
             </Text>
           </View>
 
-          {/* Saisie rapide (aujourd'hui) : chronomètre ou compteur selon l'unité */}
-          {selectedDay === today && (
-            <Pressable
-              testID="sport-quicklog"
-              style={[styles.quicklogBtn, { backgroundColor: t.accent }]}
-              onPress={() => { void haptic.light(); setTool(exercise.unit === "répétitions" ? "counter" : "timer"); }}
-            >
-              <Ionicons name={exercise.unit === "répétitions" ? "hand-left-outline" : "stopwatch-outline"} size={18} color="#FFFFFF" />
-              <Text style={styles.quicklogText}>
-                {exercise.unit === "répétitions" ? "Compteur mains-libres" : "Chronomètre"}
-              </Text>
-            </Pressable>
-          )}
+          {/* Saisie rapide (aujourd'hui) : chronomètre ou compteur selon l'exercice */}
+          {selectedDay === today && (() => {
+            const mode = quickLogMode(exercise.name, exercise.unit);
+            if (!mode) return null;
+            return (
+              <Pressable
+                testID="sport-quicklog"
+                style={[styles.quicklogBtn, { backgroundColor: t.accent }]}
+                onPress={() => { void haptic.light(); setTool(mode); }}
+              >
+                <Ionicons name={mode === "counter" ? "hand-left-outline" : "stopwatch-outline"} size={18} color="#FFFFFF" />
+                <Text style={styles.quicklogText}>
+                  {mode === "counter" ? "Compteur mains-libres" : "Chronomètre"}
+                </Text>
+              </Pressable>
+            );
+          })()}
 
           {/* Zone principale : séries du jour + ajout */}
           {selectedSeries.map((log, i) => (

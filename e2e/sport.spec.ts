@@ -302,6 +302,16 @@ test.describe("Sport — gamification", () => {
     await expect(page.getByText("4 répétitions").first()).toBeVisible({ timeout: 10_000 });
   });
 
+  test("Abdos et Squats n'ont pas de compteur mains-libres", async ({ page }) => {
+    await loginWithSportTab(page);
+    for (const ex of ["Abdos", "Squats"]) {
+      await page.goto("/sport", GOTO_OPTS);
+      await page.getByTestId(`sport-card-${ex}`).click();
+      await expect(page.getByTestId("add-series")).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByTestId("sport-quicklog")).toHaveCount(0);
+    }
+  });
+
   test("chronomètre : Départ puis Stop crée une série en secondes", async ({ page }) => {
     const EX = `${TEST_PREFIX}chrono-${Date.now()}`;
     await loginWithSportTab(page);

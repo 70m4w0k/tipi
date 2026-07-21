@@ -269,3 +269,19 @@ describe("medallionMotif & badgeTier", () => {
     expect(badgeTier(42)).toBe(1);
   });
 });
+
+describe("quickLogMode", () => {
+  const { quickLogMode } = require("../lib/sport-logic");
+
+  it("timer pour les exercices en temps", () => {
+    expect(quickLogMode("Gainage", "secondes")).toBe("timer");
+    expect(quickLogMode("Course", "minutes")).toBe("timer");
+  });
+
+  it("compteur pour les répétitions, sauf Abdos et Squats", () => {
+    expect(quickLogMode("Pompes", "répétitions")).toBe("counter");
+    expect(quickLogMode("Tractions", "répétitions")).toBe("counter");
+    expect(quickLogMode("Abdos", "répétitions")).toBeNull();
+    expect(quickLogMode("Squats", "répétitions")).toBeNull();
+  });
+});
