@@ -18,6 +18,7 @@ import { useTheme } from "../../../lib/theme";
 import { haptic } from "../../../lib/haptics";
 
 import { BadgeRow, BadgeItem } from "../../../components/BadgeRow";
+import { BadgeMedallion } from "../../../components/BadgeMedallion";
 import { computeBadgeVisibility, computePersonalRecords, medallionMotif, badgeTier, MedallionMotif } from "../../../lib/sport-logic";
 import { BadgeUnlockOverlay } from "../../../components/BadgeUnlockOverlay";
 import { RepStepper } from "../../../components/RepStepper";
@@ -120,6 +121,45 @@ export default function ExerciseDetailScreen() {
     () => (profile?.id && id ? computePersonalRecords(logs, profile.id, id) : { bestDay: null, bestSeries: null }),
     [logs, profile?.id, id]
   );
+
+  // Carte "Progression" (badges + titres + prochain palier) — repliée par défaut
+  const [progOpen, setProgOpen] = useState(false);
+  const gamification = useMemo(() => {
+    if (!exercise || !id) return null;
+    const exBadges = exerciseBadges.filter((b) => b.exercise_id === id);
+    const owned = new Set(userBadges.filter((ub) => ub.user_id === profile?.id).map((ub) => ub.badge_id));
+    const userTotal = liveExerciseLogs
+      .filter((l) => l.user_id === profile?.id)
+      .reduce((s, l) => s + l.count, 0);
+    const motif = medallionMotif(exercise.name);
+
+    const badgeItems: BadgeItem[] = computeBadgeVisibility(
+      exBadges.map((b) => {
+        const unlocked = owned.has(b.id);
+        const prev = exBadges.filter((x) => x.threshold < b.threshold).sort((a, c) => c.threshold - a.threshold)[0]?.threshold ?? 0;
+        const range = b.threshold - prev;
+        const progress = unlocked ? 1 : range > 0 ? Math.min(1, (userTotal - prev) / range) : 0;
+        return { title: b.title, icon: b.icon, threshold: b.threshold, unlocked, progress, motif };
+      })
+    );
+
+    // Titres temporels actifs, avec leur seuil hebdomadaire
+    const activeTemporal = temporalBadges
+      .filter((b) => b.exercise_id === id)
+      .filter((b) => temporalTitles.some((tt) => tt.badge.id === b.id));
+
+    const nextBadge = exBadges.filter((b) => !owned.has(b.id)).sort((a, b) => a.threshold - b.threshold)[0];
+    const nextPrev = nextBadge
+      ? exBadges.filter((x) => x.threshold < nextBadge.threshold).sort((a, b) => b.threshold - a.threshold)[0]?.threshold ?? 0
+      : 0;
+    const nextProgress = nextBadge && nextBadge.threshold - nextPrev > 0
+      ? (userTotal - nextPrev) / (nextBadge.threshold - nextPrev)
+      : 0;
+
+    const topBadge = exBadges.filter((b) => owned.has(b.id)).sort((a, b) => b.threshold - a.threshold)[0];
+
+    return { badgeItems, activeTemporal, nextBadge, nextProgress, userTotal, topBadge, motif };
+  }, [exercise, id, exerciseBadges, userBadges, profile?.id, liveExerciseLogs, temporalBadges, temporalTitles]);
 
   // Series for selected day
   const selectedSeries = useMemo(
@@ -334,100 +374,7 @@ export default function ExerciseDetailScreen() {
             </Text>
           </View>
 
-          {/* Badges */}
-          {exercise && (
-            <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
-              {(() => {
-                const exBadges = exerciseBadges.filter((b) => b.exercise_id === id);
-                const exUnlocked = userBadges.map((ub) => ub.badge_id);
-                // Compute per-badge progress
-                const badgeItems: BadgeItem[] = computeBadgeVisibility(exBadges.map((b) => {
-                  const unlocked = exUnlocked.includes(b.id);
-                  // Total for this user + exercise
-                  const userTotal = liveExerciseLogs
-                    .filter((l) => l.user_id === profile?.id)
-                    .reduce((s, l) => s + l.count, 0);
-                  const prevThreshold = exBadges
-                    .filter((x) => x.threshold < b.threshold)
-                    .sort((a, b) => b.threshold - a.threshold)[0]?.threshold ?? 0;
-                  const range = b.threshold - prevThreshold;
-                  const progress = unlocked ? 1 : range > 0 ? Math.min(1, (userTotal - prevThreshold) / range) : 0;
-                  return { title: b.title, icon: b.icon, threshold: b.threshold, unlocked, progress, motif: medallionMotif(exercise.name) };
-                }));
-                const exTemporal = temporalBadges
-                  .filter((b) => b.exercise_id === id)
-                  .filter((b) => temporalTitles.some((t) => t.badge.id === b.id));
-
-                // Next badge to unlock for this exercise
-                const userTotal = liveExerciseLogs
-                  .filter((l) => l.user_id === profile?.id)
-                  .reduce((s, l) => s + l.count, 0);
-                const nextBadge = exBadges
-                  .filter((b) => !exUnlocked.includes(b.id))
-                  .sort((a, b) => a.threshold - b.threshold)[0];
-                const prevThreshold = nextBadge
-                  ? (exBadges
-                      .filter((x) => x.threshold < nextBadge.threshold)
-                      .sort((a, b) => b.threshold - a.threshold)[0]?.threshold ?? 0)
-                  : 0;
-                const nextProgress = nextBadge && (nextBadge.threshold - prevThreshold) > 0
-                  ? (userTotal - prevThreshold) / (nextBadge.threshold - prevThreshold)
-                  : 0;
-
-                return (
-                  <>
-                    {badgeItems.length > 0 && (
-                      <BadgeRow badges={badgeItems} accent={profile?.color ?? t.accent} />
-                    )}
-                    {nextBadge && (
-                      <View style={{ marginTop: 12, paddingHorizontal: 4 }}>
-                        <Text style={{ fontSize: 11, fontWeight: "600", color: t.textSecondary, marginBottom: 4 }}>
-                          Prochain badge : {nextBadge.title} — encore {nextBadge.threshold - userTotal} {exercise.unit}
-                        </Text>
-                        <View style={{ height: 4, borderRadius: 2, backgroundColor: t.cardBorder, overflow: "hidden" }}>
-                          <View style={{ height: 4, borderRadius: 2, backgroundColor: t.accent, width: `${Math.round(nextProgress * 100)}%` as any }} />
-                        </View>
-                      </View>
-                    )}
-                    {exTemporal.length > 0 && (
-                      <View style={{ marginTop: 12 }}>
-                        <Text style={{ fontSize: 12, fontWeight: "700", textTransform: "uppercase", color: t.textSecondary, marginBottom: 6 }}>
-                          Titres actifs
-                        </Text>
-                        {exTemporal.map((b) => (
-                          <View key={b.id} style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4 }}>
-                            <Ionicons name={b.icon as any} size={16} color={t.accent} />
-                            <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>{b.title}</Text>
-                            <Text style={{ fontSize: 11, color: t.success }}>✓ actif</Text>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-                    {collectiveTitle && (
-                      <View style={{ marginTop: 12, flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6, paddingHorizontal: 10, backgroundColor: t.accentLight, borderRadius: 10 }}>
-                        <Ionicons name={collectiveTitle.icon as any} size={18} color={t.accent} />
-                        <Text style={{ fontSize: 13, fontWeight: "700", color: t.accent }}>{collectiveTitle.title}</Text>
-                      </View>
-                    )}
-                  </>
-                );
-              })()}
-            </View>
-          )}
-
-          {/* Records personnels — débloqués au niveau 3 (spec §5.2) */}
-          {levelInfo.level >= 3 && records.bestSeries != null && records.bestDay != null && (
-            <View testID="personal-records" style={[styles.recordsRow, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-              <Ionicons name="trophy-outline" size={16} color={t.accent} />
-              <Text style={[styles.recordsText, { color: t.textSecondary }]} numberOfLines={2}>
-                Meilleure journée : <Text style={{ color: t.text, fontWeight: "700" }}>{records.bestDay.total}</Text>
-                {" "}({formatDayLabel(records.bestDay.day)}) · Meilleure série :{" "}
-                <Text style={{ color: t.text, fontWeight: "700" }}>{records.bestSeries}</Text>
-              </Text>
-            </View>
-          )}
-
-          {/* Series for selected day */}
+          {/* Zone principale : séries du jour + ajout */}
           {selectedSeries.map((log, i) => (
             <View
               key={log.id}
@@ -443,7 +390,6 @@ export default function ExerciseDetailScreen() {
             </View>
           ))}
 
-          {/* Ghost card */}
           <Pressable
             testID="add-series"
             style={[styles.ghostCard, { borderColor: t.cardBorder }]}
@@ -452,6 +398,88 @@ export default function ExerciseDetailScreen() {
             <Ionicons name="add-circle-outline" size={22} color={t.textMuted} />
             <Text style={[styles.ghostText, { color: t.textMuted }]}>Ajouter une série</Text>
           </Pressable>
+
+          {/* Progression — carte pliable (badges, titres, records) */}
+          {gamification && (
+            <View style={[styles.progCard, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+              <Pressable
+                testID="progression-toggle"
+                style={styles.progHeader}
+                onPress={() => { void haptic.light(); setProgOpen((o) => !o); }}
+              >
+                <BadgeMedallion
+                  motif={gamification.motif}
+                  tier={badgeTier((gamification.topBadge ?? gamification.nextBadge)?.threshold ?? 100)}
+                  size={30}
+                  color={gamification.topBadge ? t.accent : t.textMuted}
+                />
+                <View style={{ flex: 1 }}>
+                  {gamification.nextBadge ? (
+                    <>
+                      <Text style={[styles.progSummary, { color: t.textSecondary }]} numberOfLines={1}>
+                        Prochain : {gamification.nextBadge.title} — encore {gamification.nextBadge.threshold - gamification.userTotal} {exercise.unit}
+                      </Text>
+                      <View style={[styles.progTrack, { backgroundColor: t.cardBorder }]}>
+                        <View style={[styles.progFill, { backgroundColor: t.accent, width: `${Math.round(gamification.nextProgress * 100)}%` as any }]} />
+                      </View>
+                    </>
+                  ) : (
+                    <Text style={[styles.progSummary, { color: t.textSecondary }]} numberOfLines={1}>
+                      Tous les badges obtenus
+                    </Text>
+                  )}
+                </View>
+                {gamification.activeTemporal.length > 0 && (
+                  <View style={styles.progFlame}>
+                    <Ionicons name="flame" size={13} color={t.accent} />
+                    <Text style={[styles.progFlameCount, { color: t.accent }]}>{gamification.activeTemporal.length}</Text>
+                  </View>
+                )}
+                <Ionicons name={progOpen ? "chevron-up" : "chevron-down"} size={18} color={t.textMuted} />
+              </Pressable>
+
+              {progOpen && (
+                <View style={styles.progBody}>
+                  {gamification.badgeItems.length > 0 && (
+                    <BadgeRow badges={gamification.badgeItems} accent={profile?.color ?? t.accent} />
+                  )}
+
+                  {gamification.activeTemporal.length > 0 && (
+                    <View style={{ marginTop: 12 }}>
+                      <Text style={[styles.progSectionTitle, { color: t.textSecondary }]}>
+                        Cette semaine <Text style={{ color: t.textMuted, textTransform: "none", letterSpacing: 0 }}>(7 j glissants)</Text>
+                      </Text>
+                      {gamification.activeTemporal.map((b) => (
+                        <View key={b.id} style={styles.titleRow}>
+                          <Ionicons name={b.icon as any} size={16} color={t.accent} />
+                          <Text style={[styles.titleName, { color: t.text }]}>{b.title}</Text>
+                          <Text style={[styles.titleThreshold, { color: t.success }]}>✓ {b.threshold}/sem.</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {levelInfo.level >= 3 && records.bestSeries != null && records.bestDay != null && (
+                    <View testID="personal-records" style={styles.progRecords}>
+                      <Ionicons name="trophy-outline" size={16} color={t.accent} />
+                      <Text style={[styles.recordsText, { color: t.textSecondary }]} numberOfLines={2}>
+                        Meilleure journée : <Text style={{ color: t.text, fontWeight: "700" }}>{records.bestDay.total}</Text>
+                        {" "}({formatDayLabel(records.bestDay.day)}) · Meilleure série :{" "}
+                        <Text style={{ color: t.text, fontWeight: "700" }}>{records.bestSeries}</Text>
+                      </Text>
+                    </View>
+                  )}
+
+                  {collectiveTitle && (
+                    <View style={[styles.collectiveRow, { backgroundColor: t.accentLight }]}>
+                      <Ionicons name={collectiveTitle.icon as any} size={18} color={t.accent} />
+                      <Text style={[styles.collectiveText, { color: t.accent }]}>{collectiveTitle.title}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
 
           <View style={{ height: 40 }} />
         </ScrollView>
@@ -512,12 +540,6 @@ const styles = StyleSheet.create({
   totalUserLevel: { fontSize: 10, fontWeight: "800" },
   totalUserCount: { fontSize: 12, fontWeight: "600" },
 
-  // Records personnels
-  recordsRow: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    marginHorizontal: 16, marginBottom: 12,
-    borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8,
-  },
   recordsText: { flex: 1, fontSize: 12 },
 
   // Series cards
@@ -537,4 +559,27 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   ghostText: { fontSize: 14, fontWeight: "600" },
+
+  // Carte Progression (pliable)
+  progCard: {
+    marginHorizontal: 16, marginTop: 12,
+    borderWidth: 1, borderRadius: 14,
+  },
+  progHeader: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12 },
+  progSummary: { fontSize: 11, fontWeight: "600", marginBottom: 4 },
+  progTrack: { height: 4, borderRadius: 2, overflow: "hidden" },
+  progFill: { height: 4, borderRadius: 2 },
+  progFlame: { flexDirection: "row", alignItems: "center", gap: 2 },
+  progFlameCount: { fontSize: 11, fontWeight: "800" },
+  progBody: { paddingHorizontal: 12, paddingBottom: 12 },
+  progSectionTitle: { fontSize: 12, fontWeight: "700", textTransform: "uppercase", marginBottom: 6 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4 },
+  titleName: { flex: 1, fontSize: 13, fontWeight: "600" },
+  titleThreshold: { fontSize: 11, fontWeight: "700" },
+  progRecords: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12 },
+  collectiveRow: {
+    marginTop: 12, flexDirection: "row", alignItems: "center", gap: 8,
+    paddingVertical: 6, paddingHorizontal: 10, borderRadius: 10,
+  },
+  collectiveText: { fontSize: 13, fontWeight: "700" },
 });

@@ -51,6 +51,15 @@ async function createAndOpenExercise(page: Page, name: string) {
   await expect(page.getByTestId("add-series")).toBeVisible({ timeout: 10_000 });
 }
 
+/** Déplie la carte "Progression" (badges/titres repliés par défaut, proposition A). */
+async function openProgression(page: Page) {
+  // L'overlay de déblocage couvre le toggle : on attend qu'il ait disparu (auto ~3 s).
+  await page.getByText("Badge débloqué").waitFor({ state: "hidden", timeout: 6_000 }).catch(() => {});
+  const toggle = page.getByTestId("progression-toggle");
+  await expect(toggle).toBeVisible({ timeout: 15_000 });
+  await toggle.click();
+}
+
 test.describe("Sport — gamification", () => {
   test("l'onglet Sport est présent", async ({ page }) => {
     await loginWithSportTab(page);
@@ -62,6 +71,7 @@ test.describe("Sport — gamification", () => {
     const EX = `${TEST_PREFIX}badges-${Date.now()}`;
     await loginWithSportTab(page);
     await createAndOpenExercise(page, EX);
+    await openProgression(page);
 
     // Le prochain badge (palier 100) est révélé avec son titre générique.
     const nextBadge = page.getByTestId("badge-next-100");
@@ -90,10 +100,12 @@ test.describe("Sport — gamification", () => {
     await input.fill("120");
     await page.keyboard.press("Enter");
 
-    // L'overlay de déblocage célèbre le badge du palier 100.
+    // L'overlay de déblocage célèbre le badge du palier 100 puis se referme.
     await expect(page.getByText("Badge débloqué")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Badge débloqué")).toBeHidden({ timeout: 10_000 });
 
-    // Le badge 100 passe débloqué, le palier 500 est révélé, 3 restent cachés.
+    // Déplie la progression : le badge 100 est débloqué, 500 révélé, 3 cachés.
+    await openProgression(page);
     await expect(page.getByTestId("badge-unlocked-100")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("badge-next-500").getByText(`${EX} — Vétéran`)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId(/^badge-hidden-/)).toHaveCount(3);
@@ -116,6 +128,10 @@ test.describe("Sport — gamification", () => {
     await count.click();
     await page.getByTestId("rep-input").fill("120");
     await page.keyboard.press("Enter");
+    // Laisse l'overlay de déblocage apparaître puis se refermer avant de déplier.
+    await expect(page.getByText("Badge débloqué")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Badge débloqué")).toBeHidden({ timeout: 10_000 });
+    await openProgression(page);
     await expect(page.getByTestId("badge-unlocked-100")).toBeVisible({ timeout: 15_000 });
 
     // Redescend à 50 : le badge doit se re-bloquer et redevenir "prochain palier".
@@ -131,16 +147,16 @@ test.describe("Sport — gamification", () => {
     await loginWithSportTab(page);
     await createAndOpenExercise(page, EX);
 
-    // Débloque un badge (overlay), puis attend sa disparition.
+    // Débloque un badge : l'overlay apparaît puis disparaît.
     await seedSportLog(EX, 200, 1);
     await page.getByTestId("add-series").click();
-    await expect(page.getByTestId("badge-unlocked-100")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Badge débloqué")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText("Badge débloqué")).toBeHidden({ timeout: 10_000 });
 
     // Revient à la liste puis rouvre le même exercice : aucun overlay.
     await page.goto("/sport", GOTO_OPTS);
     await page.getByTestId(`sport-card-${EX}`).click();
-    await expect(page.getByTestId("badge-unlocked-100")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId("add-series")).toBeVisible({ timeout: 15_000 });
     await page.waitForTimeout(2000);
     await expect(page.getByText("Badge débloqué")).toBeHidden();
   });
@@ -195,6 +211,7 @@ test.describe("Sport — gamification", () => {
     await expect(card).toBeVisible({ timeout: 20_000 });
     await dismissLevelUpIfShown(page);
     await card.click();
+    await openProgression(page);
 
     const records = page.getByTestId("personal-records");
     await expect(records).toBeVisible({ timeout: 15_000 });
