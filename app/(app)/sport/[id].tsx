@@ -48,17 +48,23 @@ export default function ExerciseDetailScreen() {
   const today = todayISO();
   const [selectedDay, setSelectedDay] = useState(today);
   const [newBadge, setNewBadge] = useState<{ title: string; motif: MedallionMotif; tier: number } | null>(null);
-  // null = baseline pas encore établie (avant le premier fetch terminé)
-  const prevUserBadgeIds = useRef<Set<string> | null>(null);
+  // Détection des badges nouvellement débloqués. La baseline n'est établie qu'APRÈS
+  // qu'un vrai fetch a chargé les données (sinon le tout premier render, où userBadges
+  // est encore vide, sert de baseline et le fetch fait passer un badge déjà obtenu pour
+  // "nouveau" → l'overlay se relançait à chaque ouverture de l'exercice).
+  const fetchCompletedRef = useRef(false);
+  const prevOwnBadgeIds = useRef<Set<string> | null>(null);
 
-  // Detect newly unlocked badges — la baseline est TOUJOURS mise à jour avant la
-  // détection, sinon chaque refetch (toute modification de série) re-déclenche l'overlay.
   useEffect(() => {
-    if (loading) return;
-    const current = new Set(userBadges.map((ub) => ub.badge_id));
-    const prev = prevUserBadgeIds.current;
-    prevUserBadgeIds.current = current;
-    if (prev == null) return; // premier snapshot après fetch : pas de célébration rétroactive
+    if (loading) { fetchCompletedRef.current = true; return; } // un fetch est en cours
+    if (!fetchCompletedRef.current) return; // aucun fetch terminé : on ignore le render initial pré-fetch
+
+    const current = new Set(
+      userBadges.filter((ub) => ub.user_id === profile?.id).map((ub) => ub.badge_id)
+    );
+    const prev = prevOwnBadgeIds.current;
+    prevOwnBadgeIds.current = current;
+    if (prev == null) return; // premier snapshot chargé : baseline seule, pas de célébration
 
     for (const badgeId of current) {
       if (!prev.has(badgeId)) {
@@ -70,7 +76,7 @@ export default function ExerciseDetailScreen() {
         }
       }
     }
-  }, [userBadges, exerciseBadges, exercise?.id, loading]);
+  }, [userBadges, exerciseBadges, exercise?.id, loading, profile?.id]);
 
   // Auto-scroll chart to today
   const chartScrollRef = useRef<ScrollView>(null);

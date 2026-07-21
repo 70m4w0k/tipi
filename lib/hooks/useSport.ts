@@ -150,27 +150,37 @@ export function useSport(householdId: string | null | undefined, userId?: string
     }
   }, [householdId, loading, exercises, exerciseBadges.length, seedBadgesForExercise, fetchAll]);
 
-  // Auto-unlock badges when thresholds are crossed
+  // Sync des badges avec les seuils : débloque ceux franchis, re-bloque ceux
+  // repassés sous le seuil (ex. série ramenée à 0).
   useEffect(() => {
     if (!userId || exerciseBadges.length === 0) return;
 
-    const toUpsert = exerciseBadges
-      .filter((badge) => {
-        const total = logs
-          .filter((l) => l.user_id === userId && l.exercise_id === badge.exercise_id)
-          .reduce((s, l) => s + l.count, 0);
-        return total >= badge.threshold;
-      })
-      .filter((badge) => !userBadges.some((ub) => ub.badge_id === badge.id))
+    const ownBadgeIds = new Set(
+      userBadges.filter((ub) => ub.user_id === userId).map((ub) => ub.badge_id)
+    );
+    const totalFor = (exerciseId: string) =>
+      logs
+        .filter((l) => l.user_id === userId && l.exercise_id === exerciseId)
+        .reduce((s, l) => s + l.count, 0);
+
+    const toInsert = exerciseBadges
+      .filter((badge) => totalFor(badge.exercise_id) >= badge.threshold && !ownBadgeIds.has(badge.id))
       .map((badge) => ({ user_id: userId, badge_id: badge.id }));
 
-    if (toUpsert.length > 0) {
-      Promise.all(
-        toUpsert.map((row) =>
-          supabase.from("user_badges").upsert(row, { onConflict: "user_id,badge_id", ignoreDuplicates: true })
-        )
-      ).then(() => fetchAll());
+    const toDelete = exerciseBadges
+      .filter((badge) => totalFor(badge.exercise_id) < badge.threshold && ownBadgeIds.has(badge.id))
+      .map((badge) => badge.id);
+
+    if (toInsert.length === 0 && toDelete.length === 0) return;
+
+    const ops: PromiseLike<unknown>[] = [];
+    if (toInsert.length > 0) {
+      ops.push(supabase.from("user_badges").upsert(toInsert, { onConflict: "user_id,badge_id", ignoreDuplicates: true }));
     }
+    if (toDelete.length > 0) {
+      ops.push(supabase.from("user_badges").delete().eq("user_id", userId).in("badge_id", toDelete));
+    }
+    void Promise.all(ops).then(() => fetchAll());
   }, [logs, exerciseBadges, userBadges, userId, fetchAll]);
 
   const unlockBadge = useCallback(async (badgeId: string) => {

@@ -7,6 +7,7 @@ import { PulseCount } from "./PulseCount";
 
 const HOLD_DELAY = 400;
 const HOLD_INTERVAL = 90;
+const HOLD_MAX = 15000; // filet de sécurité si onPressOut est manqué
 const MAX_COUNT = 99999;
 
 type RepStepperProps = {
@@ -29,6 +30,7 @@ export function RepStepper({ count, onCommit, onChange }: RepStepperProps) {
   const valueRef = useRef(count);
   const holdingRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Sync from server unless the user is interacting
   useEffect(() => {
@@ -38,7 +40,16 @@ export function RepStepper({ count, onCommit, onChange }: RepStepperProps) {
     }
   }, [count, editing]);
 
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  // Arrête toute minuterie en cours (n'utilise que des refs → sûr même sur une closure périmée).
+  const clearHold = () => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    if (maxTimerRef.current) { clearTimeout(maxTimerRef.current); maxTimerRef.current = null; }
+    holdingRef.current = false;
+  };
+
+  // Sécurité au démontage (ex. changement de page pendant un appui) : coupe la répétition
+  // et le retour haptique. Sans ça, une chaîne orpheline continuerait jusqu'au reload.
+  useEffect(() => clearHold, []);
 
   const step = (delta: number) => {
     const next = Math.min(MAX_COUNT, Math.max(0, valueRef.current + delta));
@@ -49,21 +60,24 @@ export function RepStepper({ count, onCommit, onChange }: RepStepperProps) {
     void haptic.light();
   };
 
+  const endHold = () => {
+    const changed = valueRef.current !== count;
+    clearHold();
+    if (changed) onCommit(valueRef.current);
+  };
+
   const startHold = (delta: number) => {
+    clearHold(); // évite d'orpheliner une chaîne d'un appui précédent (onPressOut manqué)
     holdingRef.current = true;
     step(delta);
     const repeat = () => {
+      if (!holdingRef.current) return; // stoppe une minuterie résiduelle après relâchement
       step(delta);
       timerRef.current = setTimeout(repeat, HOLD_INTERVAL);
     };
     timerRef.current = setTimeout(repeat, HOLD_DELAY);
-  };
-
-  const endHold = () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = null;
-    holdingRef.current = false;
-    if (valueRef.current !== count) onCommit(valueRef.current);
+    // Si le relâchement n'est jamais reçu, on arrête et on commite après un temps max.
+    maxTimerRef.current = setTimeout(() => endHold(), HOLD_MAX);
   };
 
   const openEditor = () => {

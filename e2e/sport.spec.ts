@@ -105,6 +105,46 @@ test.describe("Sport — gamification", () => {
     await expect(page.getByText("Badge débloqué")).toBeHidden();
   });
 
+  test("le badge se re-bloque quand les répétitions repassent sous le seuil", async ({ page }) => {
+    const EX = `${TEST_PREFIX}relock-${Date.now()}`;
+    await loginWithSportTab(page);
+    await createAndOpenExercise(page, EX);
+
+    // Débloque le palier 100 (120 reps).
+    await page.getByTestId("add-series").click();
+    const count = page.getByTestId("rep-count").first();
+    await count.click();
+    await page.getByTestId("rep-input").fill("120");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("badge-unlocked-100")).toBeVisible({ timeout: 15_000 });
+
+    // Redescend à 50 : le badge doit se re-bloquer et redevenir "prochain palier".
+    await count.click();
+    await page.getByTestId("rep-input").fill("50");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("badge-next-100")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId("badge-unlocked-100")).toHaveCount(0);
+  });
+
+  test("l'overlay ne se relance pas en rouvrant un exercice déjà débloqué", async ({ page }) => {
+    const EX = `${TEST_PREFIX}reopen-${Date.now()}`;
+    await loginWithSportTab(page);
+    await createAndOpenExercise(page, EX);
+
+    // Débloque un badge (overlay), puis attend sa disparition.
+    await seedSportLog(EX, 200, 1);
+    await page.getByTestId("add-series").click();
+    await expect(page.getByTestId("badge-unlocked-100")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Badge débloqué")).toBeHidden({ timeout: 10_000 });
+
+    // Revient à la liste puis rouvre le même exercice : aucun overlay.
+    await page.goto("/sport", GOTO_OPTS);
+    await page.getByTestId(`sport-card-${EX}`).click();
+    await expect(page.getByTestId("badge-unlocked-100")).toBeVisible({ timeout: 15_000 });
+    await page.waitForTimeout(2000);
+    await expect(page.getByText("Badge débloqué")).toBeHidden();
+  });
+
   test("le niveau s'affiche et l'objectif du jour apparaît au niveau 2", async ({ page }) => {
     const EX = `${TEST_PREFIX}level-${Date.now()}`;
     await loginWithSportTab(page);

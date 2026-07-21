@@ -459,6 +459,7 @@ CREATE POLICY "insert" ON temporal_badges FOR INSERT WITH CHECK (household_id = 
 -- user_badges
 CREATE POLICY "select" ON user_badges FOR SELECT USING (true);
 CREATE POLICY "insert" ON user_badges FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "delete" ON user_badges FOR DELETE USING (user_id = auth.uid());
 
 -- ============================================================
 -- STORAGE BUCKETS
