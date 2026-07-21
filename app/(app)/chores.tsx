@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -68,6 +68,13 @@ export default function ChoresScreen() {
   const [startDate, setStartDate] = useState<string | null>(null);
   const [isBiWeekly, setIsBiWeekly] = useState(false);
   const [showInGrid, setShowInGrid] = useState(true);
+
+  // Tâches négligées (≥ 2 semaines) → message de tooltip par nom de tâche pour la grille.
+  const staleMessages = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const s of getContextualSuggestions(chores, tasks)) map[s.taskName] = s.message;
+    return map;
+  }, [chores, tasks]);
 
   if (!profile || !household) {
     return (
@@ -168,18 +175,6 @@ export default function ChoresScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} colors={[t.accent]} />}>
 
-        {/* Contextual suggestions */}
-        {(() => {
-          const sug = getContextualSuggestions(chores, tasks);
-          if (sug.length === 0) return null;
-          return sug.map((s) => (
-            <View key={s.taskName} style={[styles.suggestionCard, { backgroundColor: t.warningLight, borderColor: t.warning }]}>
-              <Ionicons name="alert-circle-outline" size={18} color={t.warning} />
-              <Text style={[styles.suggestionText, { color: t.text }]}>{s.message}</Text>
-            </View>
-          ));
-        })()}
-
         {/* Reminders */}
         {reminders.map((r) => (
           <ChoreReminderCard
@@ -207,6 +202,7 @@ export default function ChoresScreen() {
           members={members}
           filterMode={"all"}
           showHidden={showHidden}
+          staleMessages={staleMessages}
           onCellPress={handleCellPress}
           onTaskPress={handleTaskPress}
         />
@@ -361,16 +357,6 @@ export default function ChoresScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  suggestionCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
-  },
-  suggestionText: { fontSize: 13, fontWeight: "600", flex: 1 },
   header: {
     borderBottomWidth: 1,
     paddingHorizontal: 20,

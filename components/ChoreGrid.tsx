@@ -1,13 +1,20 @@
-import React, { useEffect, useRef, useMemo } from "react";
+import React, { useEffect, useRef, useMemo, useState } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
+  Pressable,
+  Modal,
   ScrollView,
   StyleSheet,
+  Dimensions,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { Chore, ChoreTask, Profile } from "../lib/types";
 import { useTheme } from "../lib/theme";
+import { haptic } from "../lib/haptics";
+
+const TOOLTIP_WIDTH = 168;
 
 const TASK_COL_WIDTH = 110;
 const WEEK_COL_WIDTH = 46;
@@ -80,14 +87,17 @@ type Props = {
   members: Profile[];
   filterMode: "me" | "all";
   showHidden?: boolean;
+  /** Message d'alerte par nom de tâche négligée (≥ 2 semaines) → "(!)" + tooltip */
+  staleMessages?: Record<string, string>;
   onCellPress: (taskName: string, week: number, year: number) => void;
   onTaskPress: (taskId: string, taskName: string) => void;
 };
 
 export default function ChoreGrid({
-  chores, tasks, currentUserId, members, filterMode, showHidden, onCellPress, onTaskPress,
+  chores, tasks, currentUserId, members, filterMode, showHidden, staleMessages, onCellPress, onTaskPress,
 }: Props) {
   const t = useTheme();
+  const [tooltip, setTooltip] = useState<{ message: string; x: number; y: number } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const weeks = useMemo(() => buildWeeksFromFirstEntry(chores), [chores]);
   const currentWeek = useMemo(() => getISOWeekYear(new Date()), []);
@@ -123,16 +133,37 @@ export default function ChoreGrid({
         <View style={[styles.taskHeader, { backgroundColor: t.background, borderColor: t.cardBorder }]}>
           <Text style={[styles.taskHeaderText, { color: t.textSecondary }]}>Tâche</Text>
         </View>
-        {visibleTasks.map((task) => (
-          <TouchableOpacity
-            key={task.id}
-            style={[styles.taskCell, { borderColor: t.cardBorder, backgroundColor: t.card }]}
-            onPress={() => onTaskPress(task.id, task.name)}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.taskCellText, { color: t.text }]} numberOfLines={1}>{task.name}</Text>
-          </TouchableOpacity>
-        ))}
+        {visibleTasks.map((task) => {
+          const stale = staleMessages?.[task.name];
+          return (
+            <View
+              key={task.id}
+              style={[styles.taskCell, { borderColor: t.cardBorder, backgroundColor: t.card }]}
+            >
+              <TouchableOpacity
+                style={styles.taskNameArea}
+                onPress={() => onTaskPress(task.id, task.name)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.taskCellText, { color: t.text }]} numberOfLines={1}>{task.name}</Text>
+              </TouchableOpacity>
+              {stale && (
+                <Pressable
+                  testID={`chore-stale-${task.name}`}
+                  hitSlop={8}
+                  style={styles.warnBtn}
+                  onPress={(e) => {
+                    void haptic.light();
+                    const { pageX, pageY } = e.nativeEvent;
+                    setTooltip({ message: stale, x: pageX, y: pageY });
+                  }}
+                >
+                  <Ionicons name="alert-circle" size={15} color={t.warning} />
+                </Pressable>
+              )}
+            </View>
+          );
+        })}
       </View>
 
       {/* Scrollable weeks */}
@@ -198,6 +229,27 @@ export default function ChoreGrid({
           <Text style={[styles.emptyText, { color: t.textMuted }]}>Aucune tâche.</Text>
         </View>
       )}
+
+      {/* Tooltip d'alerte (tâche négligée), positionné au point de tap */}
+      <Modal visible={!!tooltip} transparent animationType="fade" onRequestClose={() => setTooltip(null)}>
+        <Pressable style={styles.tooltipBackdrop} onPress={() => setTooltip(null)}>
+          {tooltip && (
+            <View
+              style={[
+                styles.tooltipBubble,
+                {
+                  backgroundColor: t.text,
+                  left: Math.max(8, Math.min(tooltip.x - TOOLTIP_WIDTH / 2, Dimensions.get("window").width - TOOLTIP_WIDTH - 8)),
+                  top: tooltip.y + 14,
+                },
+              ]}
+            >
+              <Ionicons name="alert-circle" size={14} color={t.warning} />
+              <Text style={[styles.tooltipText, { color: t.background }]}>{tooltip.message}</Text>
+            </View>
+          )}
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -244,13 +296,34 @@ const styles = StyleSheet.create({
   taskCell: {
     width: TASK_COL_WIDTH,
     height: CELL_HEIGHT,
-    justifyContent: "center",
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 8,
+    gap: 4,
     borderBottomWidth: 1,
     borderColor: "#E5E7EB",
     backgroundColor: "#FFFFFF",
   },
+  taskNameArea: { flex: 1, height: "100%", justifyContent: "center" },
   taskCellText: { fontSize: 12, fontWeight: "500", color: "#1F2937" },
+  warnBtn: { padding: 2 },
+  tooltipBackdrop: { flex: 1 },
+  tooltipBubble: {
+    position: "absolute",
+    maxWidth: TOOLTIP_WIDTH,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  tooltipText: { fontSize: 12, fontWeight: "600", flexShrink: 1 },
   cell: {
     width: WEEK_COL_WIDTH,
     height: CELL_HEIGHT,

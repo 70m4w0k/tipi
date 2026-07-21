@@ -67,7 +67,7 @@ export function getContextualSuggestions(
         suggestions.push({
           taskName: task.name,
           daysSince,
-          message: `${weeks} semaine${weeks > 1 ? "s" : ""} sans ${task.name.toLowerCase()}`,
+          message: `rien depuis ${weeks} semaine${weeks > 1 ? "s" : ""}`,
         });
       }
       continue;
@@ -91,7 +91,7 @@ export function getContextualSuggestions(
         suggestions.push({
           taskName: task.name,
           daysSince,
-          message: `${weeks} semaine${weeks > 1 ? "s" : ""} sans ${task.name.toLowerCase()}`,
+          message: `rien depuis ${weeks} semaine${weeks > 1 ? "s" : ""}`,
         });
       }
     }

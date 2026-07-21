@@ -37,8 +37,7 @@ describe("getContextualSuggestions", () => {
     const result = getContextualSuggestions(chores, tasks);
     expect(result).toHaveLength(1);
     expect(result[0].taskName).toBe("SDB");
-    expect(result[0].message).toContain("semaine");
-    expect(result[0].message.toLowerCase()).toContain("sdb");
+    expect(result[0].message).toMatch(/^rien depuis \d+ semaines?$/);
   });
 
   it("returns suggestion for task never done (created 14+ days ago)", () => {
