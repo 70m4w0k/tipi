@@ -13,8 +13,49 @@ jobs:
     uses: ./.github/workflows/_e2e.yml
     secrets: inherit
 
+  # Détecte si le push contient de nouvelles migrations, pour ne demander
+  # l'approbation prod que dans ce cas (pas à chaque push de code).
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      migrations: ${{ steps.filter.outputs.migrations }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            migrations:
+              - 'supabase/migrations/**'
+
+  # Applique les migrations en attente à la prod.
+  # Gate : le job cible l'environnement "production" (à configurer avec
+  # "Required reviewers" dans GitHub → Settings → Environments) → approbation
+  # manuelle avant toute modification de la base prod.
+  migrate:
+    needs: [e2e, changes]
+    if: ${{ needs.changes.outputs.migrations == 'true' }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Appliquer les migrations à la prod
+        run: |
+          supabase link --project-ref "$SUPABASE_PROJECT_REF"
+          supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_REF: rlhkgrhgbnpbxjblyetw
+
   build:
-    needs: e2e
+    needs: [e2e, migrate]
+    # Se lance si les E2E passent ET que la migration a réussi OU a été ignorée
+    # (aucune nouvelle migration). Bloqué seulement si la migration échoue/est refusée.
+    if: ${{ always() && needs.e2e.result == 'success' && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
