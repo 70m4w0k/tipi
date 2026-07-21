@@ -19,6 +19,8 @@ import { haptic } from "../../../lib/haptics";
 
 import { BadgeRow, BadgeItem } from "../../../components/BadgeRow";
 import { BadgeMedallion } from "../../../components/BadgeMedallion";
+import { ExerciseTimer } from "../../../components/ExerciseTimer";
+import { ExerciseCounter } from "../../../components/ExerciseCounter";
 import { computeBadgeVisibility, computePersonalRecords, medallionMotif, badgeTier, MedallionMotif } from "../../../lib/sport-logic";
 import { BadgeUnlockOverlay } from "../../../components/BadgeUnlockOverlay";
 import { RepStepper } from "../../../components/RepStepper";
@@ -121,6 +123,13 @@ export default function ExerciseDetailScreen() {
     () => (profile?.id && id ? computePersonalRecords(logs, profile.id, id) : { bestDay: null, bestSeries: null }),
     [logs, profile?.id, id]
   );
+
+  // Saisie rapide plein écran : chronomètre (temps) ou compteur mains-libres (répétitions)
+  const [tool, setTool] = useState<null | "timer" | "counter">(null);
+  const handleToolSave = useCallback((count: number) => {
+    if (!profile?.id || !exercise) return;
+    void logExercise(exercise.id, profile.id, count); // nouvelle série, aujourd'hui
+  }, [profile?.id, exercise, logExercise]);
 
   // Carte "Progression" (badges + titres + prochain palier) — repliée par défaut
   const [progOpen, setProgOpen] = useState(false);
@@ -374,6 +383,20 @@ export default function ExerciseDetailScreen() {
             </Text>
           </View>
 
+          {/* Saisie rapide (aujourd'hui) : chronomètre ou compteur selon l'unité */}
+          {selectedDay === today && (
+            <Pressable
+              testID="sport-quicklog"
+              style={[styles.quicklogBtn, { backgroundColor: t.accent }]}
+              onPress={() => { void haptic.light(); setTool(exercise.unit === "répétitions" ? "counter" : "timer"); }}
+            >
+              <Ionicons name={exercise.unit === "répétitions" ? "hand-left-outline" : "stopwatch-outline"} size={18} color="#FFFFFF" />
+              <Text style={styles.quicklogText}>
+                {exercise.unit === "répétitions" ? "Compteur mains-libres" : "Chronomètre"}
+              </Text>
+            </Pressable>
+          )}
+
           {/* Zone principale : séries du jour + ajout */}
           {selectedSeries.map((log, i) => (
             <View
@@ -491,6 +514,20 @@ export default function ExerciseDetailScreen() {
         medallion={newBadge ? { motif: newBadge.motif, tier: newBadge.tier } : undefined}
         onDismiss={() => setNewBadge(null)}
       />
+
+      <ExerciseTimer
+        visible={tool === "timer"}
+        exerciseName={exercise.name}
+        unit={exercise.unit}
+        onSave={handleToolSave}
+        onClose={() => setTool(null)}
+      />
+      <ExerciseCounter
+        visible={tool === "counter"}
+        exerciseName={exercise.name}
+        onFinish={handleToolSave}
+        onClose={() => setTool(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -541,6 +578,14 @@ const styles = StyleSheet.create({
   totalUserCount: { fontSize: 12, fontWeight: "600" },
 
   recordsText: { flex: 1, fontSize: 12 },
+
+  // Bouton de saisie rapide (chrono / compteur)
+  quicklogBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    marginHorizontal: 16, marginBottom: 10,
+    borderRadius: 14, paddingVertical: 13,
+  },
+  quicklogText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" },
 
   // Series cards
   seriesCard: {

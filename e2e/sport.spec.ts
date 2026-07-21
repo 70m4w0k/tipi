@@ -278,4 +278,51 @@ test.describe("Sport — gamification", () => {
       .poll(async () => parseInt((await count.textContent()) ?? "0", 10), { timeout: 10_000 })
       .toBeGreaterThan(3);
   });
+
+  test("compteur mains-libres : compter puis Terminer crée une série", async ({ page }) => {
+    const EX = `${TEST_PREFIX}count-${Date.now()}`;
+    await loginWithSportTab(page);
+    await createAndOpenExercise(page, EX); // unité par défaut = répétitions
+
+    await page.getByTestId("sport-quicklog").click();
+    const zone = page.getByTestId("counter-tapzone");
+    await expect(zone).toBeVisible({ timeout: 10_000 });
+
+    // 5 taps espacés (> anti-rebond 180 ms).
+    for (let i = 0; i < 5; i++) { await zone.click(); await page.waitForTimeout(220); }
+    await expect(page.getByTestId("counter-value")).toHaveText("5");
+
+    // "−1" corrige, puis Terminer enregistre une série de 4.
+    await page.getByTestId("counter-minus").click();
+    await expect(page.getByTestId("counter-value")).toHaveText("4");
+    await page.getByTestId("counter-finish").click();
+
+    // Retour page détail : le total du jour est 4 répétitions.
+    await expect(page.getByTestId("add-series")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("4 répétitions").first()).toBeVisible({ timeout: 10_000 });
+  });
+
+  test("chronomètre : Départ puis Stop crée une série en secondes", async ({ page }) => {
+    const EX = `${TEST_PREFIX}chrono-${Date.now()}`;
+    await loginWithSportTab(page);
+    // Crée un exercice en secondes.
+    await page.getByRole("tab", { name: /Sport/ }).click();
+    await page.getByTestId("sport-fab").click();
+    await page.getByPlaceholder("Nom de l'exercice").fill(EX);
+    await page.getByText("secondes", { exact: true }).click();
+    await page.getByText("Enregistrer", { exact: true }).click();
+    await page.getByTestId(`sport-card-${EX}`).click();
+    await expect(page.getByTestId("add-series")).toBeVisible({ timeout: 10_000 });
+
+    await page.getByTestId("sport-quicklog").click();
+    const toggle = page.getByTestId("timer-toggle");
+    await expect(toggle).toBeVisible({ timeout: 10_000 });
+    await toggle.click(); // Départ
+    await page.waitForTimeout(1600);
+    await toggle.click(); // Stop → ~2 s enregistrées
+
+    // Retour page détail : une série avec un nombre de secondes positif.
+    await expect(page.getByTestId("add-series")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("rep-count").first()).toHaveText(/^[1-9]\d*$/, { timeout: 10_000 });
+  });
 });
