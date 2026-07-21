@@ -3,6 +3,12 @@
 > **Statut** : phases 1-3 livrées le 20/07/2026 (P0 complet + P1 hors gates 7/10 ; la
 > « notification locale » P1 est implémentée comme notification in-app sur l'accueil,
 > via le système existant — pas de dépendance expo-notifications)
+> **Couche visuelle (21/07/2026)** : badges rendus en médaillons SVG par exercice
+> (`components/BadgeMedallion.tsx`, famille « Médaillon »), page Sport en tableau de bord
+> (anneau de niveau + sparkline 7 j par carte via `LevelHeader`/`MiniSparkline`), page
+> détail réagencée (graphique + séries prioritaires, badges/titres/records dans une carte
+> « Progression » pliable, « Titres actifs » renommé « Cette semaine (7 j glissants) »).
+> Migrations ajoutées : `profiles.show_sport_level`/`sport_title`, policy DELETE sur `user_badges`.
 > **Base** : branche `feature/sport-gamification-hermes` (badges permanents, titres temporels 7j + grâce 48h, titres collectifs, overlay de déblocage, anneaux de progression)
 > **Références** : patterns Habitica (badges "?", classes au niveau 10), Duolingo (streak freeze), Ring Fit (titres identitaires), études de rétention (badge jour 1 = +64 % de rétention ; streaks sociales = +34 % de durée)
 
