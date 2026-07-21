@@ -16,6 +16,7 @@ const makeExercise = (id: string, unit: string): Exercise => ({
   unit,
   created_by: null,
   created_at: new Date().toISOString(),
+  variants: [],
 });
 
 const makeLog = (exerciseId: string, userId: string, count: number): ExerciseLog => ({
@@ -26,6 +27,7 @@ const makeLog = (exerciseId: string, userId: string, count: number): ExerciseLog
   count,
   logged_at: new Date().toISOString(),
   created_at: new Date().toISOString(),
+  variant: null,
 });
 
 const makeUserBadge = (userId: string, badgeId: string): UserBadge => ({
@@ -283,5 +285,48 @@ describe("quickLogMode", () => {
     expect(quickLogMode("Tractions", "répétitions")).toBe("counter");
     expect(quickLogMode("Abdos", "répétitions")).toBeNull();
     expect(quickLogMode("Squats", "répétitions")).toBeNull();
+  });
+});
+
+describe("buildVariants & computeVariantBreakdown", () => {
+  const { buildVariants, computeVariantBreakdown } = require("../lib/sport-logic");
+  const { COLOR_PRESETS } = require("../lib/household-logic");
+
+  it("assigne une couleur libre distincte à chaque variante", () => {
+    const v = buildVariants(["Diamant", "Pieds surélevés"]);
+    expect(v).toHaveLength(2);
+    expect(v[0].color).toBe(COLOR_PRESETS[0]);
+    expect(v[1].color).toBe(COLOR_PRESETS[1]);
+    expect(v[0].name).toBe("Diamant");
+  });
+
+  it("ignore les doublons et complète les existantes sans réutiliser leur couleur", () => {
+    const existing = [{ name: "Diamant", color: COLOR_PRESETS[0] }];
+    const v = buildVariants(["Diamant", "Serrées"], existing);
+    expect(v).toHaveLength(2);
+    expect(v[1]).toEqual({ name: "Serrées", color: COLOR_PRESETS[1] });
+  });
+
+  it("répartit le total par variante, Standard inclus, trié décroissant", () => {
+    const variants = [{ name: "Diamant", color: "#111" }];
+    const logs = [
+      { ...makeLog("ex1", "u1", 30) },              // Standard
+      { ...makeLog("ex1", "u1", 70), variant: "Diamant" },
+      { ...makeLog("ex1", "u2", 999), variant: "Diamant" }, // autre user
+    ];
+    const rows = computeVariantBreakdown(logs, "u1", "ex1", variants);
+    expect(rows.map((r: any) => [r.name, r.total])).toEqual([["Diamant", 70], ["Standard", 30]]);
+    expect(rows[0].pct).toBeCloseTo(0.7);
+    expect(rows.find((r: any) => r.name === "Standard").color).toBeNull();
+  });
+
+  it("montre une variante orpheline (retirée de la liste) en neutre", () => {
+    const logs = [{ ...makeLog("ex1", "u1", 40), variant: "Ancienne" }];
+    const rows = computeVariantBreakdown(logs, "u1", "ex1", []);
+    expect(rows).toEqual([{ name: "Ancienne", color: null, total: 40, pct: 1 }]);
+  });
+
+  it("retourne vide sans logs", () => {
+    expect(computeVariantBreakdown([], "u1", "ex1", [])).toEqual([]);
   });
 });

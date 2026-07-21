@@ -176,6 +176,8 @@ export type SharedFile = {
   uploaded_at: string;
 };
 
+export type ExerciseVariant = { name: string; color: string };
+
 export type Exercise = {
   id: string;
   household_id: string;
@@ -184,6 +186,7 @@ export type Exercise = {
   unit: string;
   created_by: string | null;
   created_at: string;
+  variants: ExerciseVariant[];
 };
 
 export type ExerciseLog = {
@@ -194,6 +197,7 @@ export type ExerciseLog = {
   count: number;
   logged_at: string;
   created_at: string;
+  variant: string | null;
 };
 
 export type ExerciseBadge = {

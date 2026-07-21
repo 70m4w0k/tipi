@@ -1,6 +1,7 @@
-import { Exercise, ExerciseLog, ExerciseBadge, TemporalBadge, UserBadge } from "./types";
+import { Exercise, ExerciseLog, ExerciseBadge, TemporalBadge, UserBadge, ExerciseVariant } from "./types";
+import { pickAvailableColor } from "./household-logic";
 
-export const DEFAULT_EXERCISES: Omit<Exercise, "id" | "household_id" | "created_by" | "created_at">[] = [
+export const DEFAULT_EXERCISES: Omit<Exercise, "id" | "household_id" | "created_by" | "created_at" | "variants">[] = [
   { name: "Pompes", icon: "barbell-outline", unit: "répétitions" },
   { name: "Abdos", icon: "fitness-outline", unit: "répétitions" },
   { name: "Squats", icon: "barbell-outline", unit: "répétitions" },
@@ -131,6 +132,69 @@ export function computeLevel(xp: number): LevelInfo {
   }
   const progress = Math.min(1, Math.max(0, (xp - floor) / (next - floor)));
   return { level, xpForCurrent: floor, xpForNext: next, progress };
+}
+
+// --- Variantes d'exercices (étiquette sur la série) ---
+
+/** Variantes pré-remplies pour les exercices par défaut */
+export const DEFAULT_VARIANTS: Record<string, string[]> = {
+  Pompes: ["Diamant", "Pieds surélevés"],
+  Gainage: ["Dorsal", "Latéral"],
+  Abdos: [
+    "push through", "alternative curls", "4 times ABS", "crossed arms", "leg-up touch",
+    "reverse crunch", "double crunch", "foot 2 foot", "escalade", "russian twists",
+  ],
+  Squats: [],
+};
+
+/** Ajoute des variantes en assignant à chacune la première couleur libre (comme les membres) */
+export function buildVariants(names: string[], existing: ExerciseVariant[] = []): ExerciseVariant[] {
+  const result = [...existing];
+  const taken = existing.map((v) => v.color);
+  for (const name of names) {
+    const trimmed = name.trim();
+    if (!trimmed || result.some((v) => v.name === trimmed)) continue;
+    const color = pickAvailableColor(taken);
+    result.push({ name: trimmed, color });
+    taken.push(color);
+  }
+  return result;
+}
+
+export type VariantBreakdownRow = { name: string; color: string | null; total: number; pct: number };
+
+/**
+ * Répartition du total (utilisateur + exercice) par variante, incluant Standard
+ * (séries non étiquetées) et les variantes orphelines. `color: null` = rendu neutre.
+ */
+export function computeVariantBreakdown(
+  logs: ExerciseLog[],
+  userId: string,
+  exerciseId: string,
+  variants: ExerciseVariant[]
+): VariantBreakdownRow[] {
+  const totals = new Map<string | null, number>();
+  let grand = 0;
+  for (const l of logs) {
+    if (l.user_id !== userId || l.exercise_id !== exerciseId) continue;
+    const key = l.variant ?? null;
+    totals.set(key, (totals.get(key) ?? 0) + l.count);
+    grand += l.count;
+  }
+  if (grand === 0) return [];
+
+  const rows: VariantBreakdownRow[] = [];
+  const std = totals.get(null) ?? 0;
+  if (std > 0) rows.push({ name: "Standard", color: null, total: std, pct: std / grand });
+  for (const v of variants) {
+    const tot = totals.get(v.name) ?? 0;
+    if (tot > 0) rows.push({ name: v.name, color: v.color, total: tot, pct: tot / grand });
+  }
+  for (const [key, tot] of totals) {
+    if (key == null) continue;
+    if (!variants.some((v) => v.name === key)) rows.push({ name: key, color: null, total: tot, pct: tot / grand });
+  }
+  return rows.sort((a, b) => b.total - a.total);
 }
 
 // --- Médaillons de badges (famille "Médaillon" RPG) ---

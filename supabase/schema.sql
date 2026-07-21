@@ -165,6 +165,7 @@ CREATE TABLE exercises (
   unit text NOT NULL DEFAULT 'répétitions',
   created_by uuid REFERENCES profiles(id),
   created_at timestamptz DEFAULT now(),
+  variants jsonb NOT NULL DEFAULT '[]'::jsonb,
   UNIQUE (household_id, name)
 );
 
@@ -175,7 +176,8 @@ CREATE TABLE exercise_logs (
   user_id uuid NOT NULL REFERENCES profiles(id),
   count int NOT NULL CHECK (count > 0),
   logged_at timestamptz DEFAULT now(),
-  created_at timestamptz DEFAULT now()
+  created_at timestamptz DEFAULT now(),
+  variant text
 );
 
 CREATE TABLE exercise_badges (

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../supabase";
-import { Exercise, ExerciseLog, ExerciseBadge, TemporalBadge, UserBadge } from "../types";
+import { Exercise, ExerciseLog, ExerciseBadge, TemporalBadge, UserBadge, ExerciseVariant } from "../types";
 import {
   DEFAULT_EXERCISES,
   COLLECTIVE_THRESHOLDS,
@@ -13,6 +13,8 @@ import {
   computeLevel,
   computeDailyGoal,
   computeThreatenedTitles,
+  DEFAULT_VARIANTS,
+  buildVariants,
 } from "../sport-logic";
 
 let channelCounter = 0;
@@ -104,9 +106,13 @@ export function useSport(householdId: string | null | undefined, userId?: string
     void fetchAll();
   }, [fetchAll]);
 
-  const logExercise = useCallback(async (exerciseId: string, uid: string, count: number, loggedAt?: string) => {
+  const logExercise = useCallback(async (exerciseId: string, uid: string, count: number, loggedAt?: string, variant?: string | null) => {
     if (!householdId || count <= 0) return;
-    await supabase.from("exercise_logs").insert({ household_id: householdId, exercise_id: exerciseId, user_id: uid, count, ...(loggedAt ? { logged_at: loggedAt } : {}) });
+    await supabase.from("exercise_logs").insert({
+      household_id: householdId, exercise_id: exerciseId, user_id: uid, count,
+      ...(loggedAt ? { logged_at: loggedAt } : {}),
+      ...(variant ? { variant } : {}),
+    });
     void fetchAll();
   }, [householdId, fetchAll]);
 
@@ -121,11 +127,21 @@ export function useSport(householdId: string | null | undefined, userId?: string
     void fetchAll();
   }, [fetchAll]);
 
+  const updateLogVariant = useCallback(async (id: string, variant: string | null) => {
+    await supabase.from("exercise_logs").update({ variant }).eq("id", id);
+    void fetchAll();
+  }, [fetchAll]);
+
+  const updateExerciseVariants = useCallback(async (id: string, variants: ExerciseVariant[]) => {
+    await supabase.from("exercises").update({ variants }).eq("id", id);
+    void fetchAll();
+  }, [fetchAll]);
+
   const seedDefaultExercises = useCallback(async () => {
     if (!householdId) return;
     const { data } = await supabase
       .from("exercises")
-      .insert(DEFAULT_EXERCISES.map((e) => ({ household_id: householdId, ...e })))
+      .insert(DEFAULT_EXERCISES.map((e) => ({ household_id: householdId, ...e, variants: buildVariants(DEFAULT_VARIANTS[e.name] ?? []) })))
       .select("id,name");
     if (data) await Promise.all(data.map((e) => seedBadgesForExercise(e.id, e.name)));
     void fetchAll();
@@ -149,6 +165,18 @@ export function useSport(householdId: string | null | undefined, userId?: string
       void Promise.all(exercises.map((e) => seedBadgesForExercise(e.id, e.name))).then(() => fetchAll());
     }
   }, [householdId, loading, exercises, exerciseBadges.length, seedBadgesForExercise, fetchAll]);
+
+  // Backfill: variantes par défaut pour les exercices créés avant cette feature
+  const variantBackfillRef = useRef(false);
+  useEffect(() => {
+    if (!householdId || !hasFetched.current || loading || exercises.length === 0 || variantBackfillRef.current) return;
+    const toSeed = exercises.filter((e) => (e.variants?.length ?? 0) === 0 && (DEFAULT_VARIANTS[e.name]?.length ?? 0) > 0);
+    if (toSeed.length === 0) return;
+    variantBackfillRef.current = true;
+    void Promise.all(
+      toSeed.map((e) => supabase.from("exercises").update({ variants: buildVariants(DEFAULT_VARIANTS[e.name]) }).eq("id", e.id))
+    ).then(() => fetchAll());
+  }, [householdId, loading, exercises, fetchAll]);
 
   // Sync des badges avec les seuils : débloque ceux franchis, re-bloque ceux
   // repassés sous le seuil (ex. série ramenée à 0).
@@ -246,7 +274,7 @@ export function useSport(householdId: string | null | undefined, userId?: string
   return {
     exercises, logs, exerciseBadges, temporalBadges, userBadges, loading,
     addExercise, updateExercise, deleteExercise,
-    logExercise, deleteLog, updateLog,
+    logExercise, deleteLog, updateLog, updateLogVariant, updateExerciseVariants,
     fetchAll, unlockBadge,
     unlockedBadges, temporalTitles, collectiveTitle,
     xp, levelInfo, memberLevel, dailyGoals, threatenedTitles,

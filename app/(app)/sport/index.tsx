@@ -20,14 +20,14 @@ import { useHousehold } from "../../../lib/hooks/useHousehold";
 import { useSport } from "../../../lib/hooks/useSport";
 import { useTheme } from "../../../lib/theme";
 import { haptic } from "../../../lib/haptics";
-import { Exercise } from "../../../lib/types";
+import { Exercise, ExerciseVariant } from "../../../lib/types";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LevelHeader } from "../../../components/LevelHeader";
 import { DailyGoalRing } from "../../../components/DailyGoalRing";
 import { MiniSparkline } from "../../../components/MiniSparkline";
 import { BadgeUnlockOverlay } from "../../../components/BadgeUnlockOverlay";
-import { LEVEL_UNLOCKS } from "../../../lib/sport-logic";
+import { LEVEL_UNLOCKS, buildVariants } from "../../../lib/sport-logic";
 
 const LEVEL_SEEN_KEY = "sport_last_level_seen";
 
@@ -44,7 +44,7 @@ export default function SportScreen() {
   const { members } = useHousehold(profile);
   const {
     exercises, logs, loading,
-    addExercise, updateExercise, deleteExercise,
+    addExercise, updateExercise, deleteExercise, updateExerciseVariants,
     fetchAll,
     userBadges, exerciseBadges, collectiveTitle,
     xp, levelInfo, dailyGoals, threatenedTitles,
@@ -57,6 +57,8 @@ export default function SportScreen() {
   const [editName, setEditName] = useState("");
   const [editIcon, setEditIcon] = useState("barbell-outline");
   const [editUnit, setEditUnit] = useState("répétitions");
+  const [editVariants, setEditVariants] = useState<ExerciseVariant[]>([]);
+  const [newVariantName, setNewVariantName] = useState("");
   const [confirm, setConfirm] = useState<
     { title: string; message: string; confirmLabel: string; onConfirm: () => void } | null
   >(null);
@@ -128,11 +130,25 @@ export default function SportScreen() {
     void haptic.light();
     if (editModal?.id) {
       await updateExercise(editModal.id, editName, editIcon, editUnit);
+      await updateExerciseVariants(editModal.id, editVariants);
     } else {
-      await addExercise(editName, editIcon, editUnit);
+      const newId = await addExercise(editName, editIcon, editUnit);
+      if (newId && editVariants.length > 0) await updateExerciseVariants(newId, editVariants);
     }
     setEditModal(undefined);
     setEditName("");
+  };
+
+  const addVariant = () => {
+    const name = newVariantName.trim();
+    if (!name) return;
+    void haptic.light();
+    setEditVariants((prev) => buildVariants([name], prev));
+    setNewVariantName("");
+  };
+  const removeVariant = (name: string) => {
+    void haptic.light();
+    setEditVariants((prev) => prev.filter((v) => v.name !== name));
   };
 
   const handleDeleteExercise = (ex: Exercise) => {
@@ -151,12 +167,15 @@ export default function SportScreen() {
       setEditName(ex.name);
       setEditIcon(ex.icon);
       setEditUnit(ex.unit);
+      setEditVariants(ex.variants ?? []);
     } else {
       setEditModal(null!);
       setEditName("");
       setEditIcon("barbell-outline");
       setEditUnit("répétitions");
+      setEditVariants([]);
     }
+    setNewVariantName("");
   };
 
   const userColor = (userId: string) => members.find((m) => m.id === userId)?.color ?? t.accent;
@@ -357,6 +376,34 @@ export default function SportScreen() {
                 </Pressable>
               ))}
             </View>
+
+            <Text style={[styles.editLabel, { color: t.textSecondary }]}>Variantes</Text>
+            <View style={styles.variantChips}>
+              {editVariants.map((v) => (
+                <View key={v.name} style={[styles.variantChip, { backgroundColor: t.background, borderColor: t.cardBorder }]}>
+                  <View style={[styles.variantDot, { backgroundColor: v.color }]} />
+                  <Text style={[styles.variantChipText, { color: t.text }]} numberOfLines={1}>{v.name}</Text>
+                  <Pressable testID={`variant-remove-${v.name}`} onPress={() => removeVariant(v.name)} hitSlop={6}>
+                    <Ionicons name="close" size={14} color={t.textMuted} />
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+            <View style={styles.variantAddRow}>
+              <TextInput
+                style={[styles.variantInput, { borderColor: t.inputBorder, backgroundColor: t.inputBg, color: t.text }]}
+                value={newVariantName}
+                onChangeText={setNewVariantName}
+                placeholder="Nouvelle variante"
+                placeholderTextColor={t.textMuted}
+                onSubmitEditing={addVariant}
+                returnKeyType="done"
+              />
+              <Pressable testID="variant-add" style={[styles.variantAddBtn, { backgroundColor: t.accentLight }]} onPress={addVariant}>
+                <Ionicons name="add" size={20} color={t.accent} />
+              </Pressable>
+            </View>
+
             <View style={styles.modalActions}>
               {editModal?.id && (
                 <Pressable
@@ -495,7 +542,14 @@ const styles = StyleSheet.create({
   editLabel: { fontSize: 13, fontWeight: "600", marginTop: 10, marginBottom: 6 },
   iconGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 6 },
   iconBtn: { width: 44, height: 44, borderRadius: 10, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-  unitRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
+  unitRow: { flexDirection: "row", gap: 8, marginBottom: 6 },
+  variantChips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 8 },
+  variantChip: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 999, paddingLeft: 9, paddingRight: 7, paddingVertical: 5 },
+  variantDot: { width: 8, height: 8, borderRadius: 4 },
+  variantChipText: { fontSize: 12, fontWeight: "600", maxWidth: 150 },
+  variantAddRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
+  variantInput: { flex: 1, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14 },
+  variantAddBtn: { width: 44, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   unitBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, alignItems: "center" },
   unitBtnText: { fontSize: 14, fontWeight: "600" },
 });

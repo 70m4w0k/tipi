@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "../../../lib/hooks/useAuth";
 import { useHousehold } from "../../../lib/hooks/useHousehold";
 import { useSport } from "../../../lib/hooks/useSport";
+import { ExerciseLog } from "../../../lib/types";
 import { useTheme } from "../../../lib/theme";
 import { haptic } from "../../../lib/haptics";
 
@@ -21,7 +22,8 @@ import { BadgeRow, BadgeItem } from "../../../components/BadgeRow";
 import { BadgeMedallion } from "../../../components/BadgeMedallion";
 import { ExerciseTimer } from "../../../components/ExerciseTimer";
 import { ExerciseCounter } from "../../../components/ExerciseCounter";
-import { computeBadgeVisibility, computePersonalRecords, medallionMotif, badgeTier, MedallionMotif, quickLogMode } from "../../../lib/sport-logic";
+import { computeBadgeVisibility, computePersonalRecords, medallionMotif, badgeTier, MedallionMotif, quickLogMode, computeVariantBreakdown } from "../../../lib/sport-logic";
+import { VariantSelector, VariantTag, VariantPickerModal, VariantBreakdown } from "../../../components/VariantControls";
 import { BadgeUnlockOverlay } from "../../../components/BadgeUnlockOverlay";
 import { RepStepper } from "../../../components/RepStepper";
 
@@ -43,7 +45,7 @@ export default function ExerciseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile } = useAuth();
   const { members } = useHousehold(profile);
-  const { exercises, logs, loading, logExercise, updateLog, fetchAll, exerciseBadges, temporalBadges, userBadges, unlockedBadges, temporalTitles, collectiveTitle, memberLevel, levelInfo } = useSport(profile?.household_id, profile?.id);
+  const { exercises, logs, loading, logExercise, updateLog, updateLogVariant, fetchAll, exerciseBadges, temporalBadges, userBadges, unlockedBadges, temporalTitles, collectiveTitle, memberLevel, levelInfo } = useSport(profile?.household_id, profile?.id);
   const t = useTheme();
   const router = useRouter();
 
@@ -124,12 +126,22 @@ export default function ExerciseDetailScreen() {
     [logs, profile?.id, id]
   );
 
+  // Répartition par variante (carte Progression)
+  const variantBreakdown = useMemo(
+    () => (profile?.id && exercise ? computeVariantBreakdown(logs, profile.id, exercise.id, exercise.variants) : []),
+    [logs, profile?.id, exercise]
+  );
+
+  // Variante appliquée aux nouvelles séries + série en cours de ré-étiquetage
+  const [activeVariant, setActiveVariant] = useState<string | null>(null);
+  const [variantPickerLog, setVariantPickerLog] = useState<ExerciseLog | null>(null);
+
   // Saisie rapide plein écran : chronomètre (temps) ou compteur mains-libres (répétitions)
   const [tool, setTool] = useState<null | "timer" | "counter">(null);
   const handleToolSave = useCallback((count: number) => {
     if (!profile?.id || !exercise) return;
-    void logExercise(exercise.id, profile.id, count); // nouvelle série, aujourd'hui
-  }, [profile?.id, exercise, logExercise]);
+    void logExercise(exercise.id, profile.id, count, undefined, activeVariant); // nouvelle série, aujourd'hui
+  }, [profile?.id, exercise, logExercise, activeVariant]);
 
   // Carte "Progression" (badges + titres + prochain palier) — repliée par défaut
   const [progOpen, setProgOpen] = useState(false);
@@ -241,7 +253,7 @@ export default function ExerciseDetailScreen() {
     if (!profile?.id || !exercise) return;
     void haptic.light();
     const loggedAt = selectedDay === today ? undefined : `${selectedDay}T12:00:00`;
-    await logExercise(exercise.id, profile.id, 1, loggedAt);
+    await logExercise(exercise.id, profile.id, 1, loggedAt, activeVariant);
   };
 
   // Scroll to selected day when user taps a bar
@@ -401,13 +413,23 @@ export default function ExerciseDetailScreen() {
             );
           })()}
 
+          {/* Sélecteur de variante pour les nouvelles séries (si l'exercice en a) */}
+          {selectedDay === today && (
+            <VariantSelector variants={exercise.variants} active={activeVariant} onChange={setActiveVariant} />
+          )}
+
           {/* Zone principale : séries du jour + ajout */}
           {selectedSeries.map((log, i) => (
             <View
               key={log.id}
               style={[styles.seriesCard, { backgroundColor: t.card, borderColor: t.cardBorder }]}
             >
-              <Text style={[styles.seriesLabel, { color: t.textSecondary }]}>Série {i + 1}</Text>
+              <View style={styles.seriesLabelCol}>
+                <Text style={[styles.seriesLabel, { color: t.textSecondary }]}>Série {i + 1}</Text>
+                {exercise.variants.length > 0 && (
+                  <VariantTag variant={log.variant} variants={exercise.variants} onPress={() => setVariantPickerLog(log)} />
+                )}
+              </View>
               <RepStepper
                 count={log.count}
                 onCommit={(n) => void updateLog(log.id, n)}
@@ -497,6 +519,8 @@ export default function ExerciseDetailScreen() {
                     </View>
                   )}
 
+                  <VariantBreakdown rows={variantBreakdown} />
+
                   {collectiveTitle && (
                     <View style={[styles.collectiveRow, { backgroundColor: t.accentLight }]}>
                       <Ionicons name={collectiveTitle.icon as any} size={18} color={t.accent} />
@@ -531,6 +555,14 @@ export default function ExerciseDetailScreen() {
         exerciseName={exercise.name}
         onFinish={handleToolSave}
         onClose={() => setTool(null)}
+      />
+
+      <VariantPickerModal
+        visible={variantPickerLog !== null}
+        variants={exercise.variants}
+        current={variantPickerLog?.variant ?? null}
+        onSelect={(v) => { if (variantPickerLog) void updateLogVariant(variantPickerLog.id, v); }}
+        onClose={() => setVariantPickerLog(null)}
       />
     </SafeAreaView>
   );
@@ -597,7 +629,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 16, marginBottom: 8,
     borderWidth: 1, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14,
   },
-  seriesLabel: { fontSize: 12, fontWeight: "600", width: 50 },
+  seriesLabelCol: { width: 74 },
+  seriesLabel: { fontSize: 12, fontWeight: "600" },
   seriesUnit: { fontSize: 12, width: 70, textAlign: "right" },
 
   // Ghost card

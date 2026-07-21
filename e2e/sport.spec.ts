@@ -312,6 +312,39 @@ test.describe("Sport — gamification", () => {
     }
   });
 
+  test("variantes : ajouter, étiqueter une série, répartition et re-étiquetage", async ({ page }) => {
+    const EX = `${TEST_PREFIX}var-${Date.now()}`;
+    await loginWithSportTab(page);
+    await page.getByRole("tab", { name: /Sport/ }).click();
+
+    // Crée l'exercice + une variante "Diamant" dans le modal.
+    await page.getByTestId("sport-fab").click();
+    await page.getByPlaceholder("Nom de l'exercice").fill(EX);
+    await page.getByPlaceholder("Nouvelle variante").fill("Diamant");
+    await page.getByTestId("variant-add").click();
+    await expect(page.getByTestId("variant-remove-Diamant")).toBeVisible();
+    await page.getByText("Enregistrer", { exact: true }).click();
+
+    await page.getByTestId(`sport-card-${EX}`).click();
+    await expect(page.getByTestId("add-series")).toBeVisible({ timeout: 10_000 });
+
+    // Série en Diamant, puis série en Standard.
+    await page.getByTestId("variant-chip-Diamant").click();
+    await page.getByTestId("add-series").click();
+    await expect(page.getByTestId("series-variant-tag").first().getByText("Diamant")).toBeVisible({ timeout: 10_000 });
+    await page.getByTestId("variant-chip-Standard").click();
+    await page.getByTestId("add-series").click();
+
+    // La répartition apparaît dans la carte Progression.
+    await openProgression(page);
+    await expect(page.getByText("Répartition par variante")).toBeVisible({ timeout: 10_000 });
+
+    // Re-étiquette la 1re série (Diamant) en Standard via le picker.
+    await page.getByTestId("series-variant-tag").first().click();
+    await page.getByTestId("variant-option-Standard").click();
+    await expect(page.getByTestId("series-variant-tag").first().getByText("Standard")).toBeVisible({ timeout: 10_000 });
+  });
+
   test("chronomètre : Départ puis Stop crée une série en secondes", async ({ page }) => {
     const EX = `${TEST_PREFIX}chrono-${Date.now()}`;
     await loginWithSportTab(page);
