@@ -133,6 +133,27 @@ export function computeLevel(xp: number): LevelInfo {
   return { level, xpForCurrent: floor, xpForNext: next, progress };
 }
 
+// --- Médaillons de badges (famille "Médaillon" RPG) ---
+
+export type MedallionMotif = "pompes" | "abdos" | "squats" | "gainage" | "generic";
+
+/** Motif du médaillon d'après le nom de l'exercice (générique pour les customs) */
+export function medallionMotif(exerciseName: string): MedallionMotif {
+  switch (exerciseName) {
+    case "Pompes": return "pompes";
+    case "Abdos": return "abdos";
+    case "Squats": return "squats";
+    case "Gainage": return "gainage";
+    default: return "generic";
+  }
+}
+
+/** Rang 1-5 d'un badge d'après son seuil (rang 1 pour un seuil hors barème) */
+export function badgeTier(threshold: number): number {
+  const i = DEFAULT_BADGE_TIERS.findIndex((tier) => tier.threshold === threshold);
+  return i >= 0 ? i + 1 : 1;
+}
+
 /** Fonctionnalités débloquées par niveau (spec §5.2) */
 export const LEVEL_UNLOCKS: Record<number, string> = {
   2: "Objectif du jour",

@@ -4,7 +4,8 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from "react-native-reanimated";
 import Svg, { Circle } from "react-native-svg";
 import { useTheme } from "../lib/theme";
-import { BadgeDisplayState } from "../lib/sport-logic";
+import { BadgeDisplayState, MedallionMotif, badgeTier } from "../lib/sport-logic";
+import { BadgeMedallion } from "./BadgeMedallion";
 
 export type BadgeItem = {
   title: string;
@@ -14,6 +15,8 @@ export type BadgeItem = {
   progress?: number; // 0-1, for progress ring on locked badges
   /** "hidden" = palier futur non révélé (affiché en "?") */
   state?: BadgeDisplayState;
+  /** motif du médaillon (dérivé de l'exercice) */
+  motif?: MedallionMotif;
 };
 
 const CIRCLE_RADIUS = 20;
@@ -66,6 +69,9 @@ function BadgeIcon({ badge, accent, isNew }: { badge: BadgeItem; accent: string;
     );
   }
 
+  const motif = badge.motif ?? "generic";
+  const tier = badgeTier(badge.threshold);
+
   return (
     <Animated.View
       style={[styles.badgeContainer, animStyle]}
@@ -98,10 +104,8 @@ function BadgeIcon({ badge, accent, isNew }: { badge: BadgeItem; accent: string;
             />
           </Svg>
         )}
-        {/* Badge circle */}
-        <View style={[styles.badgeCircle, { backgroundColor: unlocked ? accent : t.cardBorder }]}>
-          <Ionicons name={badge.icon as any} size={16} color={unlocked ? "#FFFFFF" : t.textMuted} />
-        </View>
+        {/* Médaillon : accent quand débloqué, grisé quand verrouillé */}
+        <BadgeMedallion motif={motif} tier={tier} size={34} color={unlocked ? accent : t.textMuted} />
       </View>
       <Text style={[styles.badgeTitle, { color: unlocked ? t.text : t.textMuted }]} numberOfLines={2}>
         {badge.title}

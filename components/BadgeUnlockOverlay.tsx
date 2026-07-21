@@ -12,6 +12,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { haptic } from "../lib/haptics";
 import { useTheme } from "../lib/theme";
+import { MedallionMotif } from "../lib/sport-logic";
+import { BadgeMedallion } from "./BadgeMedallion";
 
 type BadgeUnlockOverlayProps = {
   visible: boolean;
@@ -22,12 +24,14 @@ type BadgeUnlockOverlayProps = {
   subtitle?: string;
   /** Ligne optionnelle sous le titre (ex. fonctionnalité débloquée par un niveau) */
   detail?: string;
+  /** Médaillon RPG affiché à la place de l'icône Ionicons */
+  medallion?: { motif: MedallionMotif; tier: number };
 };
 
 const RING_DURATION = 600;
 const SPRING_CONFIG = { damping: 12, stiffness: 120 };
 
-export function BadgeUnlockOverlay({ visible, badgeTitle, badgeIcon, onDismiss, subtitle, detail }: BadgeUnlockOverlayProps) {
+export function BadgeUnlockOverlay({ visible, badgeTitle, badgeIcon, onDismiss, subtitle, detail, medallion }: BadgeUnlockOverlayProps) {
   const t = useTheme();
 
   const overlayOpacity = useSharedValue(0);
@@ -108,7 +112,11 @@ export function BadgeUnlockOverlay({ visible, badgeTitle, badgeIcon, onDismiss, 
                 { backgroundColor: t.accent },
               ]}
             >
-              <Ionicons name={badgeIcon as any} size={48} color="#FFFFFF" />
+              {medallion ? (
+                <BadgeMedallion motif={medallion.motif} tier={medallion.tier} size={68} color="#FFFFFF" />
+              ) : (
+                <Ionicons name={badgeIcon as any} size={48} color="#FFFFFF" />
+              )}
             </Animated.View>
             {/* Title */}
             <Animated.View style={[titleStyle, { marginTop: 32 }]}>

@@ -25,6 +25,7 @@ import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LevelHeader } from "../../../components/LevelHeader";
 import { DailyGoalRing } from "../../../components/DailyGoalRing";
+import { MiniSparkline } from "../../../components/MiniSparkline";
 import { BadgeUnlockOverlay } from "../../../components/BadgeUnlockOverlay";
 import { LEVEL_UNLOCKS } from "../../../lib/sport-logic";
 
@@ -160,6 +161,26 @@ export default function SportScreen() {
 
   const userColor = (userId: string) => members.find((m) => m.id === userId)?.color ?? t.accent;
 
+  // Tendance 7 jours par exercice (totaux du foyer, du plus ancien au plus récent)
+  const sparkData = useMemo(() => {
+    const days: string[] = [];
+    const cursor = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(cursor);
+      d.setDate(d.getDate() - i);
+      days.push(d.toISOString().slice(0, 10));
+    }
+    const dayIndex: Record<string, number> = Object.fromEntries(days.map((d, i) => [d, i]));
+    const map: Record<string, number[]> = {};
+    for (const ex of exercises) map[ex.id] = days.map(() => 0);
+    for (const log of logs) {
+      const day = log.logged_at.slice(0, 10);
+      const i = dayIndex[day];
+      if (i != null && map[log.exercise_id]) map[log.exercise_id][i] += log.count;
+    }
+    return map;
+  }, [logs, exercises]);
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: t.background }]} edges={["top"]}>
       <View style={[styles.header, { backgroundColor: t.card, borderBottomColor: t.cardBorder }]}>
@@ -181,6 +202,7 @@ export default function SportScreen() {
             levelInfo={levelInfo}
             xp={xp}
             sportTitle={profile?.sport_title}
+            collectiveTitle={collectiveTitle}
             onPress={levelInfo.level >= 5 ? () => { void haptic.light(); setTitleModal(true); } : undefined}
           />
         )}
@@ -228,49 +250,54 @@ export default function SportScreen() {
               >
                 <View style={styles.cardTop}>
                   <Ionicons name={ex.icon as any} size={24} color={t.accent} />
-                  <View style={styles.cardTopRight}>
-                    {/* Objectif du jour — débloqué au niveau 2 (spec §5.2) */}
-                    {levelInfo.level >= 2 && dailyGoals[ex.id] && (
-                      <DailyGoalRing
-                        current={dailyGoals[ex.id].current}
-                        goal={dailyGoals[ex.id].goal}
-                        accent={profile?.color ?? t.accent}
-                      />
-                    )}
-                    <Pressable
-                      hitSlop={8}
-                      onPress={(e) => { e.stopPropagation?.(); openEditModal(ex); }}
-                    >
-                      <Ionicons name="pencil-outline" size={13} color={t.textMuted} />
-                    </Pressable>
-                  </View>
+                  <Pressable
+                    hitSlop={8}
+                    onPress={(e) => { e.stopPropagation?.(); openEditModal(ex); }}
+                  >
+                    <Ionicons name="pencil-outline" size={13} color={t.textMuted} />
+                  </Pressable>
                 </View>
                 <Text style={[styles.cardName, { color: t.text }]} numberOfLines={1}>{ex.name}</Text>
                 <Text style={[styles.cardTotal, { color: t.accent }]}>
                   {total} {ex.unit}
                 </Text>
-                {badgeCount > 0 && (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginBottom: 6 }}>
-                    <Ionicons name="ribbon-outline" size={13} color={t.textMuted} />
-                    <Text style={{ fontSize: 11, fontWeight: "600", color: t.textMuted }}>{badgeCount}</Text>
+
+                {/* Tendance 7 jours */}
+                <MiniSparkline values={sparkData[ex.id] ?? []} color={t.accent} />
+
+                {/* Objectif du jour — débloqué au niveau 2 (spec §5.2) */}
+                {levelInfo.level >= 2 && dailyGoals[ex.id] && (
+                  <View style={styles.goalRow}>
+                    <DailyGoalRing
+                      current={dailyGoals[ex.id].current}
+                      goal={dailyGoals[ex.id].goal}
+                      accent={profile?.color ?? t.accent}
+                    />
+                    <Text style={[styles.goalLabel, { color: t.textMuted }]} numberOfLines={1}>
+                      {dailyGoals[ex.id].current >= dailyGoals[ex.id].goal ? "Objectif atteint" : "Objectif du jour"}
+                    </Text>
                   </View>
                 )}
-                {userEntries.length > 0 && (
-                  <View style={styles.cardUsers}>
-                    {userEntries.map(([userId]) => (
-                      <View
-                        key={userId}
-                        style={[styles.userDot, { backgroundColor: userColor(userId) }]}
-                      />
-                    ))}
-                  </View>
-                )}
-                {collectiveTitle && (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingTop: 6, marginTop: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.cardBorder }}>
-                    <Ionicons name={collectiveTitle.icon as any} size={12} color={t.accent} />
-                    <Text style={{ fontSize: 10, fontWeight: "600", color: t.accent }} numberOfLines={1}>{collectiveTitle.title}</Text>
-                  </View>
-                )}
+
+                {/* Pied : membres actifs + nombre de badges */}
+                <View style={styles.cardFooter}>
+                  {userEntries.length > 0 && (
+                    <View style={styles.cardUsers}>
+                      {userEntries.map(([userId]) => (
+                        <View
+                          key={userId}
+                          style={[styles.userDot, { backgroundColor: userColor(userId) }]}
+                        />
+                      ))}
+                    </View>
+                  )}
+                  {badgeCount > 0 && (
+                    <View style={styles.badgeCount}>
+                      <Ionicons name="ribbon-outline" size={13} color={t.textMuted} />
+                      <Text style={{ fontSize: 11, fontWeight: "600", color: t.textMuted }}>{badgeCount}</Text>
+                    </View>
+                  )}
+                </View>
               </Pressable>
             );
           })}
@@ -422,7 +449,10 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderRadius: 14, padding: 14,
   },
   cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-  cardTopRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+  goalRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10 },
+  goalLabel: { flex: 1, fontSize: 10, fontWeight: "600" },
+  cardFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 10 },
+  badgeCount: { flexDirection: "row", alignItems: "center", gap: 3 },
 
   // Bannière titre menacé
   threatBanner: {

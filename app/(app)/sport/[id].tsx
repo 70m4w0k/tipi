@@ -18,7 +18,7 @@ import { useTheme } from "../../../lib/theme";
 import { haptic } from "../../../lib/haptics";
 
 import { BadgeRow, BadgeItem } from "../../../components/BadgeRow";
-import { computeBadgeVisibility, computePersonalRecords } from "../../../lib/sport-logic";
+import { computeBadgeVisibility, computePersonalRecords, medallionMotif, badgeTier, MedallionMotif } from "../../../lib/sport-logic";
 import { BadgeUnlockOverlay } from "../../../components/BadgeUnlockOverlay";
 import { RepStepper } from "../../../components/RepStepper";
 
@@ -47,7 +47,7 @@ export default function ExerciseDetailScreen() {
   const exercise = exercises.find((e) => e.id === id);
   const today = todayISO();
   const [selectedDay, setSelectedDay] = useState(today);
-  const [newBadge, setNewBadge] = useState<{ title: string; icon: string } | null>(null);
+  const [newBadge, setNewBadge] = useState<{ title: string; motif: MedallionMotif; tier: number } | null>(null);
   // null = baseline pas encore établie (avant le premier fetch terminé)
   const prevUserBadgeIds = useRef<Set<string> | null>(null);
 
@@ -63,8 +63,8 @@ export default function ExerciseDetailScreen() {
     for (const badgeId of current) {
       if (!prev.has(badgeId)) {
         const badge = exerciseBadges.find((b) => b.id === badgeId && b.exercise_id === exercise?.id);
-        if (badge) {
-          setNewBadge({ title: badge.title, icon: badge.icon });
+        if (badge && exercise) {
+          setNewBadge({ title: badge.title, motif: medallionMotif(exercise.name), tier: badgeTier(badge.threshold) });
           const timer = setTimeout(() => setNewBadge(null), 3000);
           return () => clearTimeout(timer);
         }
@@ -346,7 +346,7 @@ export default function ExerciseDetailScreen() {
                     .sort((a, b) => b.threshold - a.threshold)[0]?.threshold ?? 0;
                   const range = b.threshold - prevThreshold;
                   const progress = unlocked ? 1 : range > 0 ? Math.min(1, (userTotal - prevThreshold) / range) : 0;
-                  return { title: b.title, icon: b.icon, threshold: b.threshold, unlocked, progress };
+                  return { title: b.title, icon: b.icon, threshold: b.threshold, unlocked, progress, motif: medallionMotif(exercise.name) };
                 }));
                 const exTemporal = temporalBadges
                   .filter((b) => b.exercise_id === id)
@@ -453,7 +453,8 @@ export default function ExerciseDetailScreen() {
       <BadgeUnlockOverlay
         visible={!!newBadge}
         badgeTitle={newBadge?.title ?? ""}
-        badgeIcon={newBadge?.icon ?? "ribbon-outline"}
+        badgeIcon="ribbon-outline"
+        medallion={newBadge ? { motif: newBadge.motif, tier: newBadge.tier } : undefined}
         onDismiss={() => setNewBadge(null)}
       />
     </SafeAreaView>

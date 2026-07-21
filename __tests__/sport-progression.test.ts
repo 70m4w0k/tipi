@@ -241,3 +241,31 @@ describe("computePersonalRecords", () => {
     });
   });
 });
+
+describe("medallionMotif & badgeTier", () => {
+  const { medallionMotif, badgeTier } = require("../lib/sport-logic");
+
+  it("mappe les 4 exercices par défaut sur leur motif", () => {
+    expect(medallionMotif("Pompes")).toBe("pompes");
+    expect(medallionMotif("Abdos")).toBe("abdos");
+    expect(medallionMotif("Squats")).toBe("squats");
+    expect(medallionMotif("Gainage")).toBe("gainage");
+  });
+
+  it("retombe sur 'generic' pour un exercice custom", () => {
+    expect(medallionMotif("Tractions")).toBe("generic");
+    expect(medallionMotif("")).toBe("generic");
+  });
+
+  it("dérive le rang 1-5 depuis le seuil", () => {
+    expect(badgeTier(100)).toBe(1);
+    expect(badgeTier(500)).toBe(2);
+    expect(badgeTier(1000)).toBe(3);
+    expect(badgeTier(5000)).toBe(4);
+    expect(badgeTier(10000)).toBe(5);
+  });
+
+  it("retombe sur le rang 1 pour un seuil hors barème", () => {
+    expect(badgeTier(42)).toBe(1);
+  });
+});

@@ -120,9 +120,13 @@ test.describe("Sport — gamification", () => {
     await expect(chip).toHaveText(/Niv\. [2-9]/, { timeout: 15_000 });
 
     // L'objectif du jour est visible sur la carte : moyenne 200 × 1.1 = 220, rien fait aujourd'hui.
-    const ring = page.getByTestId(`sport-card-${EX}`).getByTestId("daily-goal-ring");
+    const card = page.getByTestId(`sport-card-${EX}`);
+    const ring = card.getByTestId("daily-goal-ring");
     await expect(ring).toBeVisible({ timeout: 15_000 });
     await expect(ring.getByText("0/220")).toBeVisible();
+
+    // Tableau de bord : la carte porte sa tendance 7 jours.
+    await expect(card.getByTestId("mini-sparkline")).toBeVisible();
   });
 
   test("le réglage « niveau visible par les colocs » se sauvegarde", async ({ page }) => {
