@@ -40,7 +40,7 @@ Deux environnements, zéro coût :
 
 | Env | Supabase | Données | Usage |
 |-----|----------|---------|-------|
-| **prod** | Projet cloud Free (`rlhkgrhgbnpblyetw`) | Réelles | App publiée (APK / web) |
+| **prod** | Projet cloud Free (`rlhkgrhgbnpbxjblyetw`) | Réelles | App publiée (APK / web) |
 | **test / dev** | Supabase local (CLI + Docker) | Jetables, recréées par `db reset` | Dev local, E2E, CI |
 
 ### Supabase local (dev / test)
