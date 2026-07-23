@@ -219,6 +219,8 @@ export type WorkoutItem = {
   reps: number;
   weight: number | null;
   per_side: boolean;
+  /** variante de l'exercice (null = Standard) */
+  variant: string | null;
 };
 
 export type Workout = {

@@ -18,7 +18,7 @@ type Props = {
 export function WorkoutValidationSheet({ visible, workout, exercises, onClose, onConfirm }: Props) {
   const t = useTheme();
   const [plan, setPlan] = useState<WorkoutPlanRow[]>([]);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (visible && workout) {
@@ -61,17 +61,19 @@ export function WorkoutValidationSheet({ visible, workout, exercises, onClose, o
           <ScrollView style={{ maxHeight: 380 }}>
             {plan.map((r, idx) => {
               const done = r.series.filter((s) => s.done).length;
-              const isOpen = expanded.has(r.exerciseId);
+              const isOpen = expanded.has(idx);
               const unitShort = r.unit === "secondes" ? "s" : r.unit === "minutes" ? "min" : "reps";
               return (
-                <View key={r.exerciseId} style={[styles.row, { borderTopColor: t.cardBorder }]}>
+                <View key={idx} style={[styles.row, { borderTopColor: t.cardBorder }]}>
                   <View style={styles.rowTop}>
                     <Pressable
-                      testID={`workout-row-${r.exerciseName}`}
+                      testID={`workout-row-${idx}`}
                       style={styles.rowName}
-                      onPress={() => setExpanded((prev) => { const n = new Set(prev); n.has(r.exerciseId) ? n.delete(r.exerciseId) : n.add(r.exerciseId); return n; })}
+                      onPress={() => setExpanded((prev) => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n; })}
                     >
-                      <Text style={[styles.name, { color: done > 0 ? t.text : t.textMuted }]} numberOfLines={1}>{r.exerciseName}</Text>
+                      <Text style={[styles.name, { color: done > 0 ? t.text : t.textMuted }]} numberOfLines={1}>
+                        {r.exerciseName}{r.variant ? ` · ${r.variant}` : ""}
+                      </Text>
                       <Text style={[styles.meta, { color: t.textMuted }]}>
                         × {r.series[0]?.reps ?? 0} {unitShort}{r.perSide ? " /côté" : ""}
                       </Text>
@@ -80,11 +82,11 @@ export function WorkoutValidationSheet({ visible, workout, exercises, onClose, o
                       <Text style={[styles.weight, { color: t.warning }]}>{r.weight} kg</Text>
                     )}
                     <View style={styles.stepper}>
-                      <Pressable testID={`workout-sets-minus-${r.exerciseName}`} style={[styles.stepBtn, { borderColor: t.cardBorder }]} onPress={() => setDone(idx, -1)} hitSlop={4}>
+                      <Pressable testID={`workout-sets-minus-${idx}`} style={[styles.stepBtn, { borderColor: t.cardBorder }]} onPress={() => setDone(idx, -1)} hitSlop={4}>
                         <Ionicons name="remove" size={15} color={t.accent} />
                       </Pressable>
                       <Text style={[styles.stepVal, { color: done > 0 ? t.text : t.textMuted }]}>{done}/{r.series.length}</Text>
-                      <Pressable testID={`workout-sets-plus-${r.exerciseName}`} style={[styles.stepBtn, { borderColor: t.cardBorder }]} onPress={() => setDone(idx, 1)} hitSlop={4}>
+                      <Pressable testID={`workout-sets-plus-${idx}`} style={[styles.stepBtn, { borderColor: t.cardBorder }]} onPress={() => setDone(idx, 1)} hitSlop={4}>
                         <Ionicons name="add" size={15} color={t.accent} />
                       </Pressable>
                     </View>

@@ -339,9 +339,9 @@ describe("parcours (workouts)", () => {
     id: "w1", household_id: "h1", name: "Full body", icon: "barbell-outline",
     created_by: null, created_at: "",
     items: [
-      { exercise_id: "dc", sets: 3, reps: 5, weight: 18, per_side: false },
-      { exercise_id: "bird", sets: 2, reps: 10, weight: null, per_side: true },
-      { exercise_id: "supprimé", sets: 4, reps: 8, weight: null, per_side: false },
+      { exercise_id: "dc", sets: 3, reps: 5, weight: 18, per_side: false, variant: null },
+      { exercise_id: "bird", sets: 2, reps: 10, weight: null, per_side: true, variant: "Lesté" },
+      { exercise_id: "supprimé", sets: 4, reps: 8, weight: null, per_side: false, variant: null },
     ],
   };
 
@@ -363,12 +363,12 @@ describe("parcours (workouts)", () => {
     plan[0].series[2].done = false; // 2/3 séries au développé
     plan[0].series[1].reps = 3;     // reps corrigées sur la 2e
     const entries = planToLogEntries(plan);
-    // dc: 2 séries (5 et 3) @18kg ; bird: 2 séries de 10 → 20 (par côté), sans poids
+    // dc: 2 séries (5 et 3) @18kg ; bird: 2 séries de 10 → 20 (par côté), variante "Lesté"
     expect(entries).toEqual([
-      { exercise_id: "dc", count: 5, weight: 18 },
-      { exercise_id: "dc", count: 3, weight: 18 },
-      { exercise_id: "bird", count: 20, weight: null },
-      { exercise_id: "bird", count: 20, weight: null },
+      { exercise_id: "dc", count: 5, weight: 18, variant: null },
+      { exercise_id: "dc", count: 3, weight: 18, variant: null },
+      { exercise_id: "bird", count: 20, weight: null, variant: "Lesté" },
+      { exercise_id: "bird", count: 20, weight: null, variant: "Lesté" },
     ]);
   });
 
@@ -377,6 +377,6 @@ describe("parcours (workouts)", () => {
     plan[0].series.forEach((s: { done: boolean }) => (s.done = false));
     plan[1].series[0].reps = 0;
     const entries = planToLogEntries(plan);
-    expect(entries).toEqual([{ exercise_id: "bird", count: 20, weight: null }]);
+    expect(entries).toEqual([{ exercise_id: "bird", count: 20, weight: null, variant: "Lesté" }]);
   });
 });

@@ -3,10 +3,43 @@ import { pickAvailableColor } from "./household-logic";
 
 // --- Parcours (workouts) ---
 
+/** Item de parcours par défaut : référence l'exercice par nom (résolu/créé au seed) */
+export type DefaultWorkoutItem = {
+  exercise: string; unit: string; sets: number; reps: number;
+  weight?: number; per_side?: boolean; variant?: string;
+};
+export type DefaultWorkout = { name: string; icon: string; items: DefaultWorkoutItem[] };
+
+const ABDOS_8MIN = ["push through", "alternative curls", "4 times ABS", "crossed arms", "leg-up touch", "reverse crunch", "double crunch", "foot 2 foot"];
+
+/** Parcours pré-remplis à la création d'un foyer */
+export const DEFAULT_WORKOUTS: DefaultWorkout[] = [
+  {
+    name: "Abdos en 8 min",
+    icon: "fitness-outline",
+    items: ABDOS_8MIN.map((v) => ({ exercise: "Abdos", unit: "répétitions", sets: 1, reps: 40, variant: v })),
+  },
+  {
+    name: "Haltères — Full body",
+    icon: "barbell-outline",
+    items: [
+      { exercise: "Développé couché", unit: "répétitions", sets: 5, reps: 5, weight: 18 },
+      { exercise: "Développé militaire", unit: "répétitions", sets: 5, reps: 5, weight: 14 },
+      { exercise: "Curl haltères", unit: "répétitions", sets: 3, reps: 5, weight: 12 },
+      { exercise: "Planche", unit: "secondes", sets: 3, reps: 60 },
+      { exercise: "Planche latérale", unit: "secondes", sets: 3, reps: 60 },
+      { exercise: "Soulevé de terre roumain", unit: "répétitions", sets: 4, reps: 8, weight: 18 },
+      { exercise: "Bird dog", unit: "répétitions", sets: 3, reps: 10, per_side: true },
+      { exercise: "Superman", unit: "répétitions", sets: 3, reps: 12 },
+    ],
+  },
+];
+
 export type WorkoutSeries = { reps: number; done: boolean };
 export type WorkoutPlanRow = {
   exerciseId: string;
   exerciseName: string;
+  variant: string | null;
   unit: string;
   weight: number | null;
   perSide: boolean;
@@ -31,6 +64,7 @@ export function buildWorkoutPlan(workout: Workout, exercises: Exercise[]): Worko
     rows.push({
       exerciseId: ex.id,
       exerciseName: ex.name,
+      variant: item.variant ?? null,
       unit: ex.unit,
       weight: item.weight,
       perSide: item.per_side,
@@ -46,12 +80,12 @@ export function countPlannedSeries(rows: WorkoutPlanRow[]): number {
 }
 
 /** Entrées à logger depuis le plan : une par série cochée, reps doublées si « par côté » */
-export function planToLogEntries(rows: WorkoutPlanRow[]): { exercise_id: string; count: number; weight: number | null }[] {
-  const entries: { exercise_id: string; count: number; weight: number | null }[] = [];
+export function planToLogEntries(rows: WorkoutPlanRow[]): { exercise_id: string; count: number; weight: number | null; variant: string | null }[] {
+  const entries: { exercise_id: string; count: number; weight: number | null; variant: string | null }[] = [];
   for (const r of rows) {
     for (const s of r.series) {
       if (!s.done || s.reps <= 0) continue;
-      entries.push({ exercise_id: r.exerciseId, count: r.perSide ? s.reps * 2 : s.reps, weight: r.weight });
+      entries.push({ exercise_id: r.exerciseId, count: r.perSide ? s.reps * 2 : s.reps, weight: r.weight, variant: r.variant });
     }
   }
   return entries;

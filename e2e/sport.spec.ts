@@ -365,13 +365,27 @@ test.describe("Sport — gamification", () => {
     // Lancer, baisser à 2 séries, valider.
     await page.getByTestId("open-workouts").click();
     await page.getByTestId(`workout-launch-${WK}`).click();
-    await page.getByTestId(`workout-sets-minus-${EX}`).click(); // 3 → 2 séries
+    await page.getByTestId("workout-sets-minus-0").click(); // 3 → 2 séries
     await page.getByTestId("workout-validate").click();
 
     // Vérifier : 2 × 10 = 20 répétitions aujourd'hui sur l'exercice.
     await page.goto("/sport", GOTO_OPTS);
     await page.getByTestId(`sport-card-${EX}`).click();
     await expect(page.getByTestId("day-total")).toHaveText("20 répétitions", { timeout: 10_000 });
+  });
+
+  test("parcours par défaut : Abdos en 8 min (même exercice, 8 variantes) se lance sans crash", async ({ page }) => {
+    await loginWithSportTab(page);
+    await page.getByRole("tab", { name: /Sport/ }).click();
+    await page.getByTestId("open-workouts").click();
+    // Seed asynchrone au premier chargement du foyer.
+    const launch = page.getByTestId("workout-launch-Abdos en 8 min");
+    await expect(launch).toBeVisible({ timeout: 25_000 });
+    await launch.click();
+    // 8 lignes (même exercice Abdos, variantes différentes) → clés uniques, pas de crash.
+    await expect(page.getByTestId("workout-row-0")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("workout-row-7")).toBeVisible();
+    await expect(page.getByTestId("workout-validate")).toHaveText("Valider · 8 séries");
   });
 
   test("chronomètre : Départ puis Stop crée une série en secondes", async ({ page }) => {

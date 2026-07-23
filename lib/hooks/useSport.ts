@@ -15,6 +15,7 @@ import {
   computeThreatenedTitles,
   DEFAULT_VARIANTS,
   buildVariants,
+  DEFAULT_WORKOUTS,
 } from "../sport-logic";
 
 let channelCounter = 0;
@@ -123,13 +124,14 @@ export function useSport(householdId: string | null | undefined, userId?: string
   }, [householdId, fetchAll]);
 
   /** Enregistre en un coup les séries d'un parcours (une ligne par série). */
-  const logWorkoutEntries = useCallback(async (uid: string, entries: { exercise_id: string; count: number; weight: number | null }[]) => {
+  const logWorkoutEntries = useCallback(async (uid: string, entries: { exercise_id: string; count: number; weight: number | null; variant?: string | null }[]) => {
     if (!householdId || entries.length === 0) return;
     const payload = entries
       .filter((e) => e.count > 0)
       .map((e) => ({
         household_id: householdId, exercise_id: e.exercise_id, user_id: uid, count: e.count,
         ...(e.weight != null ? { weight: e.weight } : {}),
+        ...(e.variant ? { variant: e.variant } : {}),
       }));
     if (payload.length > 0) await supabase.from("exercise_logs").insert(payload);
     void fetchAll();
@@ -152,6 +154,38 @@ export function useSport(householdId: string | null | undefined, userId?: string
     await supabase.from("workouts").delete().eq("id", id);
     void fetchAll();
   }, [fetchAll]);
+
+  // Seed des parcours par défaut (crée au passage les exercices manquants qu'ils référencent)
+  const seedDefaultWorkouts = useCallback(async () => {
+    if (!householdId) return;
+    // Idempotent : ne recrée pas un parcours par défaut déjà présent.
+    const { data: existing } = await supabase.from("workouts").select("name").eq("household_id", householdId);
+    const existingNames = new Set((existing ?? []).map((w) => w.name as string));
+    const byName = new Map(exercises.map((e) => [e.name, e.id]));
+    const ensure = async (name: string, unit: string): Promise<string | null> => {
+      const existing = byName.get(name);
+      if (existing) return existing;
+      const { data } = await supabase
+        .from("exercises")
+        .insert({ household_id: householdId, name, icon: "barbell-outline", unit, variants: buildVariants(DEFAULT_VARIANTS[name] ?? []) })
+        .select("id").single();
+      if (!data?.id) return null;
+      await seedBadgesForExercise(data.id, name);
+      byName.set(name, data.id);
+      return data.id;
+    };
+    for (const wk of DEFAULT_WORKOUTS) {
+      if (existingNames.has(wk.name)) continue;
+      const items = [];
+      for (const it of wk.items) {
+        const id = await ensure(it.exercise, it.unit);
+        if (!id) continue;
+        items.push({ exercise_id: id, sets: it.sets, reps: it.reps, weight: it.weight ?? null, per_side: it.per_side ?? false, variant: it.variant ?? null });
+      }
+      await supabase.from("workouts").insert({ household_id: householdId, name: wk.name, icon: wk.icon, items });
+    }
+    void fetchAll();
+  }, [householdId, exercises, seedBadgesForExercise, fetchAll]);
 
   const deleteLog = useCallback(async (id: string) => {
     await supabase.from("exercise_logs").delete().eq("id", id);
@@ -214,6 +248,15 @@ export function useSport(householdId: string | null | undefined, userId?: string
       toSeed.map((e) => supabase.from("exercises").update({ variants: buildVariants(DEFAULT_VARIANTS[e.name]) }).eq("id", e.id))
     ).then(() => fetchAll());
   }, [householdId, loading, exercises, fetchAll]);
+
+  // Seed des parcours par défaut : une fois, quand le foyer a des exercices mais aucun parcours
+  const workoutSeedRef = useRef(false);
+  useEffect(() => {
+    if (householdId && hasFetched.current && !loading && exercises.length > 0 && workouts.length === 0 && !workoutSeedRef.current) {
+      workoutSeedRef.current = true;
+      void seedDefaultWorkouts();
+    }
+  }, [householdId, loading, exercises.length, workouts.length, seedDefaultWorkouts]);
 
   // Sync des badges avec les seuils : débloque ceux franchis, re-bloque ceux
   // repassés sous le seuil (ex. série ramenée à 0).

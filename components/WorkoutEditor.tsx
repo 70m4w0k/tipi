@@ -38,7 +38,7 @@ export function WorkoutEditor({ visible, workout, exercises, onClose, onSave, on
 
   const exName = (id: string) => exercises.find((e) => e.id === id)?.name ?? "(supprimé)";
   const patch = (idx: number, p: Partial<WorkoutItem>) => setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...p } : it)));
-  const addItem = (exerciseId: string) => { setItems((prev) => [...prev, { exercise_id: exerciseId, sets: 3, reps: 10, weight: null, per_side: false }]); setPicker(false); };
+  const addItem = (exerciseId: string) => { setItems((prev) => [...prev, { exercise_id: exerciseId, sets: 3, reps: 10, weight: null, per_side: false, variant: null }]); setPicker(false); };
 
   const createAndAdd = async () => {
     if (!newExName.trim()) return;
@@ -75,7 +75,9 @@ export function WorkoutEditor({ visible, workout, exercises, onClose, onSave, on
           />
 
           {items.map((it, idx) => {
-            const isTime = exercises.find((e) => e.id === it.exercise_id)?.unit !== "répétitions";
+            const ex = exercises.find((e) => e.id === it.exercise_id);
+            const isTime = ex?.unit !== "répétitions";
+            const variants = ex?.variants ?? [];
             return (
               <View key={idx} style={[styles.item, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
                 <View style={styles.itemTop}>
@@ -84,6 +86,24 @@ export function WorkoutEditor({ visible, workout, exercises, onClose, onSave, on
                     <Ionicons name="close" size={16} color={t.textMuted} />
                   </Pressable>
                 </View>
+                {variants.length > 0 && (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.variantChips}>
+                    {[{ name: "Standard", value: null as string | null, color: null as string | null }, ...variants.map((v) => ({ name: v.name, value: v.name, color: v.color }))].map((o) => {
+                      const on = it.variant === o.value;
+                      const c = o.color ?? t.textMuted;
+                      return (
+                        <Pressable
+                          key={o.name}
+                          testID={`workout-item-variant-${idx}-${o.name}`}
+                          style={[styles.vChip, { borderColor: on ? c : t.cardBorder, backgroundColor: on ? c : t.card }]}
+                          onPress={() => patch(idx, { variant: o.value })}
+                        >
+                          <Text style={[styles.vChipText, { color: on ? "#FFFFFF" : t.text }]} numberOfLines={1}>{o.name}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                )}
                 <View style={styles.fieldsRow}>
                   <Labeled label="Séries"><TextInput testID={`workout-item-sets-${idx}`} style={[styles.num, field]} keyboardType="numeric" value={String(it.sets)} onChangeText={(v) => patch(idx, { sets: intOr(v, 0) })} /></Labeled>
                   <Labeled label={isTime ? "Durée" : "Reps"}><TextInput testID={`workout-item-reps-${idx}`} style={[styles.num, field]} keyboardType="numeric" value={String(it.reps)} onChangeText={(v) => patch(idx, { reps: intOr(v, 0) })} /></Labeled>
@@ -160,6 +180,9 @@ const styles = StyleSheet.create({
   item: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 8 },
   itemTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   itemName: { flex: 1, fontSize: 14, fontWeight: "700" },
+  variantChips: { flexDirection: "row", gap: 6, paddingVertical: 2 },
+  vChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  vChipText: { fontSize: 11, fontWeight: "700", maxWidth: 130 },
   fieldsRow: { flexDirection: "row", gap: 8 },
   fieldLabel: { fontSize: 9.5, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 },
   num: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 8, fontSize: 14, textAlign: "center" },
