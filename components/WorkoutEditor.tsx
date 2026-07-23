@@ -16,11 +16,12 @@ type Props = {
   onClose: () => void;
   onSave: (name: string, icon: string, items: WorkoutItem[]) => void;
   onCreateExercise: (name: string, unit: string) => Promise<string | null>;
+  onDelete?: () => void;
 };
 
 const intOr = (s: string, fallback: number) => { const n = parseInt(s, 10); return Number.isNaN(n) ? fallback : Math.max(0, n); };
 
-export function WorkoutEditor({ visible, workout, exercises, onClose, onSave, onCreateExercise }: Props) {
+export function WorkoutEditor({ visible, workout, exercises, onClose, onSave, onCreateExercise, onDelete }: Props) {
   const t = useTheme();
   const [name, setName] = useState("");
   const [items, setItems] = useState<WorkoutItem[]>([]);
@@ -153,6 +154,13 @@ export function WorkoutEditor({ visible, workout, exercises, onClose, onSave, on
               </View>
             </View>
           )}
+
+          {workout && onDelete && (
+            <Pressable testID="workout-delete" style={[styles.delBtn, { backgroundColor: t.dangerLight }]} onPress={() => { onDelete(); onClose(); }}>
+              <Ionicons name="trash-outline" size={17} color={t.danger} />
+              <Text style={[styles.delText, { color: t.danger }]}>Supprimer le parcours</Text>
+            </Pressable>
+          )}
         </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -200,4 +208,7 @@ const styles = StyleSheet.create({
   unitText: { fontSize: 13, fontWeight: "600" },
   createBtn: { borderRadius: 10, paddingVertical: 11, alignItems: "center" },
   createBtnText: { fontSize: 13, fontWeight: "800" },
+  delBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 12, paddingVertical: 13, marginTop: 8 },
+  delText: { fontSize: 14, fontWeight: "700" },
 });
+

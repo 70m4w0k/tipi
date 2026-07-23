@@ -388,6 +388,25 @@ test.describe("Sport — gamification", () => {
     await expect(page.getByTestId("workout-validate")).toHaveText("Valider · 8 séries");
   });
 
+  test("parcours : supprimer via l'éditeur", async ({ page }) => {
+    const WK = `${TEST_PREFIX}del-${Date.now()}`;
+    await loginWithSportTab(page);
+    await page.getByRole("tab", { name: /Sport/ }).click();
+    await page.getByTestId("open-workouts").click();
+    await page.getByTestId("workout-create").click();
+    await page.getByTestId("workout-name").fill(WK);
+    await page.getByTestId("workout-save").click();
+
+    await page.getByTestId("open-workouts").click();
+    await expect(page.getByTestId(`workout-launch-${WK}`)).toBeVisible({ timeout: 10_000 });
+    await page.getByTestId(`workout-edit-${WK}`).click();
+    await page.getByTestId("workout-delete").click();
+    await page.getByText("Supprimer", { exact: true }).click(); // ConfirmDialog
+
+    await page.getByTestId("open-workouts").click();
+    await expect(page.getByTestId(`workout-launch-${WK}`)).toHaveCount(0, { timeout: 10_000 });
+  });
+
   test("chronomètre : Départ puis Stop crée une série en secondes", async ({ page }) => {
     const EX = `${TEST_PREFIX}chrono-${Date.now()}`;
     await loginWithSportTab(page);

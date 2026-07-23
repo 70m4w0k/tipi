@@ -249,14 +249,16 @@ export function useSport(householdId: string | null | undefined, userId?: string
     ).then(() => fetchAll());
   }, [householdId, loading, exercises, fetchAll]);
 
-  // Seed des parcours par défaut : une fois, quand le foyer a des exercices mais aucun parcours
+  // Seed des parcours par défaut : une fois par session, une fois les exercices chargés.
+  // seedDefaultWorkouts est idempotent (ignore les parcours déjà présents par nom),
+  // donc les défauts s'ajoutent même si le foyer a déjà des parcours à lui.
   const workoutSeedRef = useRef(false);
   useEffect(() => {
-    if (householdId && hasFetched.current && !loading && exercises.length > 0 && workouts.length === 0 && !workoutSeedRef.current) {
+    if (householdId && hasFetched.current && !loading && exercises.length > 0 && !workoutSeedRef.current) {
       workoutSeedRef.current = true;
       void seedDefaultWorkouts();
     }
-  }, [householdId, loading, exercises.length, workouts.length, seedDefaultWorkouts]);
+  }, [householdId, loading, exercises.length, seedDefaultWorkouts]);
 
   // Sync des badges avec les seuils : débloque ceux franchis, re-bloque ceux
   // repassés sous le seuil (ex. série ramenée à 0).

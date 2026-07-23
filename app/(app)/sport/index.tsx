@@ -506,6 +506,15 @@ export default function SportScreen() {
           else void addWorkout(name, icon, items);
         }}
         onCreateExercise={(name, unit) => addExercise(name, "barbell-outline", unit)}
+        onDelete={editWorkout && editWorkout !== "new" ? () => {
+          const w = editWorkout;
+          setConfirm({
+            title: "Supprimer le parcours",
+            message: `Supprimer "${w.name}" ?`,
+            confirmLabel: "Supprimer",
+            onConfirm: () => { void deleteWorkout(w.id); },
+          });
+        } : undefined}
       />
 
       {/* Passage de niveau — réutilise l'overlay badge (spec §5.5) */}
