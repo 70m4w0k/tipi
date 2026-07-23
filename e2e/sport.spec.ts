@@ -345,6 +345,35 @@ test.describe("Sport — gamification", () => {
     await expect(page.getByTestId("series-variant-tag").first().getByText("Standard")).toBeVisible({ timeout: 10_000 });
   });
 
+  test("parcours : créer avec exercice à la volée, lancer, ajuster, valider", async ({ page }) => {
+    const EX = `${TEST_PREFIX}Fentes`;
+    const WK = `${TEST_PREFIX}parc-${Date.now()}`;
+    await loginWithSportTab(page);
+    await page.getByRole("tab", { name: /Sport/ }).click();
+
+    // Créer le parcours + un exercice à la volée.
+    await page.getByTestId("open-workouts").click();
+    await page.getByTestId("workout-create").click();
+    await page.getByTestId("workout-name").fill(WK);
+    await page.getByTestId("workout-add-exercise").click();
+    await page.getByTestId("workout-new-exercise-name").fill(EX);
+    await page.getByTestId("workout-create-exercise").click();
+    await page.getByTestId("workout-item-sets-0").fill("3");
+    await page.getByTestId("workout-item-reps-0").fill("10");
+    await page.getByTestId("workout-save").click();
+
+    // Lancer, baisser à 2 séries, valider.
+    await page.getByTestId("open-workouts").click();
+    await page.getByTestId(`workout-launch-${WK}`).click();
+    await page.getByTestId(`workout-sets-minus-${EX}`).click(); // 3 → 2 séries
+    await page.getByTestId("workout-validate").click();
+
+    // Vérifier : 2 × 10 = 20 répétitions aujourd'hui sur l'exercice.
+    await page.goto("/sport", GOTO_OPTS);
+    await page.getByTestId(`sport-card-${EX}`).click();
+    await expect(page.getByTestId("day-total")).toHaveText("20 répétitions", { timeout: 10_000 });
+  });
+
   test("chronomètre : Départ puis Stop crée une série en secondes", async ({ page }) => {
     const EX = `${TEST_PREFIX}chrono-${Date.now()}`;
     await loginWithSportTab(page);

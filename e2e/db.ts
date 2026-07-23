@@ -31,6 +31,7 @@ export async function cleanupByPrefix(prefix: string): Promise<void> {
   const like = `${prefix}%`;
   // recipes -> recipe_instances et expenses -> expense_participants cascadent (ON DELETE CASCADE).
   await c.from("shopping_items").delete().like("title", like);
+  await c.from("workouts").delete().like("name", like);
   // exercises -> exercise_logs, exercise_badges, temporal_badges (et user_badges via badges) cascadent.
   await c.from("exercises").delete().like("name", like);
   await c.from("chores").delete().like("task_name", like);

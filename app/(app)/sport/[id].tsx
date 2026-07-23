@@ -390,7 +390,7 @@ export default function ExerciseDetailScreen() {
                 </View>
               )}
             </View>
-            <Text style={[styles.totalValue, { color: t.accent }]}>
+            <Text testID="day-total" style={[styles.totalValue, { color: t.accent }]}>
               {selectedTotal} {exercise.unit}
             </Text>
           </View>

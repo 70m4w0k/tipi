@@ -27,7 +27,11 @@ import { LevelHeader } from "../../../components/LevelHeader";
 import { DailyGoalRing } from "../../../components/DailyGoalRing";
 import { MiniSparkline } from "../../../components/MiniSparkline";
 import { BadgeUnlockOverlay } from "../../../components/BadgeUnlockOverlay";
+import { WorkoutModal } from "../../../components/WorkoutModal";
+import { WorkoutValidationSheet } from "../../../components/WorkoutValidationSheet";
+import { WorkoutEditor } from "../../../components/WorkoutEditor";
 import { LEVEL_UNLOCKS, buildVariants } from "../../../lib/sport-logic";
+import { Workout } from "../../../lib/types";
 
 const LEVEL_SEEN_KEY = "sport_last_level_seen";
 
@@ -48,6 +52,7 @@ export default function SportScreen() {
     fetchAll,
     userBadges, exerciseBadges, collectiveTitle,
     xp, levelInfo, dailyGoals, threatenedTitles,
+    workouts, addWorkout, updateWorkout, deleteWorkout, logWorkoutEntries,
   } = useSport(profile?.household_id, profile?.id);
   const t = useTheme();
   const router = useRouter();
@@ -63,6 +68,10 @@ export default function SportScreen() {
     { title: string; message: string; confirmLabel: string; onConfirm: () => void } | null
   >(null);
   const [titleModal, setTitleModal] = useState(false);
+  // Parcours : liste (modal), lancement (feuille de validation), édition
+  const [workoutList, setWorkoutList] = useState(false);
+  const [launchWorkout, setLaunchWorkout] = useState<Workout | null>(null);
+  const [editWorkout, setEditWorkout] = useState<Workout | "new" | null>(null);
 
   // Titres débloqués par l'utilisateur (choix du titre affiché, gate niveau 5)
   const ownUnlockedTitles = useMemo(() => {
@@ -203,7 +212,12 @@ export default function SportScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: t.background }]} edges={["top"]}>
       <View style={[styles.header, { backgroundColor: t.card, borderBottomColor: t.cardBorder }]}>
+        <View style={{ width: 90 }} />
         <Text style={[styles.headerTitle, { color: t.text }]}>Sport</Text>
+        <Pressable testID="open-workouts" style={[styles.workoutsBtn, { backgroundColor: t.accentLight }]} onPress={() => { void haptic.light(); setWorkoutList(true); }}>
+          <Ionicons name="barbell-outline" size={15} color={t.accent} />
+          <Text style={[styles.workoutsBtnText, { color: t.accent }]}>Parcours</Text>
+        </Pressable>
       </View>
 
       <KeyboardAvoidingView
@@ -465,6 +479,35 @@ export default function SportScreen() {
         </Pressable>
       </Modal>
 
+      {/* Parcours : liste → lancement (validation) / édition */}
+      <WorkoutModal
+        visible={workoutList}
+        workouts={workouts}
+        exercises={exercises}
+        onClose={() => setWorkoutList(false)}
+        onLaunch={(w) => { setWorkoutList(false); setLaunchWorkout(w); }}
+        onEdit={(w) => { setWorkoutList(false); setEditWorkout(w); }}
+        onCreate={() => { setWorkoutList(false); setEditWorkout("new"); }}
+      />
+      <WorkoutValidationSheet
+        visible={launchWorkout != null}
+        workout={launchWorkout}
+        exercises={exercises}
+        onClose={() => setLaunchWorkout(null)}
+        onConfirm={(entries) => { if (profile?.id) void logWorkoutEntries(profile.id, entries); }}
+      />
+      <WorkoutEditor
+        visible={editWorkout != null}
+        workout={editWorkout === "new" ? null : editWorkout}
+        exercises={exercises}
+        onClose={() => setEditWorkout(null)}
+        onSave={(name, icon, items) => {
+          if (editWorkout && editWorkout !== "new") void updateWorkout(editWorkout.id, name, icon, items);
+          else void addWorkout(name, icon, items);
+        }}
+        onCreateExercise={(name, unit) => addExercise(name, "barbell-outline", unit)}
+      />
+
       {/* Passage de niveau — réutilise l'overlay badge (spec §5.5) */}
       <BadgeUnlockOverlay
         visible={levelUp != null}
@@ -482,6 +525,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", borderBottomWidth: 1, paddingHorizontal: 16, paddingVertical: 12 },
   headerTitle: { fontSize: 18, fontWeight: "700", flex: 1, textAlign: "center" },
+  workoutsBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 6, borderRadius: 999, width: 90, justifyContent: "center" },
+  workoutsBtnText: { fontSize: 12, fontWeight: "800" },
 
   content: { padding: 12, paddingBottom: 100 },
 
