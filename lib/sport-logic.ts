@@ -1,5 +1,61 @@
-import { Exercise, ExerciseLog, ExerciseBadge, TemporalBadge, UserBadge, ExerciseVariant } from "./types";
+import { Exercise, ExerciseLog, ExerciseBadge, TemporalBadge, UserBadge, ExerciseVariant, Workout } from "./types";
 import { pickAvailableColor } from "./household-logic";
+
+// --- Parcours (workouts) ---
+
+export type WorkoutSeries = { reps: number; done: boolean };
+export type WorkoutPlanRow = {
+  exerciseId: string;
+  exerciseName: string;
+  unit: string;
+  weight: number | null;
+  perSide: boolean;
+  series: WorkoutSeries[];
+};
+
+/** Résumé d'un parcours pour sa carte (exercices existants + séries) */
+export function workoutSummary(workout: Workout, exercises: Exercise[]): { exercises: number; series: number } {
+  const items = workout.items.filter((i) => exercises.some((e) => e.id === i.exercise_id));
+  return {
+    exercises: items.length,
+    series: items.reduce((n, i) => n + Math.max(0, i.sets), 0),
+  };
+}
+
+/** Plan éditable d'un parcours : une ligne par exercice existant, séries dépliées */
+export function buildWorkoutPlan(workout: Workout, exercises: Exercise[]): WorkoutPlanRow[] {
+  const rows: WorkoutPlanRow[] = [];
+  for (const item of workout.items) {
+    const ex = exercises.find((e) => e.id === item.exercise_id);
+    if (!ex) continue; // exercice supprimé → ignoré proprement
+    rows.push({
+      exerciseId: ex.id,
+      exerciseName: ex.name,
+      unit: ex.unit,
+      weight: item.weight,
+      perSide: item.per_side,
+      series: Array.from({ length: Math.max(0, item.sets) }, () => ({ reps: item.reps, done: true })),
+    });
+  }
+  return rows;
+}
+
+/** Nombre de séries cochées (pour « Valider · N séries ») */
+export function countPlannedSeries(rows: WorkoutPlanRow[]): number {
+  return rows.reduce((n, r) => n + r.series.filter((s) => s.done).length, 0);
+}
+
+/** Entrées à logger depuis le plan : une par série cochée, reps doublées si « par côté » */
+export function planToLogEntries(rows: WorkoutPlanRow[]): { exercise_id: string; count: number; weight: number | null }[] {
+  const entries: { exercise_id: string; count: number; weight: number | null }[] = [];
+  for (const r of rows) {
+    for (const s of r.series) {
+      if (!s.done || s.reps <= 0) continue;
+      entries.push({ exercise_id: r.exerciseId, count: r.perSide ? s.reps * 2 : s.reps, weight: r.weight });
+    }
+  }
+  return entries;
+}
 
 export const DEFAULT_EXERCISES: Omit<Exercise, "id" | "household_id" | "created_by" | "created_at" | "variants">[] = [
   { name: "Pompes", icon: "barbell-outline", unit: "répétitions" },

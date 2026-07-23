@@ -209,6 +209,26 @@ export type ExerciseLog = {
   logged_at: string;
   created_at: string;
   variant: string | null;
+  /** poids en kg par série ; null = poids du corps / non renseigné */
+  weight: number | null;
+};
+
+export type WorkoutItem = {
+  exercise_id: string;
+  sets: number;
+  reps: number;
+  weight: number | null;
+  per_side: boolean;
+};
+
+export type Workout = {
+  id: string;
+  household_id: string;
+  name: string;
+  icon: string;
+  items: WorkoutItem[];
+  created_by: string | null;
+  created_at: string;
 };
 
 export type ExerciseBadge = {

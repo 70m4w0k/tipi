@@ -10,6 +10,7 @@ const makeLog = (exerciseId: string, userId: string, count: number): ExerciseLog
   logged_at: new Date().toISOString(),
   created_at: new Date().toISOString(),
   variant: null,
+  weight: null,
 });
 
 const makeBadge = (id: string, exerciseId: string, threshold: number): ExerciseBadge => ({

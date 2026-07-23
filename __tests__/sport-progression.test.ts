@@ -28,6 +28,7 @@ const makeLog = (exerciseId: string, userId: string, count: number): ExerciseLog
   logged_at: new Date().toISOString(),
   created_at: new Date().toISOString(),
   variant: null,
+  weight: null,
 });
 
 const makeUserBadge = (userId: string, badgeId: string): UserBadge => ({
@@ -328,5 +329,54 @@ describe("buildVariants & computeVariantBreakdown", () => {
 
   it("retourne vide sans logs", () => {
     expect(computeVariantBreakdown([], "u1", "ex1", [])).toEqual([]);
+  });
+});
+
+describe("parcours (workouts)", () => {
+  const { buildWorkoutPlan, countPlannedSeries, planToLogEntries, workoutSummary } = require("../lib/sport-logic");
+  const exercises = [makeExercise("dc", "répétitions"), makeExercise("bird", "répétitions")];
+  const workout = {
+    id: "w1", household_id: "h1", name: "Full body", icon: "barbell-outline",
+    created_by: null, created_at: "",
+    items: [
+      { exercise_id: "dc", sets: 3, reps: 5, weight: 18, per_side: false },
+      { exercise_id: "bird", sets: 2, reps: 10, weight: null, per_side: true },
+      { exercise_id: "supprimé", sets: 4, reps: 8, weight: null, per_side: false },
+    ],
+  };
+
+  it("résume en ignorant les exercices supprimés", () => {
+    expect(workoutSummary(workout, exercises)).toEqual({ exercises: 2, series: 5 });
+  });
+
+  it("construit un plan : une ligne par exercice existant, séries dépliées, poids repris", () => {
+    const plan = buildWorkoutPlan(workout, exercises);
+    expect(plan).toHaveLength(2); // "supprimé" ignoré
+    expect(plan[0]).toMatchObject({ exerciseId: "dc", weight: 18, perSide: false });
+    expect(plan[0].series).toEqual([{ reps: 5, done: true }, { reps: 5, done: true }, { reps: 5, done: true }]);
+    expect(plan[1].perSide).toBe(true);
+    expect(countPlannedSeries(plan)).toBe(5);
+  });
+
+  it("génère une entrée par série cochée, reps doublées si par côté", () => {
+    const plan = buildWorkoutPlan(workout, exercises);
+    plan[0].series[2].done = false; // 2/3 séries au développé
+    plan[0].series[1].reps = 3;     // reps corrigées sur la 2e
+    const entries = planToLogEntries(plan);
+    // dc: 2 séries (5 et 3) @18kg ; bird: 2 séries de 10 → 20 (par côté), sans poids
+    expect(entries).toEqual([
+      { exercise_id: "dc", count: 5, weight: 18 },
+      { exercise_id: "dc", count: 3, weight: 18 },
+      { exercise_id: "bird", count: 20, weight: null },
+      { exercise_id: "bird", count: 20, weight: null },
+    ]);
+  });
+
+  it("ignore les séries décochées ou à 0 rep", () => {
+    const plan = buildWorkoutPlan(workout, exercises);
+    plan[0].series.forEach((s: { done: boolean }) => (s.done = false));
+    plan[1].series[0].reps = 0;
+    const entries = planToLogEntries(plan);
+    expect(entries).toEqual([{ exercise_id: "bird", count: 20, weight: null }]);
   });
 });
