@@ -1,5 +1,5 @@
 import React from "react";
-import Svg, { Path, Circle, Rect } from "react-native-svg";
+import Svg, { Path, Circle, Rect, Ellipse } from "react-native-svg";
 import { MedallionMotif } from "../lib/sport-logic";
 
 /**
@@ -42,6 +42,60 @@ function Motif({ motif, color }: { motif: MedallionMotif; color: string }) {
         <>
           <Path d="M17.5 16 h13 M17.5 32 h13" stroke={color} strokeWidth={MAIN} strokeLinecap="round" />
           <Path d="M20.5 19 v10 M24 19 v10 M27.5 19 v10" stroke={color} strokeWidth={THIN} strokeLinecap="round" />
+        </>
+      );
+    case "bench": // développé couché : barre + poussée vers le haut
+      return (
+        <>
+          <Path d="M15.5 19 h17" stroke={color} strokeWidth={MAIN} strokeLinecap="round" />
+          <Rect x={13.4} y={16} width={2.6} height={6} rx={0.8} fill={color} />
+          <Rect x={32} y={16} width={2.6} height={6} rx={0.8} fill={color} />
+          <Path d="M20 31 l4 -4 l4 4" fill="none" stroke={color} strokeWidth={MAIN} strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      );
+    case "military": // développé militaire : galons de sergent
+      return (
+        <Path
+          d="M17.5 21 l6.5 -4.5 l6.5 4.5 M17.5 26 l6.5 -4.5 l6.5 4.5 M17.5 31 l6.5 -4.5 l6.5 4.5"
+          fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"
+        />
+      );
+    case "curl": // curl haltères : haltère en diagonale + arc de flexion
+      return (
+        <>
+          <Path d="M20 29 L28 19" stroke={color} strokeWidth={MAIN} strokeLinecap="round" />
+          <Circle cx={18.8} cy={30} r={2.4} fill={color} />
+          <Circle cx={29.2} cy={18} r={2.4} fill={color} />
+          <Path d="M15.8 22.5 A 8 8 0 0 1 22.5 15.8" fill="none" stroke={color} strokeWidth={THIN} strokeLinecap="round" />
+          <Path d="M22.5 15.8 l-2.3 0.5 M22.5 15.8 l-0.5 2.3" stroke={color} strokeWidth={THIN} strokeLinecap="round" />
+        </>
+      );
+    case "deadlift": // soulevé de terre : barre au sol tirée vers le haut
+      return (
+        <>
+          <Path d="M16 33 h16" stroke={color} strokeWidth={MAIN} strokeLinecap="round" />
+          <Path d="M17.8 20 h12.4" stroke={color} strokeWidth={MAIN} strokeLinecap="round" />
+          <Rect x={15.6} y={17} width={2.4} height={6} rx={0.8} fill={color} />
+          <Rect x={30} y={17} width={2.4} height={6} rx={0.8} fill={color} />
+          <Path d="M24 30.5 v-4.5" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+          <Path d="M21.8 27.8 l2.2 -2.4 l2.2 2.4" fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      );
+    case "birddog": // bird dog : empreinte de patte
+      return (
+        <>
+          <Ellipse cx={24} cy={29.5} rx={3.8} ry={3} fill={color} />
+          <Circle cx={18.4} cy={23.5} r={1.8} fill={color} />
+          <Circle cx={22} cy={20.8} r={1.8} fill={color} />
+          <Circle cx={26} cy={20.8} r={1.8} fill={color} />
+          <Circle cx={29.6} cy={23.5} r={1.8} fill={color} />
+        </>
+      );
+    case "superman": // superman : blason de super-héros
+      return (
+        <>
+          <Path d="M24 15 L31 24 L24 33 L17 24 Z" fill="none" stroke={color} strokeWidth={MAIN} strokeLinejoin="round" />
+          <Path d="M24 19.5 L27.5 24 L24 28.5 L20.5 24 Z" fill={color} />
         </>
       );
     default: // générique (exercices custom) : noyau/cible

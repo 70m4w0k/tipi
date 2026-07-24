@@ -194,6 +194,16 @@ CREATE TABLE workouts (
   created_at timestamptz DEFAULT now()
 );
 
+CREATE TABLE workout_completions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  workout_id uuid NOT NULL REFERENCES workouts(id) ON DELETE CASCADE,
+  household_id uuid NOT NULL REFERENCES households(id),
+  user_id uuid NOT NULL REFERENCES profiles(id),
+  tonnage numeric NOT NULL DEFAULT 0,
+  completed_at timestamptz DEFAULT now()
+);
+CREATE INDEX workout_completions_workout_user_idx ON workout_completions (workout_id, user_id);
+
 CREATE TABLE exercise_badges (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   exercise_id uuid NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
@@ -282,6 +292,7 @@ ALTER TABLE exercise_badges ENABLE ROW LEVEL SECURITY;
 ALTER TABLE temporal_badges ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_badges ENABLE ROW LEVEL SECURITY;
 ALTER TABLE workouts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE workout_completions ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================
 -- RLS POLICIES
@@ -456,6 +467,11 @@ CREATE POLICY "select" ON workouts FOR SELECT USING (household_id = my_household
 CREATE POLICY "insert" ON workouts FOR INSERT WITH CHECK (household_id = my_household_id());
 CREATE POLICY "update" ON workouts FOR UPDATE USING (household_id = my_household_id());
 CREATE POLICY "delete" ON workouts FOR DELETE USING (household_id = my_household_id());
+
+-- workout_completions
+CREATE POLICY "select" ON workout_completions FOR SELECT USING (household_id = my_household_id());
+CREATE POLICY "insert" ON workout_completions FOR INSERT WITH CHECK (household_id = my_household_id() AND user_id = auth.uid());
+CREATE POLICY "delete" ON workout_completions FOR DELETE USING (household_id = my_household_id() AND user_id = auth.uid());
 
 -- pending_members
 CREATE POLICY "select" ON pending_members FOR SELECT USING (household_id = my_household_id());

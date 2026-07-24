@@ -26,13 +26,16 @@ type BadgeUnlockOverlayProps = {
   detail?: string;
   /** Médaillon RPG affiché à la place de l'icône Ionicons */
   medallion?: { motif: MedallionMotif; tier: number };
+  /** Couleur du cercle/halo (défaut : accent du thème). Ex. couleur du métal d'un sceau. */
+  accentColor?: string;
 };
 
 const RING_DURATION = 600;
 const SPRING_CONFIG = { damping: 12, stiffness: 120 };
 
-export function BadgeUnlockOverlay({ visible, badgeTitle, badgeIcon, onDismiss, subtitle, detail, medallion }: BadgeUnlockOverlayProps) {
+export function BadgeUnlockOverlay({ visible, badgeTitle, badgeIcon, onDismiss, subtitle, detail, medallion, accentColor }: BadgeUnlockOverlayProps) {
   const t = useTheme();
+  const accent = accentColor ?? t.accent;
 
   const overlayOpacity = useSharedValue(0);
   const badgeScale = useSharedValue(0.5);
@@ -101,7 +104,7 @@ export function BadgeUnlockOverlay({ visible, badgeTitle, badgeIcon, onDismiss, 
               style={[
                 styles.ring,
                 ringStyle,
-                { borderColor: t.accent },
+                { borderColor: accent },
               ]}
             />
             {/* Badge icon */}
@@ -109,7 +112,7 @@ export function BadgeUnlockOverlay({ visible, badgeTitle, badgeIcon, onDismiss, 
               style={[
                 styles.badgeCircle,
                 badgeStyle,
-                { backgroundColor: t.accent },
+                { backgroundColor: accent },
               ]}
             >
               {medallion ? (

@@ -368,6 +368,10 @@ test.describe("Sport — gamification", () => {
     await page.getByTestId("workout-sets-minus-0").click(); // 3 → 2 séries
     await page.getByTestId("workout-validate").click();
 
+    // Complétion enregistrée → compteur de sceau visible dans la liste des parcours.
+    await page.getByTestId("open-workouts").click();
+    await expect(page.getByTestId(`workout-seal-${WK}`)).toContainText("1", { timeout: 10_000 });
+
     // Vérifier : 2 × 10 = 20 répétitions aujourd'hui sur l'exercice.
     await page.goto("/sport", GOTO_OPTS);
     await page.getByTestId(`sport-card-${EX}`).click();

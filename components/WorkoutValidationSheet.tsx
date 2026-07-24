@@ -11,7 +11,7 @@ type Props = {
   workout: Workout | null;
   exercises: Exercise[];
   onClose: () => void;
-  onConfirm: (entries: { exercise_id: string; count: number; weight: number | null }[]) => void;
+  onConfirm: (entries: { exercise_id: string; count: number; weight: number | null; variant: string | null }[]) => void;
 };
 
 /** Feuille de validation d'un parcours : compteur de séries + dépliage pour les reps. */

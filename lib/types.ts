@@ -233,6 +233,16 @@ export type Workout = {
   created_at: string;
 };
 
+export type WorkoutCompletion = {
+  id: string;
+  workout_id: string;
+  household_id: string;
+  user_id: string;
+  /** tonnage de la séance (Σ reps × poids en kg) ; 0 au poids du corps */
+  tonnage: number;
+  completed_at: string;
+};
+
 export type ExerciseBadge = {
   id: string;
   exercise_id: string;

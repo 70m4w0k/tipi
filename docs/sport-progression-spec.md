@@ -106,6 +106,15 @@ Au-delà du niveau 10 : +5 000 XP par niveau, sans plafond.
 - File d'attente : si badge + niveau tombent en même temps, les overlays s'enchaînent (badge d'abord), jamais superposés.
 - Budget animations inchangé : 3 surfaces (overlay, pulse compteur, anneaux) — le niveau réutilise l'existant.
 
+### 5.6 Parcours & récompenses (ajout post-v1)
+
+- **Parcours** (`workouts`) : enchaînements réutilisables d'exercices (séries × reps, poids, variante, « par côté »), partagés au foyer. 2 parcours par défaut seedés (idempotent) : « Abdos en 8 min » (8 variantes de l'exercice Abdos) et « Haltères — Full body ». Ce dernier gaine via l'exercice `Gainage` (variante `Latéral`), pas d'exercices « Planche » séparés — un backfil migre les foyers existants.
+- **Validation** : feuille avec compteur de séries + dépliage pour corriger les reps ; « par côté » double le compte. Écrit une ligne par série dans `exercise_logs` (poids + variante) et une `workout_completions`.
+- **Record de tonnage** (par personne, par parcours) : Σ (reps × poids) de la séance ; célébré via `BadgeUnlockOverlay` (icône `barbell`) quand le tonnage dépasse le meilleur précédent. Les parcours au poids du corps (tonnage 0) ne déclenchent jamais de record.
+- **Sceaux de parcours** (par personne) : un seul trophée dont la couleur monte — bronze 5×, argent 25×, or 100× complétions. Affiché sur la carte du parcours, célébré au passage de palier. File d'attente : record puis sceau.
+- **Badges spécifiques** des exercices du parcours Haltères : titres drôles (5 paliers) + médaillons dédiés (`bench`, `military`, `curl`, `deadlift`, `birddog`, `superman`). Un backfil renomme en base les titres génériques existants.
+- **Fix détection badge** : la baseline inclut les badges déjà mérités par le total au montage → une inscription tardive en base (sync paresseux à l'ouverture) ne rejoue plus l'animation.
+
 ## 6. Exigences
 
 ### P0 — Must-have (v1 ne sort pas sans)
@@ -149,6 +158,7 @@ Au-delà du niveau 10 : +5 000 XP par niveau, sans plafond.
 ## 7. Données & architecture
 
 - **Aucune nouvelle table** en v1 : XP et niveaux sont dérivés des données existantes (`exercise_logs`, `user_badges`). Rétroactif, zéro état à synchroniser.
+- **Post-v1 (parcours)** : tables `workouts` (parcours partagés au foyer) et `workout_completions` (une ligne par validation, par personne, avec tonnage) ; colonne `exercise_logs.weight`. RLS foyer en lecture, soi en écriture pour les complétions.
 - **Une seule migration** : colonne `profiles.show_sport_level boolean NOT NULL DEFAULT true` (+ `schema.sql` + `lib/types.ts`, convention repo).
 - **AsyncStorage** (par appareil) : dernier niveau célébré (`sport_last_level_seen`), opt-in notifications.
 - **Convention repo** : logique dans `lib/sport-logic.ts` (testable), état dans `useSport`, UI dans `components/` (`LevelChip`, `DailyGoalRing`), tokens `useTheme()` partout, Ionicons only.

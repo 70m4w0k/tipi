@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../supabase";
-import { Exercise, ExerciseLog, ExerciseBadge, TemporalBadge, UserBadge, ExerciseVariant, Workout, WorkoutItem } from "../types";
+import { Exercise, ExerciseLog, ExerciseBadge, TemporalBadge, UserBadge, ExerciseVariant, Workout, WorkoutItem, WorkoutCompletion } from "../types";
 import {
   DEFAULT_EXERCISES,
   COLLECTIVE_THRESHOLDS,
@@ -28,6 +28,7 @@ export function useSport(householdId: string | null | undefined, userId?: string
   const [temporalBadges, setTemporalBadges] = useState<TemporalBadge[]>([]);
   const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [completions, setCompletions] = useState<WorkoutCompletion[]>([]);
   const [loading, setLoading] = useState(false);
   const hasFetched = useRef(false);
   const seededRef = useRef(false);
@@ -40,17 +41,19 @@ export function useSport(householdId: string | null | undefined, userId?: string
       setTemporalBadges([]);
       setUserBadges([]);
       setWorkouts([]);
+      setCompletions([]);
       return;
     }
     setLoading(true);
 
-    const [exRes, logRes, badgeRes, tmpRes, ubRes, wkRes] = await Promise.all([
+    const [exRes, logRes, badgeRes, tmpRes, ubRes, wkRes, wcRes] = await Promise.all([
       supabase.from("exercises").select("*").eq("household_id", householdId).order("name"),
       supabase.from("exercise_logs").select("*").eq("household_id", householdId).order("logged_at", { ascending: false }),
       supabase.from("exercise_badges").select("*").eq("household_id", householdId),
       supabase.from("temporal_badges").select("*").eq("household_id", householdId),
       supabase.from("user_badges").select("*"),
       supabase.from("workouts").select("*").eq("household_id", householdId).order("created_at"),
+      supabase.from("workout_completions").select("*").eq("household_id", householdId),
     ]);
 
     setExercises(exRes.data ?? []);
@@ -59,6 +62,7 @@ export function useSport(householdId: string | null | undefined, userId?: string
     setTemporalBadges(tmpRes.data ?? []);
     setUserBadges(ubRes.data ?? []);
     setWorkouts(wkRes.data ?? []);
+    setCompletions(wcRes.data ?? []);
     setLoading(false);
     hasFetched.current = true;
   }, [householdId]);
@@ -79,6 +83,7 @@ export function useSport(householdId: string | null | undefined, userId?: string
       .on("postgres_changes", { event: "*", schema: "public", table: "temporal_badges", filter: `household_id=eq.${householdId}` }, handler)
       .on("postgres_changes", { event: "*", schema: "public", table: "user_badges" }, handler)
       .on("postgres_changes", { event: "*", schema: "public", table: "workouts", filter: `household_id=eq.${householdId}` }, handler)
+      .on("postgres_changes", { event: "*", schema: "public", table: "workout_completions", filter: `household_id=eq.${householdId}` }, handler)
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [householdId]);
@@ -137,6 +142,15 @@ export function useSport(householdId: string | null | undefined, userId?: string
     void fetchAll();
   }, [householdId, fetchAll]);
 
+  /** Enregistre une complétion de parcours (pour les records de tonnage et les sceaux). */
+  const recordWorkoutCompletion = useCallback(async (uid: string, workoutId: string, tonnage: number) => {
+    if (!householdId) return;
+    await supabase.from("workout_completions").insert({
+      household_id: householdId, workout_id: workoutId, user_id: uid, tonnage,
+    });
+    void fetchAll();
+  }, [householdId, fetchAll]);
+
   const addWorkout = useCallback(async (name: string, icon: string, items: WorkoutItem[]): Promise<string | null> => {
     if (!householdId || !name.trim()) return null;
     const { data } = await supabase.from("workouts").insert({ household_id: householdId, name: name.trim(), icon, items }).select("id").single();
@@ -186,6 +200,72 @@ export function useSport(householdId: string | null | undefined, userId?: string
     }
     void fetchAll();
   }, [householdId, exercises, seedBadgesForExercise, fetchAll]);
+
+  // Migre les anciens exercices "Planche" / "Planche latérale" (auto-créés par le parcours
+  // Haltères avant qu'il ne pointe vers Gainage) : logs et items de parcours remappés vers
+  // Gainage (variante "Latéral" pour la latérale), puis suppression des exercices orphelins.
+  const migratePlancheToGainage = useCallback(async (
+    gainage: Exercise,
+    planche: Exercise | undefined,
+    plancheLat: Exercise | undefined,
+  ) => {
+    if (!householdId) return;
+    if (!(gainage.variants ?? []).some((v) => v.name === "Latéral")) {
+      await supabase.from("exercises").update({ variants: buildVariants(["Latéral"], gainage.variants ?? []) }).eq("id", gainage.id);
+    }
+    const remap = [
+      { from: planche, variant: null as string | null },
+      { from: plancheLat, variant: "Latéral" as string | null },
+    ].filter((r): r is { from: Exercise; variant: string | null } => !!r.from);
+
+    for (const r of remap) {
+      await supabase.from("exercise_logs").update({ exercise_id: gainage.id, variant: r.variant }).eq("exercise_id", r.from.id);
+    }
+
+    const variantByFrom = new Map(remap.map((r) => [r.from.id, r.variant]));
+    const wkUpdates = [];
+    for (const wk of workouts) {
+      let changed = false;
+      const items = wk.items.map((it) => {
+        if (variantByFrom.has(it.exercise_id)) {
+          changed = true;
+          return { ...it, exercise_id: gainage.id, variant: variantByFrom.get(it.exercise_id) ?? it.variant };
+        }
+        return it;
+      });
+      if (changed) wkUpdates.push(supabase.from("workouts").update({ items }).eq("id", wk.id));
+    }
+    await Promise.all(wkUpdates);
+
+    await supabase.from("exercises").delete().in("id", remap.map((r) => r.from.id));
+    void fetchAll();
+  }, [householdId, workouts, fetchAll]);
+
+  // Renomme les badges dont l'exercice a désormais des titres spécifiques (noms drôles) :
+  // les foyers créés avant avaient les titres génériques ("… — Centurion"). Le seed est
+  // idempotent (ignoreDuplicates) et ne met pas à jour les titres → on le fait ici.
+  const backfillBadgeTitles = useCallback(async () => {
+    const ops: PromiseLike<unknown>[] = [];
+    for (const ex of exercises) {
+      const desired = buildDefaultBadges(ex.name);
+      const exBadges = exerciseBadges.filter((b) => b.exercise_id === ex.id);
+      for (const d of desired) {
+        const existing = exBadges.find((b) => b.threshold === d.threshold);
+        if (existing && existing.title !== d.title) {
+          ops.push(supabase.from("exercise_badges").update({ title: d.title }).eq("id", existing.id));
+        }
+      }
+      const desiredTmp = buildDefaultTemporalBadges(ex.name);
+      const exTmp = temporalBadges.filter((b) => b.exercise_id === ex.id);
+      for (const d of desiredTmp) {
+        const existing = exTmp.find((b) => b.threshold === d.threshold && b.window_days === d.window_days);
+        if (existing && existing.title !== d.title) {
+          ops.push(supabase.from("temporal_badges").update({ title: d.title }).eq("id", existing.id));
+        }
+      }
+    }
+    if (ops.length > 0) { await Promise.all(ops); void fetchAll(); }
+  }, [exercises, exerciseBadges, temporalBadges, fetchAll]);
 
   const deleteLog = useCallback(async (id: string) => {
     await supabase.from("exercise_logs").delete().eq("id", id);
@@ -259,6 +339,29 @@ export function useSport(householdId: string | null | undefined, userId?: string
       void seedDefaultWorkouts();
     }
   }, [householdId, loading, exercises.length, seedDefaultWorkouts]);
+
+  // Backfill (une fois par session) : « Planche »/« Planche latérale » → Gainage.
+  // On attend que les parcours soient chargés pour remapper leurs items avant suppression.
+  const plancheMigrationRef = useRef(false);
+  useEffect(() => {
+    if (!householdId || !hasFetched.current || loading || plancheMigrationRef.current) return;
+    if (exercises.length === 0 || workouts.length === 0) return;
+    const gainage = exercises.find((e) => e.name === "Gainage");
+    const planche = exercises.find((e) => e.name === "Planche");
+    const plancheLat = exercises.find((e) => e.name === "Planche latérale");
+    if (!gainage || (!planche && !plancheLat)) { plancheMigrationRef.current = true; return; }
+    plancheMigrationRef.current = true;
+    void migratePlancheToGainage(gainage, planche, plancheLat);
+  }, [householdId, loading, exercises, workouts, migratePlancheToGainage]);
+
+  // Backfill (une fois par session) : titres de badges génériques → noms spécifiques.
+  const badgeTitleBackfillRef = useRef(false);
+  useEffect(() => {
+    if (!householdId || !hasFetched.current || loading || badgeTitleBackfillRef.current) return;
+    if (exercises.length === 0 || exerciseBadges.length === 0) return;
+    badgeTitleBackfillRef.current = true;
+    void backfillBadgeTitles();
+  }, [householdId, loading, exercises, exerciseBadges, backfillBadgeTitles]);
 
   // Sync des badges avec les seuils : débloque ceux franchis, re-bloque ceux
   // repassés sous le seuil (ex. série ramenée à 0).
@@ -354,10 +457,10 @@ export function useSport(householdId: string | null | undefined, userId?: string
   }, [logs, userId, exercises, exerciseBadges]);
 
   return {
-    exercises, logs, exerciseBadges, temporalBadges, userBadges, workouts, loading,
+    exercises, logs, exerciseBadges, temporalBadges, userBadges, workouts, completions, loading,
     addExercise, updateExercise, deleteExercise,
     logExercise, deleteLog, updateLog, updateLogVariant, updateExerciseVariants,
-    logWorkoutEntries, addWorkout, updateWorkout, deleteWorkout,
+    logWorkoutEntries, recordWorkoutCompletion, addWorkout, updateWorkout, deleteWorkout,
     fetchAll, unlockBadge,
     unlockedBadges, temporalTitles, collectiveTitle,
     xp, levelInfo, memberLevel, dailyGoals, threatenedTitles,

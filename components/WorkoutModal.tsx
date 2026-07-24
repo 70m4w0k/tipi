@@ -2,13 +2,15 @@ import React from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../lib/theme";
-import { Workout, Exercise } from "../lib/types";
-import { workoutSummary } from "../lib/sport-logic";
+import { Workout, Exercise, WorkoutCompletion } from "../lib/types";
+import { workoutSummary, workoutStats, WORKOUT_SEAL_ICON } from "../lib/sport-logic";
 
 type Props = {
   visible: boolean;
   workouts: Workout[];
   exercises: Exercise[];
+  completions: WorkoutCompletion[];
+  userId: string | null | undefined;
   onClose: () => void;
   onLaunch: (w: Workout) => void;
   onEdit: (w: Workout) => void;
@@ -16,7 +18,7 @@ type Props = {
 };
 
 /** Liste des parcours (bottom sheet ouvert depuis le bouton "Parcours" de la page Sport). */
-export function WorkoutModal({ visible, workouts, exercises, onClose, onLaunch, onEdit, onCreate }: Props) {
+export function WorkoutModal({ visible, workouts, exercises, completions, userId, onClose, onLaunch, onEdit, onCreate }: Props) {
   const t = useTheme();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -33,6 +35,7 @@ export function WorkoutModal({ visible, workouts, exercises, onClose, onLaunch, 
             )}
             {workouts.map((w) => {
               const s = workoutSummary(w, exercises);
+              const stats = userId ? workoutStats(completions, w.id, userId) : null;
               return (
                 <View key={w.id} style={[styles.card, { backgroundColor: t.background, borderColor: t.cardBorder }]}>
                   <Pressable testID={`workout-launch-${w.name}`} style={styles.cardMain} onPress={() => onLaunch(w)}>
@@ -43,6 +46,12 @@ export function WorkoutModal({ visible, workouts, exercises, onClose, onLaunch, 
                       <Text style={[styles.name, { color: t.text }]} numberOfLines={1}>{w.name}</Text>
                       <Text style={[styles.sub, { color: t.textMuted }]}>{s.exercises} exercice{s.exercises > 1 ? "s" : ""} · {s.series} série{s.series > 1 ? "s" : ""}</Text>
                     </View>
+                    {stats && stats.completions > 0 && (
+                      <View testID={`workout-seal-${w.name}`} style={styles.seal}>
+                        <Ionicons name={WORKOUT_SEAL_ICON as any} size={15} color={stats.seal ? stats.seal.color : t.textMuted} />
+                        <Text style={[styles.sealCount, { color: stats.seal ? stats.seal.color : t.textMuted }]}>{stats.completions}</Text>
+                      </View>
+                    )}
                   </Pressable>
                   <Pressable testID={`workout-edit-${w.name}`} onPress={() => onEdit(w)} hitSlop={8} style={styles.editBtn}>
                     <Ionicons name="pencil-outline" size={16} color={t.textMuted} />
@@ -73,6 +82,8 @@ const styles = StyleSheet.create({
   icon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   name: { fontSize: 14, fontWeight: "700" },
   sub: { fontSize: 10.5, fontWeight: "600", marginTop: 1 },
+  seal: { flexDirection: "row", alignItems: "center", gap: 3 },
+  sealCount: { fontSize: 12, fontWeight: "800", fontVariant: ["tabular-nums"] },
   editBtn: { padding: 12 },
   create: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1.5, borderStyle: "dashed", borderRadius: 14, paddingVertical: 13, marginTop: 4 },
   createText: { fontSize: 14, fontWeight: "700" },

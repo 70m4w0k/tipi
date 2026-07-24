@@ -30,8 +30,15 @@ import { BadgeUnlockOverlay } from "../../../components/BadgeUnlockOverlay";
 import { WorkoutModal } from "../../../components/WorkoutModal";
 import { WorkoutValidationSheet } from "../../../components/WorkoutValidationSheet";
 import { WorkoutEditor } from "../../../components/WorkoutEditor";
-import { LEVEL_UNLOCKS, buildVariants } from "../../../lib/sport-logic";
+import {
+  LEVEL_UNLOCKS, buildVariants,
+  workoutTonnage, evaluateCompletion, formatKg, WORKOUT_SEAL_ICON, SealTier,
+} from "../../../lib/sport-logic";
 import { Workout } from "../../../lib/types";
+
+type Celebration =
+  | { kind: "record"; tonnage: number; workoutName: string }
+  | { kind: "seal"; tier: SealTier; threshold: number; workoutName: string };
 
 const LEVEL_SEEN_KEY = "sport_last_level_seen";
 
@@ -52,7 +59,7 @@ export default function SportScreen() {
     fetchAll,
     userBadges, exerciseBadges, collectiveTitle,
     xp, levelInfo, dailyGoals, threatenedTitles,
-    workouts, addWorkout, updateWorkout, deleteWorkout, logWorkoutEntries,
+    workouts, completions, addWorkout, updateWorkout, deleteWorkout, logWorkoutEntries, recordWorkoutCompletion,
   } = useSport(profile?.household_id, profile?.id);
   const t = useTheme();
   const router = useRouter();
@@ -72,6 +79,8 @@ export default function SportScreen() {
   const [workoutList, setWorkoutList] = useState(false);
   const [launchWorkout, setLaunchWorkout] = useState<Workout | null>(null);
   const [editWorkout, setEditWorkout] = useState<Workout | "new" | null>(null);
+  // File de célébrations post-validation (record de tonnage, puis sceau)
+  const [celebrations, setCelebrations] = useState<Celebration[]>([]);
 
   // Titres débloqués par l'utilisateur (choix du titre affiché, gate niveau 5)
   const ownUnlockedTitles = useMemo(() => {
@@ -123,6 +132,23 @@ export default function SportScreen() {
     }
     setLevelUp(null);
   }, [levelUp]);
+
+  // Validation d'un parcours : log des séries + complétion, puis célébrations
+  const handleWorkoutConfirm = useCallback(
+    (entries: { exercise_id: string; count: number; weight: number | null; variant: string | null }[]) => {
+      if (!profile?.id || !launchWorkout) return;
+      const tonnage = Math.round(workoutTonnage(entries));
+      const outcome = evaluateCompletion(completions, launchWorkout.id, profile.id, tonnage);
+      void logWorkoutEntries(profile.id, entries);
+      void recordWorkoutCompletion(profile.id, launchWorkout.id, tonnage);
+
+      const queue: Celebration[] = [];
+      if (outcome.isRecord) queue.push({ kind: "record", tonnage, workoutName: launchWorkout.name });
+      if (outcome.newSeal) queue.push({ kind: "seal", tier: outcome.newSeal, threshold: outcome.newSeal.threshold, workoutName: launchWorkout.name });
+      if (queue.length > 0) setCelebrations(queue);
+    },
+    [profile?.id, launchWorkout, completions, logWorkoutEntries, recordWorkoutCompletion]
+  );
 
   // Totals per exercise per user (all time)
   const exerciseStats = useMemo(() => {
@@ -484,6 +510,8 @@ export default function SportScreen() {
         visible={workoutList}
         workouts={workouts}
         exercises={exercises}
+        completions={completions}
+        userId={profile?.id}
         onClose={() => setWorkoutList(false)}
         onLaunch={(w) => { setWorkoutList(false); setLaunchWorkout(w); }}
         onEdit={(w) => { setWorkoutList(false); setEditWorkout(w); }}
@@ -494,7 +522,7 @@ export default function SportScreen() {
         workout={launchWorkout}
         exercises={exercises}
         onClose={() => setLaunchWorkout(null)}
-        onConfirm={(entries) => { if (profile?.id) void logWorkoutEntries(profile.id, entries); }}
+        onConfirm={handleWorkoutConfirm}
       />
       <WorkoutEditor
         visible={editWorkout != null}
@@ -526,6 +554,30 @@ export default function SportScreen() {
         detail={levelUp != null && LEVEL_UNLOCKS[levelUp] ? `Nouvelle fonctionnalité : ${LEVEL_UNLOCKS[levelUp]}` : undefined}
         onDismiss={dismissLevelUp}
       />
+
+      {/* Récompenses de parcours : record de tonnage puis sceau (file d'attente) */}
+      {celebrations.length > 0 && (
+        celebrations[0].kind === "record" ? (
+          <BadgeUnlockOverlay
+            visible
+            badgeIcon="barbell"
+            subtitle="Record de tonnage"
+            badgeTitle={formatKg(celebrations[0].tonnage)}
+            detail={celebrations[0].workoutName}
+            onDismiss={() => setCelebrations((prev) => prev.slice(1))}
+          />
+        ) : (
+          <BadgeUnlockOverlay
+            visible
+            badgeIcon={WORKOUT_SEAL_ICON}
+            accentColor={celebrations[0].tier.color}
+            subtitle="Sceau débloqué"
+            badgeTitle={`Sceau ${celebrations[0].tier.label}`}
+            detail={`${celebrations[0].workoutName} · ${celebrations[0].threshold} complétions`}
+            onDismiss={() => setCelebrations((prev) => prev.slice(1))}
+          />
+        )
+      )}
     </SafeAreaView>
   );
 }

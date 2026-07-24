@@ -22,7 +22,7 @@ import { BadgeRow, BadgeItem } from "../../../components/BadgeRow";
 import { BadgeMedallion } from "../../../components/BadgeMedallion";
 import { ExerciseTimer } from "../../../components/ExerciseTimer";
 import { ExerciseCounter } from "../../../components/ExerciseCounter";
-import { computeBadgeVisibility, computePersonalRecords, medallionMotif, badgeTier, MedallionMotif, quickLogMode, computeVariantBreakdown } from "../../../lib/sport-logic";
+import { computeBadgeVisibility, computePersonalRecords, medallionMotif, badgeTier, MedallionMotif, quickLogMode, computeVariantBreakdown, computeUnlockedBadges } from "../../../lib/sport-logic";
 import { VariantSelector, VariantTag, VariantPickerModal, VariantBreakdown } from "../../../components/VariantControls";
 import { BadgeUnlockOverlay } from "../../../components/BadgeUnlockOverlay";
 import { RepStepper } from "../../../components/RepStepper";
@@ -53,35 +53,43 @@ export default function ExerciseDetailScreen() {
   const today = todayISO();
   const [selectedDay, setSelectedDay] = useState(today);
   const [newBadge, setNewBadge] = useState<{ title: string; motif: MedallionMotif; tier: number } | null>(null);
-  // Détection des badges nouvellement débloqués. La baseline n'est établie qu'APRÈS
-  // qu'un vrai fetch a chargé les données (sinon le tout premier render, où userBadges
-  // est encore vide, sert de baseline et le fetch fait passer un badge déjà obtenu pour
-  // "nouveau" → l'overlay se relançait à chaque ouverture de l'exercice).
+  // Détection des badges nouvellement débloqués (via l'apparition d'une ligne user_badges,
+  // dont le timing est fiable : le sync client l'ajoute APRÈS que le total franchit le seuil).
+  // La baseline inclut AUSSI les badges déjà mérités d'après le total au montage (même non
+  // encore inscrits) : le sync les inscrit paresseusement à l'ouverture, et sans cela un
+  // acquis passé rejouerait l'animation. La baseline n'est établie qu'après un vrai fetch.
   const fetchCompletedRef = useRef(false);
   const prevOwnBadgeIds = useRef<Set<string> | null>(null);
 
   useEffect(() => {
     if (loading) { fetchCompletedRef.current = true; return; } // un fetch est en cours
-    if (!fetchCompletedRef.current) return; // aucun fetch terminé : on ignore le render initial pré-fetch
+    if (!fetchCompletedRef.current || !exercise || !profile?.id) return;
 
-    const current = new Set(
-      userBadges.filter((ub) => ub.user_id === profile?.id).map((ub) => ub.badge_id)
+    const exBadges = exerciseBadges.filter((b) => b.exercise_id === exercise.id);
+    const recorded = new Set(
+      userBadges.filter((ub) => ub.user_id === profile.id).map((ub) => ub.badge_id)
     );
     const prev = prevOwnBadgeIds.current;
-    prevOwnBadgeIds.current = current;
-    if (prev == null) return; // premier snapshot chargé : baseline seule, pas de célébration
 
-    for (const badgeId of current) {
+    if (prev == null) {
+      // Baseline : inscrits + déjà mérités par le total (seront inscrits à l'ouverture).
+      const earnedByLogs = computeUnlockedBadges(logs, profile.id, exBadges).map((b) => b.id);
+      prevOwnBadgeIds.current = new Set([...recorded, ...earnedByLogs]);
+      return;
+    }
+
+    prevOwnBadgeIds.current = recorded;
+    for (const badgeId of recorded) {
       if (!prev.has(badgeId)) {
-        const badge = exerciseBadges.find((b) => b.id === badgeId && b.exercise_id === exercise?.id);
-        if (badge && exercise) {
+        const badge = exBadges.find((b) => b.id === badgeId);
+        if (badge) {
           setNewBadge({ title: badge.title, motif: medallionMotif(exercise.name), tier: badgeTier(badge.threshold) });
           const timer = setTimeout(() => setNewBadge(null), 3000);
           return () => clearTimeout(timer);
         }
       }
     }
-  }, [userBadges, exerciseBadges, exercise?.id, loading, profile?.id]);
+  }, [userBadges, exerciseBadges, exercise?.id, loading, profile?.id, logs]);
 
   // Auto-scroll chart to today
   const chartScrollRef = useRef<ScrollView>(null);

@@ -26,8 +26,8 @@ export const DEFAULT_WORKOUTS: DefaultWorkout[] = [
       { exercise: "Développé couché", unit: "répétitions", sets: 5, reps: 5, weight: 18 },
       { exercise: "Développé militaire", unit: "répétitions", sets: 5, reps: 5, weight: 14 },
       { exercise: "Curl haltères", unit: "répétitions", sets: 3, reps: 5, weight: 12 },
-      { exercise: "Planche", unit: "secondes", sets: 3, reps: 60 },
-      { exercise: "Planche latérale", unit: "secondes", sets: 3, reps: 60 },
+      { exercise: "Gainage", unit: "secondes", sets: 3, reps: 60 },
+      { exercise: "Gainage", unit: "secondes", sets: 3, reps: 60, variant: "Latéral" },
       { exercise: "Soulevé de terre roumain", unit: "répétitions", sets: 4, reps: 8, weight: 18 },
       { exercise: "Bird dog", unit: "répétitions", sets: 3, reps: 10, per_side: true },
       { exercise: "Superman", unit: "répétitions", sets: 3, reps: 12 },
@@ -91,6 +91,91 @@ export function planToLogEntries(rows: WorkoutPlanRow[]): { exercise_id: string;
   return entries;
 }
 
+/** Tonnage d'une séance : Σ (répétitions × poids). Les séries au poids du corps (weight null) comptent 0. */
+export function workoutTonnage(entries: { count: number; weight: number | null }[]): number {
+  return entries.reduce((s, e) => s + (e.weight != null ? e.count * e.weight : 0), 0);
+}
+
+// --- Sceaux de parcours (paliers de complétions, par personne) ---
+
+export type SealTier = { threshold: number; label: string; color: string; rank: 1 | 2 | 3 };
+
+/** Paliers de sceaux : trophée bronze → argent → or selon le nombre de complétions. */
+export const WORKOUT_SEAL_TIERS: SealTier[] = [
+  { threshold: 5, label: "Bronze", color: "#CD7F32", rank: 1 },
+  { threshold: 25, label: "Argent", color: "#9AA0A6", rank: 2 },
+  { threshold: 100, label: "Or", color: "#D4AF37", rank: 3 },
+];
+
+export const WORKOUT_SEAL_ICON = "trophy";
+
+/** Tonnage formaté avec séparateur de milliers, ex. "2 340 kg". */
+export function formatKg(kg: number): string {
+  return `${Math.round(kg).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} kg`;
+}
+
+/** Sceau atteint pour un nombre de complétions donné (null en dessous du premier palier). */
+export function sealForCount(count: number): SealTier | null {
+  let reached: SealTier | null = null;
+  for (const tier of WORKOUT_SEAL_TIERS) {
+    if (count >= tier.threshold) reached = tier;
+  }
+  return reached;
+}
+
+/** Prochain sceau à atteindre (null si l'or est déjà décroché). */
+export function nextSealTier(count: number): SealTier | null {
+  return WORKOUT_SEAL_TIERS.find((tier) => count < tier.threshold) ?? null;
+}
+
+export type WorkoutStats = {
+  completions: number;
+  bestTonnage: number;
+  seal: SealTier | null;
+  next: SealTier | null;
+};
+
+/** Stats d'un parcours pour un utilisateur (complétions, record de tonnage, sceau). */
+export function workoutStats(
+  completions: { workout_id: string; user_id: string; tonnage: number }[],
+  workoutId: string,
+  userId: string
+): WorkoutStats {
+  const own = completions.filter((c) => c.workout_id === workoutId && c.user_id === userId);
+  const count = own.length;
+  const bestTonnage = own.reduce((m, c) => Math.max(m, c.tonnage), 0);
+  return { completions: count, bestTonnage, seal: sealForCount(count), next: nextSealTier(count) };
+}
+
+export type CompletionOutcome = {
+  /** Nouveau record de tonnage battu (tonnage > 0 et > meilleur précédent). */
+  isRecord: boolean;
+  tonnage: number;
+  /** Sceau franchi par cette complétion (null si aucun palier atteint pile). */
+  newSeal: SealTier | null;
+};
+
+/**
+ * Ce qui est à célébrer après une complétion, d'après l'état AVANT insertion :
+ * un record si le tonnage dépasse le meilleur précédent, un sceau si le compteur
+ * atteint pile un palier.
+ */
+export function evaluateCompletion(
+  completions: { workout_id: string; user_id: string; tonnage: number }[],
+  workoutId: string,
+  userId: string,
+  tonnage: number
+): CompletionOutcome {
+  const prior = workoutStats(completions, workoutId, userId);
+  const newCount = prior.completions + 1;
+  const newSeal = WORKOUT_SEAL_TIERS.find((tier) => tier.threshold === newCount) ?? null;
+  return {
+    isRecord: tonnage > 0 && tonnage > prior.bestTonnage,
+    tonnage,
+    newSeal,
+  };
+}
+
 export const DEFAULT_EXERCISES: Omit<Exercise, "id" | "household_id" | "created_by" | "created_at" | "variants">[] = [
   { name: "Pompes", icon: "barbell-outline", unit: "répétitions" },
   { name: "Abdos", icon: "fitness-outline", unit: "répétitions" },
@@ -125,6 +210,12 @@ const SPECIFIC_BADGE_TITLES: Record<string, string[]> = {
   Abdos: ["Abdominable", "Abdominatus", "Abdominator", "Abdominator Suprême", "Plaque de Chocolat"],
   Squats: ["Squatteur", "Squatteur Pro", "Squatman", "Squatman Légendaire", "Dieu du Squat"],
   Gainage: ["Statue", "Statue Grecque", "Statue de Sel", "Mégalithe", "Mont Rushmore"],
+  "Développé couché": ["Stagiaire Pectoral", "Développeur Junior", "Développeur Confirmé", "Développeur Senior", "Architecte Pectoral"],
+  "Développé militaire": ["Bidasse", "Caporal", "Sergent-Chef", "Général des Épaules", "Maréchal Deltoïde"],
+  "Curl haltères": ["Biscoto", "Gros Biscoto", "Bras d'Honneur", "Popeye", "Biceps Divin"],
+  "Soulevé de terre roumain": ["Terrassier", "Déménageur", "Hercule", "Atlas", "Soulève-Montagne"],
+  "Bird dog": ["Toutou", "Bon Chien", "Chien d'Arrêt", "Chien de Garde", "Cerbère"],
+  Superman: ["Clark Kent", "Justicier", "Super-Héros", "Kryptonien", "Homme d'Acier"],
 };
 
 const SPECIFIC_TEMPORAL_PREFIXES: Record<string, string> = {
@@ -132,6 +223,12 @@ const SPECIFIC_TEMPORAL_PREFIXES: Record<string, string> = {
   Abdos: "Abdo",
   Squats: "Squat",
   Gainage: "Gainage",
+  "Développé couché": "Développé",
+  "Développé militaire": "Militaire",
+  "Curl haltères": "Curl",
+  "Soulevé de terre roumain": "Soulevé",
+  "Bird dog": "Bird dog",
+  Superman: "Superman",
 };
 
 /** Badges permanents par défaut d'un exercice (titres spécifiques ou génériques) */
@@ -289,7 +386,10 @@ export function computeVariantBreakdown(
 
 // --- Médaillons de badges (famille "Médaillon" RPG) ---
 
-export type MedallionMotif = "pompes" | "abdos" | "squats" | "gainage" | "generic";
+export type MedallionMotif =
+  | "pompes" | "abdos" | "squats" | "gainage"
+  | "bench" | "military" | "curl" | "deadlift" | "birddog" | "superman"
+  | "generic";
 
 /** Motif du médaillon d'après le nom de l'exercice (générique pour les customs) */
 export function medallionMotif(exerciseName: string): MedallionMotif {
@@ -298,6 +398,12 @@ export function medallionMotif(exerciseName: string): MedallionMotif {
     case "Abdos": return "abdos";
     case "Squats": return "squats";
     case "Gainage": return "gainage";
+    case "Développé couché": return "bench";
+    case "Développé militaire": return "military";
+    case "Curl haltères": return "curl";
+    case "Soulevé de terre roumain": return "deadlift";
+    case "Bird dog": return "birddog";
+    case "Superman": return "superman";
     default: return "generic";
   }
 }
